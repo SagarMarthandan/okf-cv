@@ -21,17 +21,17 @@ graph TD
     classDef sort fill:#f97316,stroke:#c2410c,stroke-width:2px,color:#fff7ed;
 
     %% Subgraph styles
-    style Step1 fill:#1e3a8a10,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
-    style Step2 fill:#05966910,stroke:#10b981,stroke-width:2px,color:#059669
-    style Step3 fill:#7c3aed10,stroke:#8b5cf6,stroke-width:2px,color:#7c3aed
-    style Post1 fill:#be185d10,stroke:#ec4899,stroke-width:2px,color:#be185d
-    style Post2 fill:#0891b210,stroke:#06b6d4,stroke-width:2px,color:#0891b2
-    style Post3 fill:#c2410c10,stroke:#f97316,stroke-width:2px,color:#c2410c
+    style Step1 fill:#e0e7ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+    style Step2 fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#059669
+    style Step3 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#7c3aed
+    style Post1 fill:#fce7f3,stroke:#ec4899,stroke-width:2px,color:#be185d
+    style Post2 fill:#cffafe,stroke:#06b6d4,stroke-width:2px,color:#0891b2
+    style Post3 fill:#ffedd5,stroke:#f97316,stroke-width:2px,color:#c2410c
 
     %% Elements
     JD["📋 Raw Job Description"]:::input
     BaseFiles["📄 Base Files: resume.md / resume_de.md"]:::input
-    RepoInfo["🗂️ Master Portfolio: portfolio/"]:::input
+    RepoInfo["🗂 Master Portfolio: portfolio/"]:::input
 
     subgraph Step1 ["Step 1: ATS Analysis and JD Archival"]
         Deps["📦 pip install -r requirements.txt"]:::system
@@ -47,7 +47,7 @@ graph TD
     end
 
     subgraph Step3 ["Step 3: Cover Letter Generation"]
-        CL["✉️ Geschaeftsbr. Generation — Cover_Letter.yaml"]:::processing
+        CL["✉ Cover Letter Generation — Cover_Letter.yaml"]:::processing
     end
 
     subgraph Post1 ["Post-Pipeline Step 1: Self-Learning"]
@@ -67,7 +67,7 @@ graph TD
     OutATS["📊 ATS_Report.yaml / .pdf"]:::output
     OutProj["📝 project_info.md — Tailored Project List"]:::output
     OutRes["📄 Resume.yaml / SAGAR_MARTHANDAN_Resume.pdf"]:::output
-    OutCL["✉️ Cover_Letter.yaml / SAGAR_MARTHANDAN_Cover_Letter.pdf"]:::output
+    OutCL["✉ Cover_Letter.yaml / SAGAR_MARTHANDAN_Cover_Letter.pdf"]:::output
     OutLog["📋 okf/learning_log.json — Enrichment audit trail"]:::output
     OutVault["🔮 Obsidian Vault — Job Search notes"]:::output
     OutTree["📁 Applications/YYYY/MM/DD/[Company] — [Role]/"]:::output
