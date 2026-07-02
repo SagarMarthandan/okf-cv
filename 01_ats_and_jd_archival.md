@@ -19,11 +19,11 @@ Before any pipeline work, extract the **Company Name** and **Job Role** from the
 Before any scoring or analysis, perform the following verification and loading steps:
 1. **Dependency Installation:** The agent MUST run the pip install command to guarantee all required packages in `requirements.txt` are installed before execution:
    ```powershell
-    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -m pip install -q -r "requirements.txt"
+    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -m pip install -q -r "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\requirements.txt"
    ```
 2. **Frontmatter Lint:** Run the OKF linter to verify portfolio metadata is clean before scoring:
    ```powershell
-   C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "okf_lint.py"
+   C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
    ```
    If the linter fails, fix the offending frontmatter before proceeding.
 3. **Load base resume:** Load the candidate's base resume from the detected language folder:
@@ -157,13 +157,13 @@ cd "Applications\[Company Name] — [Job Role]\"
 # 1. Search and generate the tailored project list using hybrid search (OKF + Zvec)
 #    Pass ATS_Report.yaml as 3rd arg for archetype-boosted scoring
 #    Uses score fusion: final = (okf_score * 0.6) + (zvec_sim * 0.4)
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "[skill directory]\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 
 # 2. Compile ATS Report
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
 
 # 3. Compile Job Description
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "yaml_to_pdf.py" "Job_Description.yaml" "Job_Description.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Job_Description.yaml" "Job_Description.pdf"
 ```
 
 ---

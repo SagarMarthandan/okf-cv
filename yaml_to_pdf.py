@@ -1,5 +1,5 @@
 """
-yaml_to_pdf.py — YAML CV Pipeline entry point.
+yaml_to_pdf.py — OKF-CV Pipeline entry point.
 
 Routes an input YAML file to the correct PDF renderer based on the document
 type declared in the YAML (or inferred from the filename).

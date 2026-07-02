@@ -188,10 +188,10 @@ Compile the initial resume PDF from YAML (this generates the `.tex` file in the 
 cd "Applications/[Company Name] — [Job Role]/"
 
 # For English JDs:
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\yaml-cv-pipeline\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 
 # For German JDs:
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\yaml-cv-pipeline\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf"
 ```
 
 ### Step B: Apply LaTeX Polish & Character Count Checks
@@ -224,7 +224,7 @@ pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 
 # Compile the updated ATS Report with post-rewrite scores
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
 ```
 
 ---

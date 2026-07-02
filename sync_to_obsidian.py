@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sync_to_obsidian.py — Bridge script that walks the YAML-CV Applications tree
+sync_to_obsidian.py — Bridge script that walks the OKF-CV Applications tree
 and emits linked Obsidian notes into the vault for graph-view navigation.
 
 Handles two application formats:
@@ -952,7 +952,7 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Sync YAML-CV applications to Obsidian vault")
+    parser = argparse.ArgumentParser(description="Sync OKF-CV applications to Obsidian vault")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be written without writing files")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print per-application progress")
     args = parser.parse_args()

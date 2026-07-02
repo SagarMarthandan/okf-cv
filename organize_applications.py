@@ -44,7 +44,7 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, OSError):
         pass
 
-# Resolve Applications/ relative to the project root (YAML-CV/), mirroring config.py.
+# Resolve Applications/ relative to the project root, mirroring config.py.
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SKILL_DIR))
 APPLICATIONS_DIR = os.path.join(PROJECT_ROOT, "Applications")

@@ -8,7 +8,7 @@
 > a first-class dependency again. See README.md v23 changelog for details.
 
 > Goal: Make the `okf-cv` pipeline's deterministic, metadata-driven project
-> retrieval superior to `yaml-cv-pipeline`'s Zvec semantic embedding search on
+> retrieval superior to the previous `yaml-cv-pipeline`'s Zvec semantic embedding search on
 > every axis: retrieval accuracy, speed, debuggability, and dependency
 > footprint.
 

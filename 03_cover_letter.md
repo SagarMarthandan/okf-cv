@@ -63,25 +63,23 @@ Compile the cover letter immediately:
 cd "Applications/[Company Name] — [Job Role]/"
 
 # Compile Cover Letter (English JD)
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
 
 # Compile Cover Letter (German JD)
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
 ```
 
 ## Post-Pipeline Step 1: Self-Learning Keyword Enrichment
 After the cover letter compiles, run the learning loop to enrich portfolio keywords from this JD:
 ```powershell
-cd "[skill directory]"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "okf_learn.py" "Applications/[Company Name] — [Job Role]"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 The script extracts terms from the processed JD, finds terms that appear in matched projects' bodies but are missing from their keyword lists, and appends them. Max 3 keywords per project per run, 15 per file max. All changes are logged to `okf/learning_log.json`. The linter runs after enrichment and rolls back any change that violates frontmatter rules. Modified files are automatically re-embedded into the Zvec vector database for hybrid search.
 
 ## Post-Pipeline Step 2: Sync to Obsidian Vault
 After the learning loop completes, sync the application to your Obsidian vault for graph-view navigation:
 ```powershell
-cd "[skill directory]"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "sync_to_obsidian.py"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
 ```
 The script walks the entire `Applications/` tree and generates linked Obsidian notes under `<vault>/Job Search/` — one note per application, company, role archetype, skill, and project. Wikilinks connect applications to companies, roles, skills, and projects for graph-view navigation. Handles both YAML and MD application formats. Use `--dry-run` to preview without writing.
 
@@ -91,8 +89,7 @@ The script walks the entire `Applications/` tree and generates linked Obsidian n
 
 After all three pipeline steps complete, the learning loop finishes, and Obsidian sync succeeds, move the application folder into the date-organized tree (`Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`). The date bucket is derived from the folder's creation time. Run the sorter targeting the just-created folder:
 ```powershell
-cd "[skill directory]"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "organize_applications.py" "Applications/[Company Name] — [Job Role]"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\organize_applications.py" "Applications/[Company Name] — [Job Role]"
 ```
 The script is idempotent: re-running it on an already-sorted folder is a no-op. If the folder name contains characters that the shell mangles, quote the path exactly as written by the pipeline.
 

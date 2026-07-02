@@ -5,7 +5,7 @@ description: >-
 dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-transformers
 ---
 
-# YAML CV Pipeline
+# OKF-CV Pipeline
 
 End-to-end pipeline that takes a **Job Description (JD)** and produces a tailored ATS-optimized resume + cover letter as compiled PDFs, plus an archived JD reference and a visual-optimized alternate version.
 

@@ -1,5 +1,5 @@
 """
-config.py — Centralized configuration for YAML CV Pipeline.
+config.py — Centralized configuration for OKF-CV Pipeline.
 
 Provides default paths and constants with environment variable override support.
 """
