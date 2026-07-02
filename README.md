@@ -109,7 +109,7 @@ graph TD
 
 ---
 
-## � Hybrid Search Architecture (OKF + Zvec)
+## 💾 Hybrid Search Architecture (OKF + Zvec)
 
 The portfolio search runs **100% locally and offline** using a hybrid approach that combines Google's **Open Knowledge Format (OKF)** phrase matching with **Zvec semantic embeddings** for score fusion:
 
@@ -131,7 +131,7 @@ The portfolio search runs **100% locally and offline** using a hybrid approach t
 
 ---
 
-## ��️ Step-by-Step Execution Guide
+## 🛠️ Step-by-Step Execution Guide
 
 The entire process is organized into 3 primary sequential steps, executed automatically by the agent when you supply a Job Description, followed by three post-pipeline steps (self-learning enrichment, Obsidian vault sync, and folder sorting):
 
