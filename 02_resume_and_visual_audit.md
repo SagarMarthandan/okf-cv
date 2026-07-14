@@ -48,7 +48,7 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Professional Experience:** Exactly 4 bullets for **IBM India**, exactly 2 bullets for **Staff 4 cruise** (werkstudent).
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
-- **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. `photo_path` must point to `Sagar.jpg` in the base files.
+- **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. No photo embedding — photos are added manually via a PDF editor if needed.
 - **Render Mode:** The `render_mode` top-level key in `Resume.yaml` (set during the pipeline's "Select Render Mode" step) controls which renderer compiles the PDF:
   - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source, and the agent performs the Section 4 LaTeX project single-paragraph polish.
   - `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. Projects are rendered in single-paragraph format automatically (bullets joined into prose) to match the LaTeX polished layout. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
@@ -158,7 +158,6 @@ eye_test_diagnostics:
   bullet_wrap_and_line_length: { status: "Pass/Fail", feedback: "..." }
   section_layout_balance: { status: "Pass/Fail", feedback: "..." }
   education_and_project_inline_formatting: { status: "Pass/Fail", feedback: "..." }
-  header_photo_integration: { status: "Pass/Fail", feedback: "..." }
   stop_slop_and_ai_writing_tells: { status: "Pass/Fail", feedback: "..." }
   tools_line_deduplication: { status: "Pass/Fail", feedback: "..." }
 direct_visual_refactoring_actions: []
@@ -180,7 +179,6 @@ contact_info:
   github: "github.com/SagarMarthandan"
   visa: "Authorized to work in Germany"
   availability: "Immediately available"
-  photo_path: "../../skills/okf-cv/okf/photo/Sagar.jpg"
 summary: "[Exactly 4 lines, <= 420 characters, no tool names]"
 technical_skills:
   - category: "[Category Name]"

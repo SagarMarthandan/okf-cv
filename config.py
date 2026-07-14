@@ -3,6 +3,7 @@ config.py — Centralized configuration for OKF-CV Pipeline.
 
 Provides default paths and constants with environment variable override support.
 """
+import json
 import os
 
 
@@ -18,10 +19,6 @@ DEFAULT_PORTFOLIO_DIR = os.getenv(
 DEFAULT_BASE_FILES_DIR = os.getenv(
     "YAML_CV_BASE_FILES_DIR",
     os.path.join(SKILL_DIR, "okf", "base_files")
-)
-DEFAULT_PHOTO_DIR = os.getenv(
-    "YAML_CV_PHOTO_DIR",
-    os.path.join(SKILL_DIR, "okf", "photo")
 )
 
 # Zvec hybrid search configuration
@@ -104,8 +101,11 @@ JOB_LOCATION_TO_CANDIDATE_CITY = {
 def nearest_candidate_city(job_location: str) -> str:
     """Look up the nearest candidate city for a job location string.
 
-    Uses the static JOB_LOCATION_TO_CANDIDATE_CITY table. Returns None if the
-    location is not found in the table (caller should fall back to web search).
+    Uses the static JOB_LOCATION_TO_CANDIDATE_CITY table first, then falls back
+    to a persistent location cache (okf/.location_cache.json) for locations
+    previously resolved via web search. Returns None if the location is not
+    found in either the table or the cache (caller should fall back to web
+    search and then call cache_location_result() to store the answer).
     Normalizes input by stripping whitespace and trying case-insensitive match.
     """
     if not job_location:
@@ -123,6 +123,74 @@ def nearest_candidate_city(job_location: str) -> str:
     for key, value in JOB_LOCATION_TO_CANDIDATE_CITY.items():
         if key.lower() in loc_lower:
             return value
+    # Check the location cache (for locations previously resolved via web search)
+    cached = _lookup_location_cache(loc)
+    if cached:
+        return cached
     return None
+
+
+# ─── Location web search cache ────────────────────────────────────────────────
+# Caches results of web searches for job locations not in the static table.
+# Geography doesn't change, so cache entries are permanent.
+
+_LOCATION_CACHE_PATH = os.path.join(SKILL_DIR, "okf", ".location_cache.json")
+
+
+def _load_location_cache() -> dict:
+    """Load the location cache from disk."""
+    try:
+        if os.path.exists(_LOCATION_CACHE_PATH):
+            with open(_LOCATION_CACHE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def _save_location_cache(cache: dict) -> None:
+    """Save the location cache to disk."""
+    try:
+        os.makedirs(os.path.dirname(_LOCATION_CACHE_PATH), exist_ok=True)
+        with open(_LOCATION_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+def _lookup_location_cache(job_location: str) -> str | None:
+    """Check the location cache for a previously resolved location.
+
+    Tries exact, case-insensitive, and substring matches (same strategy as
+    the static table).
+    """
+    cache = _load_location_cache()
+    if not cache:
+        return None
+    loc = job_location.strip()
+    if loc in cache:
+        return cache[loc]
+    loc_lower = loc.lower()
+    for key, value in cache.items():
+        if key.lower() == loc_lower:
+            return value
+    for key, value in cache.items():
+        if key.lower() in loc_lower:
+            return value
+    return None
+
+
+def cache_location_result(job_location: str, nearest_city: str) -> None:
+    """Store a web-search-resolved location in the persistent cache.
+
+    Called by the pipeline after a web search resolves a location that wasn't
+    in the static table. Future runs with the same location will hit the cache
+    instead of doing another web search.
+    """
+    if not job_location or not nearest_city:
+        return
+    cache = _load_location_cache()
+    cache[job_location.strip()] = nearest_city.strip()
+    _save_location_cache(cache)
 
 

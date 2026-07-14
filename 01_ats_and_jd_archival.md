@@ -17,11 +17,22 @@ Before any pipeline work, extract the **Company Name** and **Job Role** from the
 
 ### 0b. Pre-Scoring: Verify Dependencies & Load Base Files
 Before any scoring or analysis, perform the following verification and loading steps:
-1. **Dependency Check:** The agent MUST verify that all required packages are importable before execution. Only run pip install if an import fails:
+1. **Dependency Check (24hr cache):** The agent verifies that all required packages are importable, but only once per 24 hours. A cache file at `okf/.dep_check.json` records the last successful check timestamp. On each run:
+   - Read `okf/.dep_check.json`. If it exists and the timestamp is less than 24 hours old, skip the import probe entirely — dependencies are already verified.
+   - If the file is missing, older than 24 hours, or the import probe has never run, execute the import probe and (on success) write the current timestamp to the cache file:
    ```powershell
-    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "import yaml, reportlab, pypdf, zvec, sentence_transformers" 2>nul || C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -m pip install -q -r "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\requirements.txt"
+    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "import json,os,time; cache='C:/Users/sagar/Documents/YAML-CV/skills/okf-cv/okf/.dep_check.json'; skip=False; 
+if os.path.exists(cache):
+    try:
+        data=json.load(open(cache)); skip=(time.time()-data.get('ts',0))<86400
+    except: pass
+if not skip:
+    import subprocess,sys; r=subprocess.run([sys.executable,'-c','import yaml, reportlab, pypdf, zvec, sentence_transformers'],capture_output=True)
+    if r.returncode!=0: subprocess.run([sys.executable,'-m','pip','install','-q','-r','C:/Users/sagar/Documents/YAML-CV/skills/okf-cv/requirements.txt'])
+    json.dump({'ts':time.time()},open(cache,'w')); print('Dependency check completed and cached for 24hrs.')
+else: print('Dependency check skipped (cached within 24hrs).')
    ```
-   This avoids a redundant pip install on every run when packages are already installed.
+   This avoids running the import probe on every application. The cache is automatically invalidated after 24 hours.
 2. **Frontmatter Lint:** Run the OKF linter to verify portfolio metadata is clean before scoring:
    ```powershell
    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
@@ -87,11 +98,15 @@ Populate each field of `improvement_blueprint` as follows:
 
 ### 5. Candidate Location Selection
 - The candidate has 4 candidate cities: **Kiel** (home), **Frankfurt**, **Berlin**, and **Köln**.
-- **Static lookup first:** Check the job location against the static geocode table in `config.py` (`JOB_LOCATION_TO_CANDIDATE_CITY`). Run this Python one-liner to resolve:
+- **Static lookup + cache first:** Check the job location against the static geocode table and the persistent location cache in `config.py`. Run this Python one-liner to resolve:
   ```powershell
   C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "from config import nearest_candidate_city; print(nearest_candidate_city('[job_location]') or 'NOT_FOUND')"
   ```
-- **Web search fallback:** If the static lookup returns `NOT_FOUND`, use **web search** to determine which of the 4 cities is geographically nearest to the job location.
+  This checks the static `JOB_LOCATION_TO_CANDIDATE_CITY` table first, then falls back to `okf/.location_cache.json` (which stores locations previously resolved via web search). If either hits, no web search is needed.
+- **Web search fallback:** If the lookup returns `NOT_FOUND`, use **web search** to determine which of the 4 cities is geographically nearest to the job location. Then cache the result so future applications with the same location skip the web search:
+  ```powershell
+  C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "from config import cache_location_result; cache_location_result('[job_location]', '[resolved_city, Germany]')"
+  ```
 - For remote, country-wide, or unspecified locations, default to **Kiel, Germany**.
 - Save the result (e.g. `Frankfurt, Germany`) under `closest_candidate_location` in the root of `ATS_Report.yaml`.
 

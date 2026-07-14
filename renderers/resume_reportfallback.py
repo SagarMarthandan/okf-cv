@@ -2,7 +2,7 @@
 Resume ReportFallback renderer.
 
 Produces the same visual layout as the LaTeX renderer (header with name +
-contact + photo, ruled section headers, single-paragraph project entries,
+contact, ruled section headers, single-paragraph project entries,
 tabbed experience rows) but via ReportLab using the Calibri font family.
 
 Used in two cases:

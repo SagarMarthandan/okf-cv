@@ -6,15 +6,35 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
-## v28 — Pipeline Optimizations + Archetype-Specific Base Resumes
-**Files:** `renderers/resume_latex.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`, `okf/base_files/english/resume_data_engineer.md` (new), `okf/base_files/english/resume_data_analyst.md` (new), `okf/base_files/english/resume_analytics_engineer.md` (new), `okf/base_files/english/resume_ai_data_engineer.md` (new)
+## v28 — Pipeline Optimizations + Archetype-Specific Base Resumes + Photo Removal
+**Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`, `okf/base_files/english/resume_data_engineer.md` (new), `okf/base_files/english/resume_data_analyst.md` (new), `okf/base_files/english/resume_analytics_engineer.md` (new), `okf/base_files/english/resume_ai_data_engineer.md` (new), `okf/photo/` (deleted)
 
-**Motivation:** Eliminates redundant compilation, auditing, and per-run work that produced no output change. Also introduces archetype-specific base resumes to maximize pre-rewrite ATS scores across role types. Same outputs, less wasted compute, higher starting scores.
+**Motivation:** Eliminates redundant compilation, auditing, and per-run work that produced no output change. Introduces archetype-specific base resumes to maximize pre-rewrite ATS scores. Removes photo embedding from the pipeline (added manually via PDF editor). Same outputs, less wasted compute, higher starting scores.
 
 **Archetype-Specific Base Resumes:**
 - Added 4 archetype-specific base resumes in `okf/base_files/english/`: `resume_data_engineer.md`, `resume_data_analyst.md`, `resume_analytics_engineer.md`, `resume_ai_data_engineer.md`. Each is focused on its archetype's keywords, tools, and projects to score 87-92 pre-rewrite (vs 55-70 when using a single Data Engineer base for cross-archetype JDs).
 - Step 1 now detects the JD's primary role archetype and loads the matching base resume. Falls back to the generic `resume.md` for unmatched archetypes.
 - German equivalents follow the `_de` suffix convention (e.g. `resume_data_engineer_de.md`).
+
+**Photo Embedding Removed:**
+- Removed all photo embedding code from `renderers/resume_latex.py`: photo copy logic, `_cleanup_photo()` function, `has_photo`/`photo_filename` return values, and the `shutil` import. The LaTeX header is now always the no-photo variant (name + contact only).
+- Removed `photo_path` from the `Resume.yaml` schema in `02_resume_and_visual_audit.md`. Removed `header_photo_integration` from the visual layout audit checklist.
+- Removed `DEFAULT_PHOTO_DIR` from `config.py`. Removed `okf/photo/` folder and its `.gitignore` entry.
+- Updated `SKILL.md` (removed photo directory reference and error handling step) and `README.md` (removed photo from directory tree).
+- Photos are now added manually via a PDF editor after the pipeline completes.
+
+**Dependency Check 24hr Cache:**
+- The import probe in Step 1 section 0b.1 is now cached for 24 hours via `okf/.dep_check.json`. On each run, the pipeline checks the cache timestamp — if less than 24 hours old, the import probe is skipped entirely. If older or missing, the probe runs and the timestamp is updated. Added `okf/.dep_check.json` to `.gitignore`.
+
+**Location Web Search Cache:**
+- Added persistent location cache (`okf/.location_cache.json`) to `config.py`. When a job location isn't in the static geocode table, the pipeline checks the cache before doing a web search. If the location was previously resolved via web search, the cached result is returned instantly. After a web search resolves a new location, `cache_location_result()` stores it for future runs. Geography doesn't change, so cache entries are permanent. Step 1 section 5 updated with cache lookup + cache write instructions.
+
+**Font Registration Disk Cache:**
+- Added disk cache (`okf/.font_cache.json`) for font path resolution in `renderers/utils.py`. Each `yaml_to_pdf.py` invocation is a new Python process that previously re-walked the filesystem to find TTF font files. Now the resolved font paths are cached to disk — subsequent processes skip the directory scan and go straight to registering the known paths with ReportLab. Cache is validated by checking that the font files still exist. Saves ~0.5-1 second per PDF compilation (2-3 compiles per application).
+
+**ReportFallback Font Size + Education Fixes:**
+- Increased all font sizes in `renderers/resume_reportfallback.py` by 1pt (body text 10→11pt, section titles 11→12pt, name 22→23pt, contact 8.5→9.5pt, adaptive project tools 7.5/7.0/6.5→8.5/8.0/7.5pt).
+- Education section: university names now use non-breaking spaces to prevent mid-name wrapping. Adaptive font size (10pt→8.5pt based on combined degree+university length) ensures each education entry fits on one line. Left column widened from 387pt→400pt.
 
 **Phase 1 — Duplicate Compilation & Auditing Elimination:**
 - **1.1 Dedupe parse-integrity work:** Removed `_write_parse_integrity_report` from `renderers/resume_latex.py`. The in-renderer audit still runs and auto-recovers to ReportLab on failure (fallback trigger preserved), but no longer writes `Layout_Audit_Report.yaml` — the standalone `resume_parseability.py` (Step 2 Section 6) is the sole writer of parse-integrity reports.
@@ -22,7 +42,9 @@ See [README.md](README.md) for architecture, setup, and usage.
 - **1.3 `--tex-only` flag:** Added `--tex-only` flag to `yaml_to_pdf.py` (resume type, LaTeX mode only). Writes the `.tex` source file without running pdflatex. Step A of the resume pipeline now uses `--tex-only` in LaTeX mode, avoiding a throwaway pdflatex run (the PDF gets replaced when the agent edits the `.tex` in Step B and recompiles in Step C). Refactored `resume_latex.py` to extract `_generate_resume_tex()` helper shared by both `create_resume_pdf_latex` and `create_resume_pdf_latex_tex_only`. ReportFallback mode is unchanged (no `.tex` polish step).
 
 **Phase 2 — Per-Run Work Guards:**
-- **2.1 Conditional pip install:** Replaced the unconditional `pip install -r requirements.txt` in Step 1 with an import probe — only installs if an import fails.
+- **2.1 Conditional pip install with 24hr cache:** Replaced the unconditional `pip install -r requirements.txt` in Step 1 with a cached import probe. The probe runs once, then the result is cached in `okf/.dep_check.json` for 24 hours. Subsequent runs within 24hrs skip the probe entirely. Only runs `pip install` if an import actually fails.
+- **2.4 Location web search cache:** Added `okf/.location_cache.json` to cache web-search-resolved job locations. Locations not in the static geocode table are cached after first web search — future applications with the same location skip the web search entirely. Permanent cache (geography doesn't change).
+- **2.5 Font registration disk cache:** Added `okf/.font_cache.json` to cache resolved font file paths. Each new Python process previously re-walked the filesystem to find TTF files — now it reads cached paths and goes straight to ReportLab registration. Saves ~0.5-1s per PDF compilation.
 - **2.2 Conditional lint with hash cache:** `okf_lint.py` now uses a content-hash cache (`okf/.lint_cache.json`) to skip files whose content hasn't changed since the last successful lint. `okf_learn.py` invalidates cache entries for files it modifies. Added `--force` flag to ignore the cache and lint all files. First run after deploy does a full lint (no cache yet).
 - **2.3 Diversity audit removed from per-application pipeline:** Removed the automatic `okf_diversity_audit.py` run from Step 1 section 0c. The script is now a standalone weekly review tool (documented in README). The prospective monoculture features (application source prompt, weak-tie warning, contact weaving in cover letter) remain in the pipeline.
 

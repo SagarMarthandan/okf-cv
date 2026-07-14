@@ -9,13 +9,15 @@ __pycache__/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
-okf/photo/*
 okf/base_files/english/resume.md
 okf/base_files/german/resume_de.md
 okf/zvec_db/
 okf/hash_index.json
 okf/learning_log.json
 okf/.lint_cache.json
+okf/.dep_check.json
+okf/.location_cache.json
+okf/.font_cache.json
 *.lock
 okf-cv.code-workspace
 Applications/

@@ -148,7 +148,7 @@ The entire process is organized into 3 primary sequential steps, executed automa
 - **Frontmatter Lint:** Runs `okf_lint.py` to validate all portfolio files have clean YAML frontmatter (non-empty fields, canonical archetypes, no denylisted tech tokens, keyword quality checks, `repo_url` URL format). Uses a content-hash cache to skip unchanged files — only lints files that have changed since the last successful lint. Fails before scoring if any violation is found. Use `--force` to ignore the cache.
 - **ATS Vendor Inference & Application Source:** Scans the JD text and application URL for common ATS system footprints (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo). Prompts the user for the application source (Cold Apply, Referral, LinkedIn Connection, Direct). If Cold Apply + known vendor, warns the user to check their network for weak ties. Saves `ats_vendor`, `application_source`, and `weak_tie_contact` to `ATS_Report.yaml`.
 - **Hybrid Project Selector:** Programmatically searches the local portfolio using a hybrid search engine ([zvec_hybrid_search.py](zvec_hybrid_search.py)) that combines OKF 4-layer phrase matching (exact, synonym, stemming, fuzzy) with Zvec semantic embeddings (all-MiniLM-L6-v2), archetype-boosted scoring (+10 primary, +5 secondary from `ATS_Report.yaml`), and Jaccard-style normalization. Score fusion: `final = (okf * 0.6) + (zvec * 0.4)`. Writes the top matching projects to a tailored `project_info.md` file with full hybrid diagnostics (OKF score, Zvec cosine, fused score).
-- **Location Tailoring:** Extracts the job location from the job description and resolves the closest candidate location among Kiel (home), Frankfurt, Berlin, and Köln using a static geocode table in `config.py`. Falls back to web search for locations not in the table. Remote/unspecified locations default to Kiel.
+- **Location Tailoring:** Extracts the job location from the job description and resolves the closest candidate location among Kiel (home), Frankfurt, Berlin, and Köln using a static geocode table in `config.py`. Falls back to a persistent location cache (`okf/.location_cache.json`) for locations previously resolved via web search. New locations are cached after web search so future applications skip the search. Remote/unspecified locations default to Kiel.
 - **Outputs:** `ATS_Report.yaml` & `Job_Description.yaml` (plus their compiled `.pdf` documents) and the tailored `project_info.md`.
 - **Naming Convention (Critical):** The application folder and session name MUST be `[Company Name] — [Job Role]` extracted directly from the JD content. No arbitrary names, timestamps, or placeholders. This makes it easy to identify which session is running which application when multiple agents run in parallel.
 
@@ -226,8 +226,11 @@ YAML-CV/
 │       │   │   │   ├── resume_ai_data_engineer.md
 │       │   │   │   └── resume.md          # Generic fallback
 │       │   │   └── german/               # Same with _de suffix
-│       │   ├── photo/                    # Sagar.jpg for LaTeX templates
-│       │   └── learning_log.json         # Self-learning enrichment audit trail
+│       │   ├── learning_log.json         # Self-learning enrichment audit trail
+│       │   ├── .dep_check.json           # 24hr dependency check cache
+│       │   ├── .lint_cache.json          # Linter hash cache (skip unchanged files)
+│       │   ├── .location_cache.json      # Web-search-resolved location cache
+│       │   ├── .font_cache.json          # Font path resolution cache
 │       ├── renderers\                    # LaTeX/ReportLab rendering handlers
 │       │   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex, register_lm_roman_10)
 │       │   ├── resume_common.py          # Shared resume helpers (HEADERS, get_resume_language)

@@ -1,6 +1,7 @@
 """
 Shared utilities, color constants, and common imports for all PDF renderers.
 """
+import json
 import os
 import sys
 import subprocess
@@ -114,6 +115,37 @@ def run_pdflatex(tex_filename: str, pdf_dir: str, label: str = "document", keep_
                     print(f"Warning: Could not remove {tmp}: {e}", file=sys.stderr)
 
 
+# ── Font path disk cache ──────────────────────────────────────────────────────
+# Caches resolved font file paths so each new Python process doesn't re-walk
+# the filesystem to find TTF files. The actual pdfmetrics.registerFont() calls
+# still run in every process (they register with ReportLab's in-process font
+# registry), but the expensive directory scanning is skipped.
+
+_FONT_CACHE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "okf", ".font_cache.json"
+)
+
+
+def _load_font_cache() -> dict:
+    try:
+        if os.path.exists(_FONT_CACHE_PATH):
+            with open(_FONT_CACHE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def _save_font_cache(cache: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(_FONT_CACHE_PATH), exist_ok=True)
+        with open(_FONT_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=2)
+    except OSError:
+        pass
+
+
 def _find_and_register_font_family(
     family_name: str,
     font_names: Tuple[str, str, str, str],
@@ -122,6 +154,10 @@ def _find_and_register_font_family(
 ) -> Tuple[str, str, str, str]:
     """
     Helper function to find font files in system directories and register them with ReportLab.
+    
+    Uses a disk cache (okf/.font_cache.json) to skip directory scanning on subsequent
+    process invocations. The cache stores resolved font file paths and their modification
+    times — if a font file is updated, the cache entry is invalidated automatically.
     
     Args:
         family_name: Name of the font family to register
@@ -139,54 +175,87 @@ def _find_and_register_font_family(
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
 
-        # Search in local font directories only (not system-wide)
-        # Can be overridden via YAML_CV_FONT_DIRS environment variable (colon-separated)
-        font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
-        if font_dirs_env:
-            dirs = font_dirs_env.split(os.pathsep)
-        else:
-            # Default to local directories relative to project
-            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            local_appdata = os.environ.get("LOCALAPPDATA", "")
-            win_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
-            user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts") if local_appdata else ""
-            dirs = [
-                os.path.join(script_dir, "fonts"),
-                os.path.join(script_dir, "okf", "fonts"),
-            ]
-            if win_fonts and os.path.exists(win_fonts):
-                dirs.append(win_fonts)
-            if user_fonts and os.path.exists(user_fonts):
-                dirs.append(user_fonts)
-        
         regular_file, bold_file, italic_file, bold_italic_file = font_names
 
+        # ── Check disk cache for resolved paths ────────────────────────────
+        disk_cache = _load_font_cache()
+        cached = disk_cache.get(family_name)
         regular_path = None
         bold_path = None
         italic_path = None
         bold_italic_path = None
 
-        for d in dirs:
-            if not d or not os.path.exists(d):
-                continue
-            r_p = os.path.join(d, regular_file)
-            b_p = os.path.join(d, bold_file)
-            i_p = os.path.join(d, italic_file)
-            bi_p = os.path.join(d, bold_italic_file)
-            
-            if os.path.exists(r_p) and os.path.exists(b_p):
-                regular_path = r_p
-                bold_path = b_p
-                if os.path.exists(i_p):
-                    italic_path = i_p
-                if os.path.exists(bi_p):
-                    bold_italic_path = bi_p
-                break
+        if cached:
+            # Validate cached paths still exist and haven't been modified
+            paths_valid = True
+            for role, path in [("regular", cached.get("regular_path")),
+                               ("bold", cached.get("bold_path"))]:
+                if not path or not os.path.exists(path):
+                    paths_valid = False
+                    break
+            if paths_valid:
+                regular_path = cached.get("regular_path")
+                bold_path = cached.get("bold_path")
+                italic_path = cached.get("italic_path")
+                bold_italic_path = cached.get("bold_italic_path")
+                # Verify italic/bold_italic if they were cached
+                if italic_path and not os.path.exists(italic_path):
+                    italic_path = None
+                if bold_italic_path and not os.path.exists(bold_italic_path):
+                    bold_italic_path = None
 
+        # ── Fall back to directory scan if cache miss ──────────────────────
         if not regular_path or not bold_path:
-            cache_var[0] = fallback_names
-            return fallback_names
+            # Search in local font directories only (not system-wide)
+            # Can be overridden via YAML_CV_FONT_DIRS environment variable (colon-separated)
+            font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
+            if font_dirs_env:
+                dirs = font_dirs_env.split(os.pathsep)
+            else:
+                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                local_appdata = os.environ.get("LOCALAPPDATA", "")
+                win_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+                user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts") if local_appdata else ""
+                dirs = [
+                    os.path.join(script_dir, "fonts"),
+                    os.path.join(script_dir, "okf", "fonts"),
+                ]
+                if win_fonts and os.path.exists(win_fonts):
+                    dirs.append(win_fonts)
+                if user_fonts and os.path.exists(user_fonts):
+                    dirs.append(user_fonts)
 
+            for d in dirs:
+                if not d or not os.path.exists(d):
+                    continue
+                r_p = os.path.join(d, regular_file)
+                b_p = os.path.join(d, bold_file)
+                i_p = os.path.join(d, italic_file)
+                bi_p = os.path.join(d, bold_italic_file)
+                
+                if os.path.exists(r_p) and os.path.exists(b_p):
+                    regular_path = r_p
+                    bold_path = b_p
+                    if os.path.exists(i_p):
+                        italic_path = i_p
+                    if os.path.exists(bi_p):
+                        bold_italic_path = bi_p
+                    break
+
+            if not regular_path or not bold_path:
+                cache_var[0] = fallback_names
+                return fallback_names
+
+            # Save resolved paths to disk cache for next time
+            disk_cache[family_name] = {
+                "regular_path": regular_path,
+                "bold_path": bold_path,
+                "italic_path": italic_path,
+                "bold_italic_path": bold_italic_path,
+            }
+            _save_font_cache(disk_cache)
+
+        # ── Register fonts with ReportLab (must run in every process) ──────
         pdfmetrics.registerFont(TTFont(f"{family_name}", regular_path))
         pdfmetrics.registerFont(TTFont(f"{family_name}-Bold", bold_path))
         pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", italic_path if italic_path else regular_path))

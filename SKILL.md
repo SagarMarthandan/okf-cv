@@ -46,7 +46,6 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
     - `resume.md` (generic fallback for unmatched archetypes)
   - **German:** `okf/base_files/german/` — same naming with `_de` suffix (e.g. `resume_data_engineer_de.md`), with `resume_de.md` as fallback.
   - The pipeline detects the JD's primary role archetype in Step 1 and loads the matching base resume to maximize pre-rewrite ATS scores.
-  - **Photo:** `okf/photo/` (Photo image files, e.g. `Sagar.jpg`)
   - **Repo Info:** `okf/portfolio/` (Directory of individual OKF markdown files representing your projects)
 - **Python Installation:** Python 3.10+ with dependencies installed from [requirements.txt](file:///c:/Users/sagar/Documents/YAML-CV/skills/okf-cv/requirements.txt) (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` installed)
 - **Working Directory:** `Applications/` (relative to project root)
@@ -150,8 +149,7 @@ Generates a formal, metric-grounded cover letter standard conforming to German G
 If the compilation fails:
 1. Check stdout/stderr console logs for PyYAML parser errors or ReportLab layout exceptions.
 2. Verify YAML formatting is correct (e.g. check for unquoted colons, incorrect indentations).
-3. If an image is missing, ensure Sagar.jpg is placed in the designated Base Files path.
-4. If there's a layout overflow, trim the text length in the resume YAML.
+3. If there's a layout overflow, trim the text length in the resume YAML.
 
 ## Completion Checklist
 

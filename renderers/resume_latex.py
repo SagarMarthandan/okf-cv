@@ -8,7 +8,6 @@ falling back to the ReportLab renderer. The standalone resume_parseability.py
 """
 import os
 import sys
-import shutil
 import yaml
 
 from .utils import TEXT_DARK, escape_latex, run_pdflatex
@@ -96,8 +95,8 @@ def _audit_pdf_parse_integrity(pdf_path: str, resume_data: dict) -> dict:
 def _generate_resume_tex(data, output_path):
     """Generate the .tex source file for a resume.
 
-    Returns (tex_path, pdf_dir, has_photo, photo_filename) so callers can
-    decide whether to run pdflatex (full compile) or just return the .tex.
+    Returns (tex_path, pdf_dir) so callers can decide whether to run
+    pdflatex (full compile) or just return the .tex.
     """
     # 1. Parse contact info and format header
     contact = data.get('contact_info', {})
@@ -141,39 +140,10 @@ def _generate_resume_tex(data, output_path):
     contact_lines = [l for l in [line1, line2, line3] if l]
     contact_details_str = " \\\\\n  ".join(contact_lines)
 
-    # 2. Check and copy photo
-    photo_path   = contact.get('photo_path', '')
-    has_photo    = False
-    photo_filename = ""
+    # 2. Header (no photo — name is the dominant element)
     pdf_dir      = os.path.dirname(os.path.abspath(output_path))
 
-    if photo_path:
-        resolved_photo = os.path.abspath(photo_path)
-        if os.path.exists(resolved_photo):
-            has_photo = True
-            ext = os.path.splitext(resolved_photo)[1]
-            photo_filename = f"temp_photo{ext}"
-            try:
-                shutil.copy(resolved_photo, os.path.join(pdf_dir, photo_filename))
-            except Exception as e:
-                print(f"Warning: Could not copy photo: {e}", file=sys.stderr)
-                has_photo = False
-
-    if has_photo:
-        header_tex = f"""\\begin{{minipage}}[b]{{0.82\\textwidth}}
-  {{\\Huge\\bfseries\\color{{darkblue}} {name}}} \\\\[6pt]
-  {{\\small
-  {contact_details_str}
-  }}
-\\end{{minipage}}
-\\hfill
-\\begin{{minipage}}[b]{{0.15\\textwidth}}
-  \\raggedleft
-  \\includegraphics[width=\\linewidth,height=2.5cm,keepaspectratio]{{{photo_filename}}}
-\\end{{minipage}}
-\\vspace{{0pt}}"""
-    else:
-        header_tex = f"""{{\\Huge\\bfseries\\color{{darkblue}} {name}}} \\\\[6pt]
+    header_tex = f"""{{\\Huge\\bfseries\\color{{darkblue}} {name}}} \\\\[6pt]
 {{\\small
 {contact_details_str}
 }}
@@ -345,18 +315,7 @@ def _generate_resume_tex(data, output_path):
     with open(tex_path, 'w', encoding='utf-8') as f:
         f.write(tex_content)
 
-    return tex_path, pdf_dir, has_photo, photo_filename
-
-
-def _cleanup_photo(pdf_dir, photo_filename, has_photo):
-    """Remove the temporary photo copy if one was created."""
-    if has_photo:
-        temp_photo_path = os.path.join(pdf_dir, photo_filename)
-        if os.path.exists(temp_photo_path):
-            try:
-                os.remove(temp_photo_path)
-            except Exception as e:
-                print(f"Warning: Could not remove copied photo: {e}", file=sys.stderr)
+    return tex_path, pdf_dir
 
 
 def create_resume_pdf_latex_tex_only(data, output_path):
@@ -366,14 +325,13 @@ def create_resume_pdf_latex_tex_only(data, output_path):
     .tex before the final compile in Step C. Avoids a throwaway pdflatex run.
     """
     print(f"Generating Resume .tex (tex-only mode): {output_path}")
-    tex_path, pdf_dir, has_photo, photo_filename = _generate_resume_tex(data, output_path)
+    tex_path, pdf_dir = _generate_resume_tex(data, output_path)
     print(f"Wrote LaTeX source: {tex_path}")
-    _cleanup_photo(pdf_dir, photo_filename, has_photo)
 
 
 def create_resume_pdf_latex(data, output_path):
     print(f"Attempting to compile Resume via LaTeX: {output_path}")
-    tex_path, pdf_dir, has_photo, photo_filename = _generate_resume_tex(data, output_path)
+    tex_path, pdf_dir = _generate_resume_tex(data, output_path)
     tex_filename = os.path.basename(tex_path)
 
     try:
@@ -418,5 +376,3 @@ def create_resume_pdf_latex(data, output_path):
         print("Falling back to ReportLab compilation...", file=sys.stderr)
         from .resume_reportfallback import create_resume_pdf_reportlab
         create_resume_pdf_reportlab(data, output_path)
-    finally:
-        _cleanup_photo(pdf_dir, photo_filename, has_photo)
