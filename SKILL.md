@@ -32,11 +32,9 @@ End-to-end pipeline that takes a **Job Description (JD)** and produces a tailore
   Post-Pipeline Step 1: Self-Learning ──► Runs okf_learn.py to enrich portfolio
          │                           └───► Keywords from JD terms found in project bodies
          ▼
-Post-Pipeline Step 2: Obsidian Sync ──► Runs sync_to_obsidian.py to emit linked
-         │                           └───► Notes into vault for graph-view navigation
-         ▼                           ⚠ MUST complete before Step 3
-Post-Pipeline Step 3: Sort ───────────► Moves the application folder into
-                                     Applications/YYYY/MM/DD/[Company] — [Role]/
+Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --sort
+                                     └───► Targeted sync + moves folder to
+                                          Applications/YYYY/MM/DD/[Company] — [Role]/
 ```
 
 - **Base Files Directory (Self-Contained OKF):**

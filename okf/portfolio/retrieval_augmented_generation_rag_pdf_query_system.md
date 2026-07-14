@@ -14,6 +14,9 @@ keywords:
 - context
 - data
 - follow
+- retrieval-augmented generation
+- augmented
+- document
 archetypes:
 - AI Engineer
 - AI/LLMOps

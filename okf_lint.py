@@ -4,12 +4,19 @@ okf_lint.py — Frontmatter linter for OKF portfolio files.
 Validates that every portfolio .md file in okf/portfolio/ has clean, well-formed
 YAML frontmatter. Fails loud with the offending file + field if any rule is violated.
 
+Uses a content-hash cache (okf/.lint_cache.json) to skip files whose frontmatter
+hasn't changed since the last successful lint. The cache is invalidated by
+okf_learn.py when it modifies portfolio files. Use --force to ignore the cache
+and lint all files.
+
 Usage:
-    python okf_lint.py [portfolio_dir]
+    python okf_lint.py [portfolio_dir] [--force]
 """
 import os
 import re
 import sys
+import json
+import hashlib
 import yaml
 from typing import List, Tuple
 
@@ -39,6 +46,53 @@ DENYLIST_TECH_TOKENS = {
 MIN_KEYWORDS = 4
 MAX_KEYWORDS = 15
 MAX_DESCRIPTION_CHARS = 200
+
+# Cache file path (stored in the okf/ directory next to the portfolio)
+_LINT_CACHE_FILENAME = ".lint_cache.json"
+
+
+def _cache_path(portfolio_dir: str) -> str:
+    return os.path.join(os.path.dirname(portfolio_dir), _LINT_CACHE_FILENAME)
+
+
+def _file_hash(filepath: str) -> str:
+    """SHA256 of the file content for change detection."""
+    h = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        h.update(f.read())
+    return h.hexdigest()
+
+
+def _load_cache(portfolio_dir: str) -> dict:
+    path = _cache_path(portfolio_dir)
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_cache(portfolio_dir: str, cache: dict) -> None:
+    path = _cache_path(portfolio_dir)
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save lint cache: {e}", file=sys.stderr)
+
+
+def invalidate_cache(portfolio_dir: str, filenames: list) -> None:
+    """Remove specific files from the cache (called by okf_learn.py after enrichment)."""
+    cache = _load_cache(portfolio_dir)
+    changed = False
+    for fn in filenames:
+        if fn in cache:
+            del cache[fn]
+            changed = True
+    if changed:
+        _save_cache(portfolio_dir, cache)
 
 
 def tokenize(text: str) -> set:
@@ -132,7 +186,13 @@ def lint_file(filepath: str) -> List[str]:
 
 
 def main():
-    portfolio_dir = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PORTFOLIO_DIR
+    args = sys.argv[1:]
+    force = False
+    if '--force' in args:
+        force = True
+        args.remove('--force')
+
+    portfolio_dir = args[0] if len(args) > 0 else DEFAULT_PORTFOLIO_DIR
 
     if not os.path.isdir(portfolio_dir):
         print(f"Error: Portfolio directory not found: {portfolio_dir}", file=sys.stderr)
@@ -145,8 +205,27 @@ def main():
         print(f"Error: No .md files found in {portfolio_dir}", file=sys.stderr)
         sys.exit(1)
 
+    # Load hash cache for skip-if-unchanged optimization
+    cache = _load_cache(portfolio_dir) if not force else {}
+    files_to_lint = []
+    skipped = 0
+
     for filename in md_files:
         filepath = os.path.join(portfolio_dir, filename)
+        current_hash = _file_hash(filepath)
+        if not force and filename in cache and cache[filename] == current_hash:
+            skipped += 1
+            continue
+        files_to_lint.append((filename, filepath, current_hash))
+
+    if skipped > 0:
+        print(f"Lint cache: {skipped} file(s) unchanged since last successful lint - skipping.")
+
+    if not files_to_lint:
+        print(f"\n=== LINT PASSED: {len(md_files)} portfolio files clean ({skipped} cached) ===")
+        sys.exit(0)
+
+    for filename, filepath, current_hash in files_to_lint:
         violations = lint_file(filepath)
         all_violations.extend(violations)
 
@@ -156,7 +235,11 @@ def main():
             print(f"  FAIL: {v}")
         sys.exit(1)
     else:
-        print(f"\n=== LINT PASSED: {len(md_files)} portfolio files clean ===")
+        # Update cache for successfully linted files
+        for filename, filepath, current_hash in files_to_lint:
+            cache[filename] = current_hash
+        _save_cache(portfolio_dir, cache)
+        print(f"\n=== LINT PASSED: {len(files_to_lint)} file(s) linted, {skipped} cached ===")
         sys.exit(0)
 
 

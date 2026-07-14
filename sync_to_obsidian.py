@@ -1008,9 +1008,204 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
+def _patch_index_note(note_path: Path, new_entries: list) -> bool:
+    """Append new entries to an existing index note, deduplicating.
+
+    Returns True if the file was written (or rewritten), False if nothing changed.
+    """
+    existing_entries = []
+    if note_path.exists():
+        text = note_path.read_text(encoding="utf-8")
+        # Parse existing entries: lines starting with "- [["
+        for line in text.splitlines():
+            m = re.match(r"^- \[\[(.+?)\]\]", line)
+            if m:
+                existing_entries.append(m.group(1))
+
+    existing_set = set(existing_entries)
+    added = [e for e in new_entries if e not in existing_set]
+    if not added and existing_set:
+        # Nothing new to add, and the file already exists — skip
+        return False
+
+    all_entries = sorted(set(existing_entries + new_entries))
+    title = note_path.stem  # filename without .md
+    note_path.write_text(generate_index_note(title, all_entries), encoding="utf-8")
+    return True
+
+
+def _patch_entity_note(note_path: Path, title: str, backlinks_key: str, new_backlinks: list) -> bool:
+    """Append new backlinks to an existing entity note, deduplicating.
+
+    Returns True if the file was written, False if nothing changed.
+    """
+    existing_backlinks = []
+    if note_path.exists():
+        text = note_path.read_text(encoding="utf-8")
+        # Find the backlinks section and parse entries
+        in_section = False
+        for line in text.splitlines():
+            if line.startswith("## "):
+                in_section = (backlinks_key in line)
+                continue
+            if in_section:
+                m = re.match(r"^- \[\[(.+?)\]\]", line)
+                if m:
+                    existing_backlinks.append(m.group(1))
+
+    existing_set = set(existing_backlinks)
+    added = [b for b in new_backlinks if b not in existing_set]
+    if not added and existing_set:
+        return False
+
+    all_backlinks = sorted(set(existing_backlinks + new_backlinks))
+    note_path.write_text(
+        generate_entity_note(title, backlinks_key, all_backlinks),
+        encoding="utf-8",
+    )
+    return True
+
+
+def sync_targeted(target_folder: str, dry_run: bool = False, verbose: bool = False, do_sort: bool = False) -> None:
+    """Sync a single application folder to the Obsidian vault (incremental).
+
+    Writes/updates only the notes for this application and patches the relevant
+    index and entity notes. Much faster than a full rebuild for a single new
+    application.
+    """
+    target = Path(target_folder)
+    if not target.is_dir():
+        print(f"Error: Target folder not found: {target_folder}", file=sys.stderr)
+        sys.exit(1)
+
+    app = parse_application(target)
+    if not app:
+        print(f"Error: Could not parse application (no ATS report found in {target_folder})", file=sys.stderr)
+        sys.exit(1)
+
+    # If date is empty (folder not yet sorted), use creation date as fallback
+    if not app["date"]:
+        try:
+            from datetime import datetime
+            dt = datetime.fromtimestamp(os.path.getctime(str(target)))
+            app["date"] = f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
+        except Exception:
+            app["date"] = "0000-00-00"
+
+    if verbose:
+        print(f"Targeted sync: {app['company']} - {app['position']} ({app['date']})")
+
+    note_name = app_note_name(app)
+
+    # Prepare output directories
+    dirs = {
+        "applications": OUTPUT_ROOT / "Applications",
+        "companies": OUTPUT_ROOT / "Companies",
+        "roles": OUTPUT_ROOT / "Roles",
+        "skills": OUTPUT_ROOT / "Skills",
+        "projects": OUTPUT_ROOT / "Projects",
+        "vendors": OUTPUT_ROOT / "Vendors",
+        "sources": OUTPUT_ROOT / "Sources",
+    }
+
+    if dry_run:
+        print("\n=== DRY RUN (targeted) ===")
+        print(f"Would write application note: {note_name}")
+        print(f"Would patch entity notes for: company={app['company']}, role={app['position']}")
+        print(f"  skills={app['skills']}, projects={app['projects']}")
+        if app.get("ats_vendor"):
+            print(f"  vendor={app['ats_vendor']}")
+        if app.get("application_source"):
+            print(f"  source={app['application_source']}")
+        print(f"Would patch 7 index notes")
+        if do_sort:
+            print(f"Would sort folder into YYYY/MM/DD tree")
+        return
+
+    for d in dirs.values():
+        d.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+
+    # 1. Write the application note (overwrite — it's this app's own note)
+    note_path = dirs["applications"] / f"{note_name}.md"
+    note_path.write_text(generate_application_note(app), encoding="utf-8")
+    written += 1
+    if verbose:
+        print(f"  Wrote application note: {note_path.name}")
+
+    # 2. Patch entity notes (company, role, skills, projects, vendor, source)
+    entity_updates = [
+        (dirs["companies"], app["company"], "Applications", [note_name]),
+        (dirs["roles"], app["position"], "Applications", [note_name]),
+    ]
+    for skill in app["skills"]:
+        entity_updates.append((dirs["skills"], skill, "Required By", [note_name]))
+    for project in app["projects"]:
+        entity_updates.append((dirs["projects"], project, "Used In", [note_name]))
+    if app.get("ats_vendor"):
+        entity_updates.append((dirs["vendors"], app["ats_vendor"], "Applications", [note_name]))
+    if app.get("application_source"):
+        entity_updates.append((dirs["sources"], app["application_source"], "Applications", [note_name]))
+
+    for dir_path, title, backlinks_key, backlinks in entity_updates:
+        ent_path = dir_path / f"{slugify(title)}.md"
+        if _patch_entity_note(ent_path, title, backlinks_key, backlinks):
+            written += 1
+            if verbose:
+                print(f"  Patched entity note: {ent_path.name}")
+        elif verbose:
+            print(f"  Entity note unchanged: {ent_path.name}")
+
+    # 3. Patch all 7 index notes
+    index_updates = {
+        "Applications Index.md": [note_name],
+        "Companies Index.md": [app["company"]],
+        "Roles Index.md": [app["position"]],
+        "Skills Index.md": list(app["skills"]),
+        "Projects Index.md": list(app["projects"]),
+        "Vendors Index.md": [app["ats_vendor"]] if app.get("ats_vendor") else [],
+        "Sources Index.md": [app["application_source"]] if app.get("application_source") else [],
+    }
+    for filename, entries in index_updates.items():
+        idx_path = OUTPUT_ROOT / filename
+        if entries and _patch_index_note(idx_path, entries):
+            written += 1
+            if verbose:
+                print(f"  Patched index: {filename}")
+
+    print(f"Targeted sync complete: {written} notes written/patched in {OUTPUT_ROOT}")
+    print(f"  Application: {app['company']} - {app['position']} ({app['date']})")
+
+    # 4. Sort the folder into the YYYY/MM/DD tree (Phase 4.2)
+    if do_sort:
+        try:
+            from organize_applications import _move_into_tree
+            new_path = _move_into_tree(str(target), applications_dir=str(APPLICATIONS_DIR))
+            if new_path:
+                print(f"  Sorted to: {os.path.relpath(new_path, str(APPLICATIONS_DIR))}")
+            else:
+                if verbose:
+                    print(f"  Sort: folder already sorted or skipped")
+        except Exception as e:
+            print(f"  Warning: Folder sort failed (non-blocking): {e}", file=sys.stderr)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sync OKF-CV applications to Obsidian vault")
+    parser.add_argument("target", nargs="?", default=None,
+                        help="Target application folder for incremental sync. If omitted, does a full rebuild.")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be written without writing files")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print per-application progress")
+    parser.add_argument("--sort", action="store_true",
+                        help="After syncing, move the target folder into the YYYY/MM/DD tree (targeted mode only)")
+    parser.add_argument("--full", action="store_true",
+                        help="Force full rebuild even when a target is given")
     args = parser.parse_args()
-    sync(dry_run=args.dry_run, verbose=args.verbose)
+
+    if args.target and not args.full:
+        sync_targeted(args.target, dry_run=args.dry_run, verbose=args.verbose, do_sort=args.sort)
+    else:
+        if args.sort and not args.target:
+            print("Warning: --sort is ignored in full rebuild mode (use with a target folder).", file=sys.stderr)
+        sync(dry_run=args.dry_run, verbose=args.verbose)

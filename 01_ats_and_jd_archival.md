@@ -17,10 +17,11 @@ Before any pipeline work, extract the **Company Name** and **Job Role** from the
 
 ### 0b. Pre-Scoring: Verify Dependencies & Load Base Files
 Before any scoring or analysis, perform the following verification and loading steps:
-1. **Dependency Installation:** The agent MUST run the pip install command to guarantee all required packages in `requirements.txt` are installed before execution:
+1. **Dependency Check:** The agent MUST verify that all required packages are importable before execution. Only run pip install if an import fails:
    ```powershell
-    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -m pip install -q -r "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\requirements.txt"
+    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "import yaml, reportlab, pypdf, zvec, sentence_transformers" 2>nul || C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -m pip install -q -r "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\requirements.txt"
    ```
+   This avoids a redundant pip install on every run when packages are already installed.
 2. **Frontmatter Lint:** Run the OKF linter to verify portfolio metadata is clean before scoring:
    ```powershell
    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
@@ -46,11 +47,8 @@ Before scoring, gather monoculture-counter metadata:
 2. **Application Source Selection:** Prompt the user for the application source. Valid values: `Cold Apply`, `Referral`, `LinkedIn Connection`, `Direct`.
    - If the source is `Cold Apply` and the vendor is known (not `Unknown`), output a warning advising the user to check their network for weak ties before submitting.
    - If the source is `Referral` or `LinkedIn Connection`, prompt for the optional `weak_tie_contact` (name or role of the contact).
-3. **Diversity Audit:** Run the clustering audit utility to check historical application distributions:
-   ```powershell
-   C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
-   ```
-   Review the output for vendor clustering warnings and referral-rate warnings before proceeding.
+
+> **Note:** The diversity audit (`okf_diversity_audit.py`) is no longer run automatically per application. It is a standalone tool for weekly review — see the README "Weekly Review" section.
 
 ### 1. Requirements & Archetype Detection
 - Scan candidate-facing profile requirements.
@@ -83,7 +81,11 @@ Populate each field of `improvement_blueprint` as follows:
 
 ### 5. Candidate Location Selection
 - The candidate has 4 candidate cities: **Kiel** (home), **Frankfurt**, **Berlin**, and **Köln**.
-- Use **web search** to determine which of these 4 cities is geographically nearest to the job location extracted in Step 4.
+- **Static lookup first:** Check the job location against the static geocode table in `config.py` (`JOB_LOCATION_TO_CANDIDATE_CITY`). Run this Python one-liner to resolve:
+  ```powershell
+  C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "from config import nearest_candidate_city; print(nearest_candidate_city('[job_location]') or 'NOT_FOUND')"
+  ```
+- **Web search fallback:** If the static lookup returns `NOT_FOUND`, use **web search** to determine which of the 4 cities is geographically nearest to the job location.
 - For remote, country-wide, or unspecified locations, default to **Kiel, Germany**.
 - Save the result (e.g. `Frankfurt, Germany`) under `closest_candidate_location` in the root of `ATS_Report.yaml`.
 

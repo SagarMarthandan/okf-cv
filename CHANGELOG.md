@@ -6,6 +6,33 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28 — Pipeline Optimizations (Duplicate Work Elimination)
+**Files:** `renderers/resume_latex.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`
+
+**Motivation:** Eliminates redundant compilation, auditing, and per-run work that produced no output change. Same outputs, less wasted compute.
+
+**Phase 1 — Duplicate Compilation & Auditing Elimination:**
+- **1.1 Dedupe parse-integrity work:** Removed `_write_parse_integrity_report` from `renderers/resume_latex.py`. The in-renderer audit still runs and auto-recovers to ReportLab on failure (fallback trigger preserved), but no longer writes `Layout_Audit_Report.yaml` — the standalone `resume_parseability.py` (Step 2 Section 6) is the sole writer of parse-integrity reports.
+- **1.2 ATS Report single recompile:** Removed the duplicate `ATS_Report.pdf` recompile from Step 2 Section 5. The recompile now happens once in Step C (after the post-rewrite score is written to YAML). Section 5 keeps the score-delta YAML write only.
+- **1.3 `--tex-only` flag:** Added `--tex-only` flag to `yaml_to_pdf.py` (resume type, LaTeX mode only). Writes the `.tex` source file without running pdflatex. Step A of the resume pipeline now uses `--tex-only` in LaTeX mode, avoiding a throwaway pdflatex run (the PDF gets replaced when the agent edits the `.tex` in Step B and recompiles in Step C). Refactored `resume_latex.py` to extract `_generate_resume_tex()` helper shared by both `create_resume_pdf_latex` and `create_resume_pdf_latex_tex_only`. ReportFallback mode is unchanged (no `.tex` polish step).
+
+**Phase 2 — Per-Run Work Guards:**
+- **2.1 Conditional pip install:** Replaced the unconditional `pip install -r requirements.txt` in Step 1 with an import probe — only installs if an import fails.
+- **2.2 Conditional lint with hash cache:** `okf_lint.py` now uses a content-hash cache (`okf/.lint_cache.json`) to skip files whose content hasn't changed since the last successful lint. `okf_learn.py` invalidates cache entries for files it modifies. Added `--force` flag to ignore the cache and lint all files. First run after deploy does a full lint (no cache yet).
+- **2.3 Diversity audit removed from per-application pipeline:** Removed the automatic `okf_diversity_audit.py` run from Step 1 section 0c. The script is now a standalone weekly review tool (documented in README). The prospective monoculture features (application source prompt, weak-tie warning, contact weaving in cover letter) remain in the pipeline.
+
+**Phase 3 — Static Geocode Lookup:**
+- **3.1 Candidate-city geocode table:** Added `JOB_LOCATION_TO_CANDIDATE_CITY` dict and `nearest_candidate_city()` function to `config.py`. Maps common German job locations to their nearest candidate city (Kiel, Frankfurt, Berlin, Köln). Step 1 section 5 now checks the static table first, falling back to web search only for unknown locations. Remote/unspecified locations default to Kiel.
+
+**Phase 4 — Incremental Obsidian Sync:**
+- **4.1 Targeted sync mode:** Added optional positional argument to `sync_to_obsidian.py`: `sync_to_obsidian.py <application_folder>`. When given, syncs only that application's notes and patches the relevant entity and index notes (append with dedup). Much faster than a full rebuild for a single new application. No-arg call still does a full rebuild. Added `--full` flag to force full rebuild even when a target is given.
+- **4.2 Folder sort folded into sync:** Added `--sort` flag to `sync_to_obsidian.py`. After a successful targeted sync, the folder is moved into the `Applications/YYYY/MM/DD/` tree. `organize_applications.py` remains as a standalone tool for manual use. Post-Pipeline Step 3 in `03_cover_letter.md` is now automatic via the `--sort` flag.
+
+**Phase 5 — Char-Count Check Consolidation:**
+- **5.1 `--check-tex` mode:** Added `--check-tex` mode to `resume_parseability.py`. Runs the LaTeX project paragraph length check (same regex, same limits: <= 300 chars English, <= 250 chars German). Step B in `02_resume_and_visual_audit.md` now calls `resume_parseability.py --check-tex` instead of an inline `python -c` one-liner.
+
+---
+
 ## v27 — Resume Parseability Audit + ReportFallback Layout Fixes
 **Files:** `resume_parseability.py` (new), `renderers/parseability_report.py` (new), `yaml_to_pdf.py`, `renderers/resume_reportfallback.py`, `SKILL.md`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
 

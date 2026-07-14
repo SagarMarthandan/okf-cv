@@ -636,6 +636,14 @@ def learn_from_application(app_folder: str, portfolio_dir: str) -> Dict:
         except Exception as e:
             print(f"Warning: Zvec re-embed failed (non-blocking): {e}")
 
+        # Invalidate lint cache for modified files so the next lint re-checks them
+        try:
+            from okf_lint import invalidate_cache
+            modified_names = [os.path.basename(f) for f in files_modified]
+            invalidate_cache(portfolio_dir, modified_names)
+        except Exception as e:
+            print(f"Warning: Could not invalidate lint cache (non-blocking): {e}")
+
     # 7. Log to learning_log.json
     log_entry = {
         "timestamp": datetime.now().isoformat(timespec='seconds'),

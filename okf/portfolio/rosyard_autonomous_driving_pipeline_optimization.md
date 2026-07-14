@@ -17,6 +17,7 @@ keywords:
 - datasets
 - multi
 - python
+- accuracy
 archetypes:
 - Agentic/Automation
 - ML Engineering

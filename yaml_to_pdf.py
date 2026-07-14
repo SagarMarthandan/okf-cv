@@ -12,7 +12,11 @@ Supported types:
   parseability_report  → renderers/parseability_report.py
 
 Usage:
-  python yaml_to_pdf.py <input.yaml> <output.pdf>
+  python yaml_to_pdf.py <input.yaml> <output.pdf> [--tex-only]
+
+The optional --tex-only flag (resume type only, LaTeX mode) writes the .tex
+source file without running pdflatex. Used in Step A of the resume pipeline
+where the agent will hand-edit the .tex before the final compile in Step C.
 """
 import os
 import sys
@@ -45,12 +49,18 @@ def _infer_type(filename: str) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) < 3:
-        print("Usage: python yaml_to_pdf.py <input.yaml> <output.pdf>", file=sys.stderr)
+    args = sys.argv[1:]
+    tex_only = False
+    if '--tex-only' in args:
+        tex_only = True
+        args.remove('--tex-only')
+
+    if len(args) < 2:
+        print("Usage: python yaml_to_pdf.py <input.yaml> <output.pdf> [--tex-only]", file=sys.stderr)
         sys.exit(1)
 
-    yaml_path = sys.argv[1]
-    pdf_path  = sys.argv[2]
+    yaml_path = args[0]
+    pdf_path  = args[1]
 
     if not os.path.exists(yaml_path):
         print(f"Error: Input file '{yaml_path}' not found.", file=sys.stderr)
@@ -77,6 +87,18 @@ def main() -> None:
     pdf_dir = os.path.dirname(pdf_path)
     if pdf_dir and not os.path.exists(pdf_dir):
         os.makedirs(pdf_dir, exist_ok=True)
+
+    # --tex-only is only meaningful for resume (LaTeX mode). For other types
+    # it is silently ignored.
+    if tex_only and doc_type == 'resume':
+        from renderers.resume import _resolve_render_mode
+        mode = _resolve_render_mode(data)
+        if mode == 'latex':
+            from renderers.resume_latex import create_resume_pdf_latex_tex_only
+            create_resume_pdf_latex_tex_only(data, pdf_path)
+            return
+        # reportfallback has no .tex polish step — fall through to normal compile
+        print("--tex-only ignored for reportfallback mode (no .tex file produced).", file=sys.stderr)
 
     renderers = {
         'resume':              create_resume_pdf,

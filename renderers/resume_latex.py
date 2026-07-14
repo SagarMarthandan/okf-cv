@@ -2,8 +2,9 @@
 Resume LaTeX renderer.
 
 Compiles a resume YAML into a PDF via pdflatex, then runs a parse-integrity
-audit on the resulting PDF. If the audit fails, the caller is responsible for
-triggering the ReportFallback renderer (see resume.py dispatcher).
+audit on the resulting PDF. If the audit fails, the renderer auto-recovers by
+falling back to the ReportLab renderer. The standalone resume_parseability.py
+(Step 2 Section 6) is the sole writer of the parse-integrity report.
 """
 import os
 import sys
@@ -14,7 +15,7 @@ from .utils import TEXT_DARK, escape_latex, run_pdflatex
 from .resume_common import HEADERS, get_resume_language
 
 
-# ── Parse-integrity audit ─────────────────────────────────────────────────────
+# ── Parse-integrity audit (fallback trigger only) ─────────────────────────────
 
 def _audit_pdf_parse_integrity(pdf_path: str, resume_data: dict) -> dict:
     """Audit a generated PDF for ATS parse-integrity.
@@ -90,41 +91,14 @@ def _audit_pdf_parse_integrity(pdf_path: str, resume_data: dict) -> dict:
     }
 
 
-def _write_parse_integrity_report(report_path: str, audit_result: dict, fallback_triggered: bool = False) -> None:
-    """Write (or merge into) Layout_Audit_Report.yaml with parse-integrity results."""
-    entry = {
-        "status": audit_result["status"],
-        "unicode_corruptions": audit_result.get("unicode_corruptions", []),
-        "missing_keywords": audit_result.get("missing_keywords", []),
-        "keyword_recovery_pct": audit_result.get("keyword_recovery_pct", 0),
-        "fallback_triggered": fallback_triggered,
-    }
-
-    if os.path.exists(report_path):
-        try:
-            with open(report_path, 'r', encoding='utf-8') as f:
-                existing = yaml.safe_load(f)
-            if not isinstance(existing, dict):
-                existing = {}
-        except Exception:
-            existing = {}
-    else:
-        existing = {}
-
-    existing["parse_integrity_verification"] = entry
-
-    try:
-        with open(report_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(existing, f, default_flow_style=False, sort_keys=False)
-    except Exception as e:
-        print(f"Warning: Could not write parse-integrity report to {report_path}: {e}", file=sys.stderr)
-
-
 # ── LaTeX renderer ────────────────────────────────────────────────────────────
 
-def create_resume_pdf_latex(data, output_path):
-    print(f"Attempting to compile Resume via LaTeX: {output_path}")
+def _generate_resume_tex(data, output_path):
+    """Generate the .tex source file for a resume.
 
+    Returns (tex_path, pdf_dir, has_photo, photo_filename) so callers can
+    decide whether to run pdflatex (full compile) or just return the .tex.
+    """
     # 1. Parse contact info and format header
     contact = data.get('contact_info', {})
     raw_name = contact.get('name', 'Sagar Marthandan')
@@ -371,15 +345,48 @@ def create_resume_pdf_latex(data, output_path):
     with open(tex_path, 'w', encoding='utf-8') as f:
         f.write(tex_content)
 
+    return tex_path, pdf_dir, has_photo, photo_filename
+
+
+def _cleanup_photo(pdf_dir, photo_filename, has_photo):
+    """Remove the temporary photo copy if one was created."""
+    if has_photo:
+        temp_photo_path = os.path.join(pdf_dir, photo_filename)
+        if os.path.exists(temp_photo_path):
+            try:
+                os.remove(temp_photo_path)
+            except Exception as e:
+                print(f"Warning: Could not remove copied photo: {e}", file=sys.stderr)
+
+
+def create_resume_pdf_latex_tex_only(data, output_path):
+    """Write the .tex source file without running pdflatex.
+
+    Used in Step A of the resume pipeline where the agent will hand-edit the
+    .tex before the final compile in Step C. Avoids a throwaway pdflatex run.
+    """
+    print(f"Generating Resume .tex (tex-only mode): {output_path}")
+    tex_path, pdf_dir, has_photo, photo_filename = _generate_resume_tex(data, output_path)
+    print(f"Wrote LaTeX source: {tex_path}")
+    _cleanup_photo(pdf_dir, photo_filename, has_photo)
+
+
+def create_resume_pdf_latex(data, output_path):
+    print(f"Attempting to compile Resume via LaTeX: {output_path}")
+    tex_path, pdf_dir, has_photo, photo_filename = _generate_resume_tex(data, output_path)
+    tex_filename = os.path.basename(tex_path)
+
     try:
         run_pdflatex(tex_filename, pdf_dir, label="Resume", keep_tex=True)
         print(f"Successfully compiled Resume via LaTeX: {output_path}")
 
-        # ── Parse-integrity audit ────────────────────────────────────────────
-        layout_report_path = os.path.join(pdf_dir, "Layout_Audit_Report.yaml")
+        # ── Parse-integrity audit (fallback trigger only) ───────────────────
+        # The standalone resume_parseability.py (Step 2 Section 6) is the sole
+        # writer of the parse-integrity report. This in-renderer audit exists
+        # only to auto-recover to ReportLab when the LaTeX PDF's text layer is
+        # corrupted — the standalone audit can report but cannot recover.
         if os.path.exists(output_path):
             audit = _audit_pdf_parse_integrity(output_path, data)
-            fallback_triggered = False
 
             if audit["status"] == "Fail":
                 print(f"\n*** PARSE-INTEGRITY AUDIT FAILED ***", file=sys.stderr)
@@ -393,22 +400,18 @@ def create_resume_pdf_latex(data, output_path):
                 # Lazy import to avoid circular dependency
                 from .resume_reportfallback import create_resume_pdf_reportlab
                 create_resume_pdf_reportlab(data, output_path)
-                fallback_triggered = True
 
                 # Re-audit the ReportLab PDF
                 if os.path.exists(output_path):
                     rl_audit = _audit_pdf_parse_integrity(output_path, data)
                     if rl_audit["status"] == "Fail":
-                        _write_parse_integrity_report(layout_report_path, rl_audit, fallback_triggered=True)
                         print(f"\n*** FATAL: ReportLab fallback PDF also failed parse-integrity audit ***", file=sys.stderr)
                         print(f"  Missing keywords: {rl_audit.get('missing_keywords', [])}", file=sys.stderr)
                         raise Exception("Both LaTeX and ReportLab PDFs failed parse-integrity audit. Pipeline halted.")
                     else:
                         print(f"  ReportLab fallback passed parse-integrity audit (recovery: {rl_audit['keyword_recovery_pct']}%)", file=sys.stderr)
-                        _write_parse_integrity_report(layout_report_path, rl_audit, fallback_triggered=True)
             else:
                 print(f"  Parse-integrity audit: PASS (keyword recovery: {audit['keyword_recovery_pct']}%)")
-                _write_parse_integrity_report(layout_report_path, audit, fallback_triggered=False)
 
     except Exception as e:
         print(f"Error compiling LaTeX: {e}", file=sys.stderr)
@@ -416,10 +419,4 @@ def create_resume_pdf_latex(data, output_path):
         from .resume_reportfallback import create_resume_pdf_reportlab
         create_resume_pdf_reportlab(data, output_path)
     finally:
-        if has_photo:
-            temp_photo_path = os.path.join(pdf_dir, photo_filename)
-            if os.path.exists(temp_photo_path):
-                try:
-                    os.remove(temp_photo_path)
-                except Exception as e:
-                    print(f"Warning: Could not remove copied photo: {e}", file=sys.stderr)
+        _cleanup_photo(pdf_dir, photo_filename, has_photo)

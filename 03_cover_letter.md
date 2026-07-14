@@ -84,21 +84,20 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 The script extracts terms from the processed JD, finds terms that appear in matched projects' bodies but are missing from their keyword lists, and appends them. Max 3 keywords per project per run, 15 per file max. All changes are logged to `okf/learning_log.json`. The linter runs after enrichment and rolls back any change that violates frontmatter rules. Modified files are automatically re-embedded into the Zvec vector database for hybrid search.
 
 ## Post-Pipeline Step 2: Sync to Obsidian Vault
-After the learning loop completes, sync the application to your Obsidian vault for graph-view navigation:
+After the learning loop completes, sync the application to your Obsidian vault for graph-view navigation. Use the targeted mode (syncs only this application + patches indexes, much faster than a full rebuild):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py" "Applications/[Company Name] — [Job Role]" --sort
 ```
-The script walks the entire `Applications/` tree and generates linked Obsidian notes under `<vault>/Job Search/` — one note per application, company, role archetype, skill, and project. Wikilinks connect applications to companies, roles, skills, and projects for graph-view navigation. Handles both YAML and MD application formats. Use `--dry-run` to preview without writing.
+The `--sort` flag moves the folder into the YYYY/MM/DD tree after syncing, replacing the separate Post-Pipeline Step 3. Use `--verbose` for per-note progress. Use `--full` to force a complete vault rebuild (run periodically for reconciliation).
 
-## Post-Pipeline Step 3: Sort Application Folder into Year/Month/Date Tree
+## Post-Pipeline Step 3: Folder Sort (Automatic)
 
-**Prerequisite:** Obsidian sync (Step 2) MUST complete successfully before running this step. Do NOT run `organize_applications.py` until `sync_to_obsidian.py` has finished. The folder must remain at `Applications/[Company Name] — [Job Role]/` during sync so the sync script can find it. Sorting moves it to `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/` which would make it invisible to the sync script.
+The folder sort is now automatic — the `--sort` flag on `sync_to_obsidian.py` moves the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/` after the sync completes. No separate command is needed.
 
-After all three pipeline steps complete, the learning loop finishes, and Obsidian sync succeeds, move the application folder into the date-organized tree (`Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`). The date bucket is derived from the folder's creation time. Run the sorter targeting the just-created folder:
+If you need to sort folders manually (e.g., older unsorted applications), use the standalone sorter:
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\organize_applications.py" "Applications/[Company Name] — [Job Role]"
 ```
-The script is idempotent: re-running it on an already-sorted folder is a no-op. If the folder name contains characters that the shell mangles, quote the path exactly as written by the pipeline.
 
 ---
 ### ATTACHMENTS FOR PROCESSING

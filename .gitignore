@@ -15,6 +15,7 @@ okf/base_files/german/resume_de.md
 okf/zvec_db/
 okf/hash_index.json
 okf/learning_log.json
+okf/.lint_cache.json
 *.lock
 okf-cv.code-workspace
 Applications/

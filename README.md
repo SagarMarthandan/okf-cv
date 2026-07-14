@@ -28,7 +28,6 @@ graph TD
     style Step3 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#7c3aed
     style Post1 fill:#fce7f3,stroke:#ec4899,stroke-width:2px,color:#be185d
     style Post2 fill:#cffafe,stroke:#06b6d4,stroke-width:2px,color:#0891b2
-    style Post3 fill:#ffedd5,stroke:#f97316,stroke-width:2px,color:#c2410c
 
     %% Elements
     JD["📋 Raw Job Description"]:::input
@@ -40,7 +39,6 @@ graph TD
         ATS["🎯 ATS Score Gate — 4-Category scoring matrix"]:::processing
         Lint["✅ okf_lint.py — Frontmatter validation"]:::processing
         Vendor["🏷️ ATS Vendor Inference + Application Source"]:::processing
-        Diversity["📊 okf_diversity_audit.py — Clustering audit"]:::processing
         OKF["🔍 Hybrid Search — OKF 4-Layer + Zvec Semantic"]:::processing
     end
 
@@ -60,12 +58,8 @@ graph TD
         Learn["🧠 okf_learn.py — Keyword enrichment from JD"]:::learn
     end
 
-    subgraph Post2 ["Post-Pipeline Step 2: Obsidian Sync"]
-        Sync["🔗 sync_to_obsidian.py — Linked vault notes"]:::sync
-    end
-
-    subgraph Post3 ["Post-Pipeline Step 3: Folder Sort"]
-        Sort["📁 organize_applications.py — YYYY/MM/DD tree"]:::sort
+    subgraph Post2 ["Post-Pipeline Step 2: Obsidian Sync + Sort"]
+        Sync["🔗 sync_to_obsidian.py — Targeted sync + folder sort"]:::sync
     end
 
     %% Pipeline Outputs
@@ -87,8 +81,7 @@ graph TD
     ATS --> Lint
     RepoInfo --> Lint
     Lint --> Vendor
-    Vendor --> Diversity
-    Diversity --> OKF
+    Vendor --> OKF
     JD --> OKF
 
     ATS --> OutATS
@@ -114,9 +107,7 @@ graph TD
 
     OutLog --> Sync
     Sync --> OutVault
-
-    OutVault --> Sort
-    Sort --> OutTree
+    Sync --> OutTree
 ```
 
 ---
@@ -140,7 +131,7 @@ The portfolio search runs **100% locally and offline** using a hybrid approach t
 - **Self-Learning Loop:** [okf_learn.py](okf_learn.py) runs post-application to enrich portfolio keywords from real JDs. Extracts domain-relevant terms, finds them in matched projects' bodies, and appends as new keywords. Max 3 per project per run, 15 per file cap, linter-validated with rollback, full audit trail in `okf/learning_log.json`.
 - **Obsidian Vault Sync:** [sync_to_obsidian.py](sync_to_obsidian.py) syncs all applications to the Obsidian vault as linked notes (applications, companies, roles, skills, projects, ATS vendors, application sources) for graph-view navigation and knowledge management. Vendor and source backlink notes visualize clustering in Obsidian's Graph View.
 - **Distilled Output:** The top matched projects are written to `project_info.md` as compact summaries (title + description + tech + archetypes + repo URL + body summary + match diagnostics comment) for use in Step 2.
-- **Diversity Audit:** [okf_diversity_audit.py](okf_diversity_audit.py) scans the `Applications/` tree and reports ATS vendor clustering (warns at ≥3 applications to the same vendor in 14 days) and referral rate (warns at <20%). Advisory only — does not block the pipeline. Run in Step 1 to surface monoculture risk before submitting.
+- **Diversity Audit:** [okf_diversity_audit.py](okf_diversity_audit.py) scans the `Applications/` tree and reports ATS vendor clustering (warns at ≥3 applications to the same vendor in 14 days) and referral rate (warns at <20%). Advisory only — does not block the pipeline. **Standalone tool** — run weekly to review monoculture exposure, not per-application. See "Weekly Review" section below.
 
 ---
 
@@ -150,15 +141,14 @@ The entire process is organized into 3 primary sequential steps, executed automa
 
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 - **Name the Session (First Action):** Before any pipeline work, extract the Company Name and Job Role from the JD and rename the agent session/conversation to `[Company Name] — [Job Role]` in the UI sidebar. This makes it easy to identify which agent is handling which application when running multiple agents in parallel.
-- **Dependency Ingest:** Automatically installs/updates pip dependencies (`pyyaml`, `reportlab`, `pypdf`) using Python 3.12.
+- **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run.
 - **Language Detection:** Identifies whether the JD is in English or German and loads corresponding base resume files.
 - **ATS Pre-Scoring:** Grades the base resume against a calibrated 4-category German-market matrix (max 100 points).
   - **Score Gate:** If the ATS score is `< 85`, the pipeline triggers a `HOLD` verdict, presenting specific remedy suggestions (e.g., missing keywords, project mismatches). If `>= 85`, it sets `PROCEED`.
-- **Frontmatter Lint:** Runs `okf_lint.py` to validate all portfolio files have clean YAML frontmatter (non-empty fields, canonical archetypes, no denylisted tech tokens, keyword quality checks, `repo_url` URL format). Fails before scoring if any violation is found.
+- **Frontmatter Lint:** Runs `okf_lint.py` to validate all portfolio files have clean YAML frontmatter (non-empty fields, canonical archetypes, no denylisted tech tokens, keyword quality checks, `repo_url` URL format). Uses a content-hash cache to skip unchanged files — only lints files that have changed since the last successful lint. Fails before scoring if any violation is found. Use `--force` to ignore the cache.
 - **ATS Vendor Inference & Application Source:** Scans the JD text and application URL for common ATS system footprints (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo). Prompts the user for the application source (Cold Apply, Referral, LinkedIn Connection, Direct). If Cold Apply + known vendor, warns the user to check their network for weak ties. Saves `ats_vendor`, `application_source`, and `weak_tie_contact` to `ATS_Report.yaml`.
-- **Diversity Audit:** Runs `okf_diversity_audit.py` to check historical application distributions — vendor clustering (≥3 same vendor in 14 days triggers warning) and referral rate (<20% triggers warning). Advisory only.
 - **Hybrid Project Selector:** Programmatically searches the local portfolio using a hybrid search engine ([zvec_hybrid_search.py](zvec_hybrid_search.py)) that combines OKF 4-layer phrase matching (exact, synonym, stemming, fuzzy) with Zvec semantic embeddings (all-MiniLM-L6-v2), archetype-boosted scoring (+10 primary, +5 secondary from `ATS_Report.yaml`), and Jaccard-style normalization. Score fusion: `final = (okf * 0.6) + (zvec * 0.4)`. Writes the top matching projects to a tailored `project_info.md` file with full hybrid diagnostics (OKF score, Zvec cosine, fused score).
-- **Location Tailoring:** Extracts the job location from the job description and uses web search to determine the closest candidate location among Kiel (home), Frankfurt (friend), Berlin (friend), and Köln (friend).
+- **Location Tailoring:** Extracts the job location from the job description and resolves the closest candidate location among Kiel (home), Frankfurt, Berlin, and Köln using a static geocode table in `config.py`. Falls back to web search for locations not in the table. Remote/unspecified locations default to Kiel.
 - **Outputs:** `ATS_Report.yaml` & `Job_Description.yaml` (plus their compiled `.pdf` documents) and the tailored `project_info.md`.
 - **Naming Convention (Critical):** The application folder and session name MUST be `[Company Name] — [Job Role]` extracted directly from the JD content. No arbitrary names, timestamps, or placeholders. This makes it easy to identify which session is running which application when multiple agents run in parallel.
 
@@ -190,17 +180,14 @@ The entire process is organized into 3 primary sequential steps, executed automa
 - **Safeguards:** Max 3 new keywords per project per run, 15 keywords per file max (linter enforced with rollback), every change logged to `okf/learning_log.json` with timestamp and JD source.
 - **Idempotent:** Re-running on the same application folder is a no-op (no duplicate keywords added).
 
-### Post-Pipeline Step 2: Obsidian Vault Sync
-- **Graph-View Navigation:** After the learning loop, [sync_to_obsidian.py](sync_to_obsidian.py) walks the entire `Applications/` tree and generates linked Obsidian notes under `<vault>/Job Search/`.
+### Post-Pipeline Step 2: Obsidian Vault Sync + Folder Sort
+- **Graph-View Navigation:** After the learning loop, [sync_to_obsidian.py](sync_to_obsidian.py) syncs the application to the Obsidian vault as linked notes under `<vault>/Job Search/`.
+- **Targeted Sync:** The pipeline passes the application folder as a positional argument for incremental sync — only this application's notes are written, and the relevant entity/index notes are patched (append with dedup). Much faster than a full rebuild. Use `--full` to force a complete rebuild.
 - **Note Types:** One note per application, company, role archetype, skill, project, ATS vendor, and application source. Wikilinks connect applications to companies, roles, skills, projects, vendors, and sources for graph-view navigation. Vendor and source backlink notes visualize clustering immediately in Obsidian's Graph View.
 - **Format Support:** Handles both YAML and MD application formats automatically. Parses `ats_vendor`, `application_source`, and `weak_tie_contact` from both formats.
-- **Standalone Use:** Run `python sync_to_obsidian.py` to sync all applications, or use `--dry-run` to preview without writing.
-
-### Post-Pipeline Step 3: Application Folder Sorting
-- **Prerequisite:** Obsidian sync (Step 2) MUST complete successfully before this step. Do NOT run `organize_applications.py` until `sync_to_obsidian.py` has finished — the folder must remain at `Applications/[Company Name] — [Job Role]/` during sync so the sync script can find it.
-- **Date-Organized Tree:** After Obsidian sync succeeds, [organize_applications.py](organize_applications.py) moves the just-created application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`, bucketed by the folder's creation time.
-- **Idempotent:** Re-running the script is a no-op on already-sorted folders.
-- **Standalone Use:** Run `python organize_applications.py` to sort all existing unsorted folders in `Applications/`, or `python organize_applications.py "Applications/[Company] — [Role]"` to sort a single folder. Use `--dry-run` to preview moves without applying them.
+- **Folder Sort (--sort flag):** After syncing, the `--sort` flag moves the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`, bucketed by the folder's creation time. This replaces the separate Post-Pipeline Step 3.
+- **Standalone Use:** Run `python sync_to_obsidian.py` (no args) for a full vault rebuild, or `python sync_to_obsidian.py "Applications/[Company] — [Role]" --sort` for a single application. Use `--dry-run` to preview without writing.
+- **Manual Folder Sort:** Use [organize_applications.py](organize_applications.py) standalone to sort older unsorted folders: `python organize_applications.py` (all) or `python organize_applications.py "Applications/[Company] — [Role]"` (single). Use `--dry-run` to preview.
 
 ---
 
@@ -296,12 +283,15 @@ Run the hybrid search standalone (OKF + Zvec score fusion):
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 ```
 
-Run the frontmatter linter standalone:
+Run the frontmatter linter standalone (use `--force` to ignore the cache and lint all files):
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py" --force
 ```
 
-Run the diversity audit standalone (checks vendor clustering and referral rate):
+### Weekly Review: Diversity Audit
+
+Run the diversity audit weekly to review your monoculture exposure (vendor clustering and referral rate). This is no longer run automatically per application:
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
 ```

@@ -112,8 +112,8 @@ Immediately after compiling the initial PDF from YAML (which outputs the `.tex` 
 - Re-issue the non-scored `formatting_quality` verdict (`Excellent` / `Good` / `Average` / `Bad`) on the polished resume, with `suggestions` only if `Average` or `Bad`.
 - Calculate `score_delta` (post_score - pre_score).
 - Update the `post_rewrite_ats_score` block in the existing `ATS_Report.yaml` file (do not overwrite the pre-rewrite section) with the final optimized score.
-- Recompile `ATS_Report.pdf` from the updated `ATS_Report.yaml` file using `yaml_to_pdf.py`.
 - Surface the score delta comparison to the user in the console output.
+- **Note:** The ATS_Report.pdf recompile happens once in Step C below — do not recompile it here.
 
 ### 6. Resume Parseability Audit (Mandatory Post-Compilation)
 
@@ -228,33 +228,30 @@ post_rewrite_ats_score:
 
 ## Compilation & LaTeX Polish Commands
 
-### Step A: Initial Compile
-Compile the initial resume PDF from YAML (this generates the `.tex` file in the company folder):
+### Step A: Generate LaTeX Source (tex-only)
+Generate the `.tex` source file from YAML **without running pdflatex** (the PDF will be thrown away when you edit the .tex in Step B, so compiling it now is wasted work). Use the `--tex-only` flag:
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
 
-# For English JDs:
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+# For English JDs (LaTeX mode):
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only
 
-# For German JDs:
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf"
+# For German JDs (LaTeX mode):
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf" --tex-only
 ```
+This writes `SAGAR_MARTHANDAN_Resume.tex` (or `SAGAR_MARTHANDAN_Lebenslauf.tex`) into the company folder. No PDF is produced yet.
+
+**ReportFallback mode:** Skip this step and Step B/C entirely — the ReportFallback renderer produces the final PDF in a single compile. Run the normal compile (without `--tex-only`):
+```powershell
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+```
+Then jump to Step D (parseability audit).
 
 ### Step B: Apply LaTeX Polish & Character Count Checks
 Edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) directly to convert all projects to the single-paragraph format. Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 250 characters for German):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe -c "
-import os, re
-tex_file = 'SAGAR_MARTHANDAN_Lebenslauf.tex' if os.path.exists('SAGAR_MARTHANDAN_Lebenslauf.tex') else 'SAGAR_MARTHANDAN_Resume.tex'
-limit = 250 if 'Lebenslauf' in tex_file else 300
-with open(tex_file, 'r', encoding='utf-8') as f:
-    content = f.read()
-projects = re.findall(r'\\noindent\\textbf\{(.+?)\} --- (.+?)(?=\n\\noindent|\\vspace|\n\n|$)', content, re.DOTALL)
-for name, desc in projects:
-    full = name + ' --- ' + desc.strip()
-    status = 'OK' if len(full) <= limit else 'FAIL'
-    print(f'{status} | {name}: {len(full)} chars (limit: {limit})')
-"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
+# For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.tex"
 ```
 If any project exceeds the limit, trim the prose in the `.tex` file directly.
 
