@@ -34,16 +34,18 @@ def create_resume_pdf_reportlab(data, output_path):
     F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC = register_lm_roman_10()
 
     margin = 0.4 * inch
+    top_margin = 0.3 * inch
     printable_width = A4[0] - (2 * margin)
-    printable_height = A4[1] - (2 * margin)
+    printable_height = A4[1] - margin - top_margin
     # Use BaseDocTemplate with a zero-padding frame so that Tables (section
     # headers) and Paragraphs (body text) both start at the exact same x
     # position. SimpleDocTemplate uses a default 6pt frame padding which
     # causes Paragraphs to appear 6pt indented relative to Tables.
+    # Top margin is 0 — content starts from the very top edge of the page.
     doc = BaseDocTemplate(
         output_path, pagesize=A4,
         leftMargin=margin, rightMargin=margin,
-        topMargin=margin, bottomMargin=margin,
+        topMargin=top_margin, bottomMargin=margin,
     )
     frame = Frame(
         margin, margin, printable_width, printable_height,
@@ -286,7 +288,7 @@ def create_resume_pdf_reportlab(data, output_path):
             degree      = edu.get('degree', '')
             univ        = edu.get('university', '')
             completion  = edu.get('date', '')
-            left_para   = Paragraph(f"<b>{degree}</b> <i>{univ}</i>", edu_style)
+            left_para   = Paragraph(f"<b>{degree}</b> <font size=9><i>{univ}</i></font>", edu_style)
             right_para  = Paragraph(completion, date_style)
             edu_table   = Table([[left_para, right_para]], colWidths=[387, 150])
             edu_table.setStyle(TableStyle([
