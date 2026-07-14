@@ -6,6 +6,33 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v26 — Render Mode Selection (LaTeX vs ReportFallback) + Renderer File Split + Calibri ReportFallback
+**Files:** `renderers/resume.py`, `renderers/resume_latex.py` (new), `renderers/resume_reportfallback.py` (new), `renderers/resume_common.py` (new), `renderers/cover_letter.py`, `renderers/cover_letter_latex.py` (new), `renderers/cover_letter_reportfallback.py` (new), `SKILL.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`
+
+**Motivation:** Lets the user choose between the LaTeX pipeline (pdflatex, `.tex` source preserved, agent-driven project polish) and a plain ReportLab fallback (Calibri font, no `.tex` file, single-paragraph projects rendered automatically) before the pipeline runs. Splits the monolithic renderer files into focused latex/reportfallback modules so each path can evolve independently.
+
+**Renderer File Split:**
+- `renderers/resume.py` is now a thin dispatcher that reads `render_mode` from the YAML data and routes to `resume_latex.py` or `resume_reportfallback.py`. Re-exports `HEADERS`, `get_resume_language`, and `create_resume_pdf_reportlab` for backward compatibility.
+- `renderers/resume_common.py` (new) — shared `HEADERS` dict and `get_resume_language()` helper, imported by both latex and reportfallback resume renderers.
+- `renderers/resume_latex.py` (new) — LaTeX renderer + parse-integrity audit (`_audit_pdf_parse_integrity`, `_write_parse_integrity_report`, `create_resume_pdf_latex`). The audit-failure fallback path lazy-imports the reportfallback renderer.
+- `renderers/resume_reportfallback.py` (new) — ReportLab renderer using the Calibri font family (via `register_calibri()` from utils). Projects rendered in single-paragraph format (bullets joined into prose) to match the LaTeX polished layout.
+- `renderers/cover_letter.py` is now a thin dispatcher reading `render_mode`.
+- `renderers/cover_letter_latex.py` (new) — LaTeX cover letter renderer. Failure path lazy-imports the reportfallback renderer.
+- `renderers/cover_letter_reportfallback.py` (new) — ReportLab cover letter renderer using Calibri. Reproduces the Geschäftsbrief layout (sender, recipient, right-aligned date, bold subject, salutation, body, closing + signature).
+
+**Render Mode Selection (Pipeline Prompt):**
+- New "First Action: Select Render Mode" step in `SKILL.md` (before "Name the Session"). The agent uses `ask_user_question` to ask the user whether to use `LaTeX` or `ReportFallback` for the resume and cover letter.
+- The choice is written as a top-level `render_mode` key (`latex` or `reportfallback`) in both `Resume.yaml` and `Cover_Letter.yaml`.
+- Default is `latex` when the key is missing (backward compatible with existing YAMLs).
+- `02_resume_and_visual_audit.md`: `render_mode` added to the `Resume.yaml` schema. When `reportfallback` is selected, the agent skips Section 4 (LaTeX Project Format Polish) and compilation Steps B/C (no `.tex` to edit or recompile) — the ReportFallback renderer already produces single-paragraph projects.
+- `03_cover_letter.md`: `render_mode` added to the `Cover_Letter.yaml` schema. Compilation commands section documents both modes.
+
+**Calibri Font for ReportFallback:**
+- The ReportFallback resume and cover letter renderers use `register_calibri()` (already present in `renderers/utils.py`) which registers the Calibri TTF family with ReportLab, falling back to Helvetica if the Calibri font files are not found on the system.
+- The previous Open Sans registration in the resume ReportLab path has been removed in favor of Calibri.
+
+---
+
 ## v25 — Countering Algorithmic Monoculture (ATS Vendor Tracking, Project Verification Links, Resume Variations, Parse-Integrity Audit)
 **Files:** All 15 `okf/portfolio/*.md` files, `okf_lint.py`, `okf_portfolio_search.py`, `zvec_hybrid_search.py`, `okf_diversity_audit.py` (new), `sync_to_obsidian.py`, `renderers/resume.py`, `config.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `IMPLEMENTATION_PLAN.md`
 

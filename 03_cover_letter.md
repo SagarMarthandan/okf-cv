@@ -38,6 +38,7 @@ Save inside the job folder:
 ### A. `Cover_Letter.yaml` Schema
 ```yaml
 type: cover_letter
+render_mode: "latex"  # latex | reportfallback — set during pipeline "Select Render Mode" step
 sender:
   name: SAGAR MARTHANDAN
   address: "[Closest candidate location — read from closest_candidate_location in ATS_Report.yaml]"
@@ -70,6 +71,10 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 # Compile Cover Letter (German JD)
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
 ```
+
+The renderer reads the `render_mode` key from `Cover_Letter.yaml`:
+- `render_mode: latex` (default) — compiles via pdflatex and saves the `.tex` source.
+- `render_mode: reportfallback` — compiles via ReportLab using the Calibri font. No `.tex` file is produced. The Geschäftsbrief layout (sender, recipient, date, subject, salutation, body, closing) is reproduced identically to the LaTeX version.
 
 ## Post-Pipeline Step 1: Self-Learning Keyword Enrichment
 After the cover letter compiles, run the learning loop to enrich portfolio keywords from this JD:

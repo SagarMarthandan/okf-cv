@@ -53,9 +53,14 @@ Post-Pipeline Step 3: Sort ───────────► Moves the applic
   - `okf_lint.py` — Frontmatter linter; validates all portfolio files before scoring (run in Step 1)
   - `okf_learn.py` — Self-learning keyword enrichment; extracts JD terms and enriches portfolio keywords post-application (run after Step 3)
   - `sync_to_obsidian.py` — Syncs application data to Obsidian vault as linked notes for graph-view navigation (run after learning loop)
-  - `renderers/utils.py` — shared utilities (`escape_latex`, color constants, `run_pdflatex`)
-  - `renderers/resume.py` — Resume renderer (LaTeX primary, ReportLab fallback)
-  - `renderers/cover_letter.py` — Cover Letter renderer (LaTeX primary, ReportLab fallback)
+  - `renderers/utils.py` — shared utilities (`escape_latex`, color constants, `run_pdflatex`, font registration including Calibri)
+  - `renderers/resume_common.py` — shared resume helpers (`HEADERS`, `get_resume_language`)
+  - `renderers/resume.py` — Resume renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
+  - `renderers/resume_latex.py` — Resume LaTeX renderer + parse-integrity audit
+  - `renderers/resume_reportfallback.py` — Resume ReportLab renderer (Calibri font, same layout as LaTeX)
+  - `renderers/cover_letter.py` — Cover Letter renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
+  - `renderers/cover_letter_latex.py` — Cover Letter LaTeX renderer
+  - `renderers/cover_letter_reportfallback.py` — Cover Letter ReportLab renderer (Calibri font, same layout as LaTeX)
   - `renderers/job_description.py` — Job Description renderer (ReportLab only)
   - `renderers/ats_report.py` — ATS Report renderer (ReportLab only)
   - `organize_applications.py` — Sorts application folders into a Year/Month/Date tree (run after Obsidian sync)
@@ -75,7 +80,23 @@ The user must provide:
 1. **Job Description** — paste the full JD text
 2. (Optional) **Language override** — if the user wants the output in a specific language different from the JD language
 
-## First Action: Name the Session
+## First Action: Select Render Mode
+
+Before executing any pipeline step, ask the user which render mode to use for the resume and cover letter PDFs. Use the `ask_user_question` tool with a single-select question:
+
+- **Question:** "Which render mode should the resume and cover letter use?"
+- **Header:** "Render mode"
+- **Options:**
+  - `LaTeX` — Compile via pdflatex (primary). Produces a `.tex` source file alongside the PDF. The agent performs the LaTeX project single-paragraph polish post-compilation.
+  - `ReportFallback` — Compile via ReportLab using the Calibri font. No `.tex` file is produced. Projects are rendered in single-paragraph format automatically to match the LaTeX layout. Use this when pdflatex is unavailable or when a Calibri-styled PDF is preferred.
+
+The selected mode MUST be written as a top-level `render_mode` key in both `Resume.yaml` and `Cover_Letter.yaml`:
+- LaTeX → `render_mode: latex`
+- ReportFallback → `render_mode: reportfallback`
+
+The renderers read this key and dispatch accordingly. If the key is missing, `latex` is assumed (backward compatible). The choice applies to both the resume and the cover letter for this application.
+
+## Second Action: Name the Session
 
 Before executing any pipeline step, extract the **Company Name** and **Job Role/Position** from the JD and rename this session/conversation to `[Company Name] — [Job Role]`. This makes it easy to identify which agent is handling which application in the sidebar/session list when running multiple agents in parallel. Examples:
 - `SAP — Senior Data Engineer`

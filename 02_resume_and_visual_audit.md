@@ -49,6 +49,9 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
 - **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. `photo_path` must point to `Sagar.jpg` in the base files.
+- **Render Mode:** The `render_mode` top-level key in `Resume.yaml` (set during the pipeline's "Select Render Mode" step) controls which renderer compiles the PDF:
+  - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source, and the agent performs the Section 4 LaTeX project single-paragraph polish.
+  - `render_mode: reportfallback` — compiles via ReportLab using the Calibri font. No `.tex` file is produced. Projects are rendered in single-paragraph format automatically (bullets joined into prose) to match the LaTeX polished layout. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
 
 ### 3. Visual Layout Audit & Stop-Slop Checks
 - Apply the **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, no throat-clearing openers).
@@ -136,6 +139,7 @@ optimized_v2_generated: false  # Set to true if SAGAR_MARTHANDAN_Resume_v2.yaml 
 ```yaml
 type: resume
 language: "English/German"
+render_mode: "latex"  # latex | reportfallback — set during pipeline "Select Render Mode" step
 resume_variation: "Balanced"  # Balanced | Project-Heavy | Skills-Heavy
 contact_info:
   name: "SAGAR MARTHANDAN"
