@@ -31,7 +31,7 @@ graph TD
 
     %% Elements
     JD["📋 Raw Job Description"]:::input
-    BaseFiles["📄 Base Files: resume.md / resume_de.md"]:::input
+    BaseFiles["📄 Base Files: archetype-specific resumes"]:::input
     RepoInfo["🗂 Master Portfolio: portfolio/"]:::input
 
     subgraph Step1 ["Step 1: ATS Analysis and JD Archival"]
@@ -142,8 +142,8 @@ The entire process is organized into 3 primary sequential steps, executed automa
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 - **Name the Session (First Action):** Before any pipeline work, extract the Company Name and Job Role from the JD and rename the agent session/conversation to `[Company Name] — [Job Role]` in the UI sidebar. This makes it easy to identify which agent is handling which application when running multiple agents in parallel.
 - **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run.
-- **Language Detection:** Identifies whether the JD is in English or German and loads corresponding base resume files.
-- **ATS Pre-Scoring:** Grades the base resume against a calibrated 4-category German-market matrix (max 100 points).
+- **Language Detection & Archetype Selection:** Identifies whether the JD is in English or German, detects the primary role archetype (Data Engineer, Data Analyst, Analytics Engineer, AI Data Engineer), and loads the matching archetype-specific base resume. Falls back to the generic `resume.md` for unmatched archetypes.
+- **ATS Pre-Scoring:** Grades the archetype-matched base resume against a calibrated 4-category German-market matrix (max 100 points).
   - **Score Gate:** If the ATS score is `< 85`, the pipeline triggers a `HOLD` verdict, presenting specific remedy suggestions (e.g., missing keywords, project mismatches). If `>= 85`, it sets `PROCEED`.
 - **Frontmatter Lint:** Runs `okf_lint.py` to validate all portfolio files have clean YAML frontmatter (non-empty fields, canonical archetypes, no denylisted tech tokens, keyword quality checks, `repo_url` URL format). Uses a content-hash cache to skip unchanged files — only lints files that have changed since the last successful lint. Fails before scoring if any violation is found. Use `--force` to ignore the cache.
 - **ATS Vendor Inference & Application Source:** Scans the JD text and application URL for common ATS system footprints (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo). Prompts the user for the application source (Cold Apply, Referral, LinkedIn Connection, Direct). If Cold Apply + known vendor, warns the user to check their network for weak ties. Saves `ats_vendor`, `application_source`, and `weak_tie_contact` to `ATS_Report.yaml`.
@@ -219,8 +219,13 @@ YAML-CV/
 │       │   ├── portfolio/                # 15 individual OKF project markdown files
 │       │   ├── zvec_db/                  # Zvec vector database (auto-generated, hash-indexed for incremental re-embedding)
 │       │   ├── base_files/
-│       │   │   ├── english/              # English base resume.md
-│       │   │   └── german/               # German base resume_de.md
+│       │   │   ├── english/              # Archetype-specific base resumes
+│       │   │   │   ├── resume_data_engineer.md
+│       │   │   │   ├── resume_data_analyst.md
+│       │   │   │   ├── resume_analytics_engineer.md
+│       │   │   │   ├── resume_ai_data_engineer.md
+│       │   │   │   └── resume.md          # Generic fallback
+│       │   │   └── german/               # Same with _de suffix
 │       │   ├── photo/                    # Sagar.jpg for LaTeX templates
 │       │   └── learning_log.json         # Self-learning enrichment audit trail
 │       ├── renderers\                    # LaTeX/ReportLab rendering handlers

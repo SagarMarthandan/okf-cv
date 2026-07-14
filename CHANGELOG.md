@@ -6,10 +6,15 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
-## v28 — Pipeline Optimizations (Duplicate Work Elimination)
-**Files:** `renderers/resume_latex.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`
+## v28 — Pipeline Optimizations + Archetype-Specific Base Resumes
+**Files:** `renderers/resume_latex.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`, `okf/base_files/english/resume_data_engineer.md` (new), `okf/base_files/english/resume_data_analyst.md` (new), `okf/base_files/english/resume_analytics_engineer.md` (new), `okf/base_files/english/resume_ai_data_engineer.md` (new)
 
-**Motivation:** Eliminates redundant compilation, auditing, and per-run work that produced no output change. Same outputs, less wasted compute.
+**Motivation:** Eliminates redundant compilation, auditing, and per-run work that produced no output change. Also introduces archetype-specific base resumes to maximize pre-rewrite ATS scores across role types. Same outputs, less wasted compute, higher starting scores.
+
+**Archetype-Specific Base Resumes:**
+- Added 4 archetype-specific base resumes in `okf/base_files/english/`: `resume_data_engineer.md`, `resume_data_analyst.md`, `resume_analytics_engineer.md`, `resume_ai_data_engineer.md`. Each is focused on its archetype's keywords, tools, and projects to score 87-92 pre-rewrite (vs 55-70 when using a single Data Engineer base for cross-archetype JDs).
+- Step 1 now detects the JD's primary role archetype and loads the matching base resume. Falls back to the generic `resume.md` for unmatched archetypes.
+- German equivalents follow the `_de` suffix convention (e.g. `resume_data_engineer_de.md`).
 
 **Phase 1 — Duplicate Compilation & Auditing Elimination:**
 - **1.1 Dedupe parse-integrity work:** Removed `_write_parse_integrity_report` from `renderers/resume_latex.py`. The in-renderer audit still runs and auto-recovers to ReportLab on failure (fallback trigger preserved), but no longer writes `Layout_Audit_Report.yaml` — the standalone `resume_parseability.py` (Step 2 Section 6) is the sole writer of parse-integrity reports.

@@ -38,8 +38,14 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
 ```
 
 - **Base Files Directory (Self-Contained OKF):**
-  - **English:** `okf/base_files/english/` (Base resume `resume.md`)
-  - **German:** `okf/base_files/german/` (Base German resume `resume_de.md`)
+  - **English:** `okf/base_files/english/` — archetype-specific base resumes:
+    - `resume_data_engineer.md` (Data Engineer archetype)
+    - `resume_data_analyst.md` (Data Analyst archetype)
+    - `resume_analytics_engineer.md` (Analytics Engineer archetype)
+    - `resume_ai_data_engineer.md` (AI Data Engineer archetype)
+    - `resume.md` (generic fallback for unmatched archetypes)
+  - **German:** `okf/base_files/german/` — same naming with `_de` suffix (e.g. `resume_data_engineer_de.md`), with `resume_de.md` as fallback.
+  - The pipeline detects the JD's primary role archetype in Step 1 and loads the matching base resume to maximize pre-rewrite ATS scores.
   - **Photo:** `okf/photo/` (Photo image files, e.g. `Sagar.jpg`)
   - **Repo Info:** `okf/portfolio/` (Directory of individual OKF markdown files representing your projects)
 - **Python Installation:** Python 3.10+ with dependencies installed from [requirements.txt](file:///c:/Users/sagar/Documents/YAML-CV/skills/okf-cv/requirements.txt) (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` installed)

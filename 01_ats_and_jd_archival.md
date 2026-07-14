@@ -5,7 +5,7 @@ Analyze the target job description (JD) against the candidate's base resume and 
 
 ## Inputs
 - **Job Description (JD):** Paste target JD text at the bottom.
-- **Base Resume & Portfolio:** Loaded from the local `okf/` folder inside the skill directory (e.g. `okf/base_files/english/resume.md` or `okf/base_files/german/resume_de.md` depending on detected JD language).
+- **Base Resume & Portfolio:** Loaded from the local `okf/` folder inside the skill directory. Archetype-specific base resumes are selected based on the JD's role archetype (e.g. `okf/base_files/english/resume_data_engineer.md`, `okf/base_files/english/resume_data_analyst.md`, `okf/base_files/english/resume_analytics_engineer.md`, `okf/base_files/english/resume_ai_data_engineer.md`). Falls back to `okf/base_files/english/resume.md` for unmatched archetypes. German equivalents use `_de` suffix (e.g. `resume_data_engineer_de.md`).
 
 ## Execution Rules
 
@@ -27,8 +27,14 @@ Before any scoring or analysis, perform the following verification and loading s
    C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
    ```
    If the linter fails, fix the offending frontmatter before proceeding.
-3. **Load base resume:** Load the candidate's base resume from the detected language folder:
-   - `resume.md` (use `resume_de.md` for German JDs)
+3. **Load base resume:** Load the candidate's base resume from the detected language folder. The pipeline uses **archetype-specific base resumes** to maximize pre-rewrite ATS scores:
+   - First, detect the JD's primary role archetype from the job title and description. The supported archetypes are:
+     - `Data Engineer` → `resume_data_engineer.md`
+     - `Data Analyst` → `resume_data_analyst.md`
+     - `Analytics Engineer` → `resume_analytics_engineer.md`
+     - `AI Data Engineer` → `resume_ai_data_engineer.md`
+   - Load the matching archetype base resume from `okf/base_files/english/` (or `okf/base_files/german/` for German JDs — append `_de` to the filename, e.g. `resume_data_engineer_de.md`).
+   - If the archetype doesn't match any of the 4 specific bases, fall back to the generic `resume.md` (or `resume_de.md` for German).
    *(Note: You do not need to load the global project_info.md file in Step 1, because the OKF search command in Step 1 will dynamically generate a tailored project_info.md file inside the application folder).*
 
 Do not proceed to scoring without first running the dependency installation, the linter, and loading the base resume file. All gap analysis and keyword comparisons must reference the loaded resume content.
