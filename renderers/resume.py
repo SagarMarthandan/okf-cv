@@ -5,6 +5,7 @@ Handles documents with type: resume
 import os
 import sys
 import shutil
+import yaml
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
@@ -55,6 +56,112 @@ def get_resume_language(data):
             return 'german'
             
     return 'english'
+
+
+# ── Parse-integrity audit ─────────────────────────────────────────────────────
+
+def _audit_pdf_parse_integrity(pdf_path: str, resume_data: dict) -> dict:
+    """Audit a generated PDF for ATS parse-integrity.
+
+    Checks:
+      1. Unicode corruption (replacement glyphs U+FFFD).
+      2. Keyword recovery — critical tools/skills from resume_data must appear
+         in the extracted text layer.
+
+    Returns a dict:
+      {
+        "status": "Pass" | "Fail",
+        "unicode_corruptions": [list of corrupted char positions],
+        "missing_keywords": [list of keywords not found in text],
+        "keyword_recovery_pct": int (0-100),
+      }
+    """
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(pdf_path)
+        pdf_text = "".join(page.extract_text() or "" for page in reader.pages)
+    except Exception as e:
+        print(f"Warning: Could not extract PDF text for parse-integrity audit: {e}", file=sys.stderr)
+        return {
+            "status": "Fail",
+            "unicode_corruptions": [],
+            "missing_keywords": [],
+            "keyword_recovery_pct": 0,
+            "error": str(e),
+        }
+
+    # 1. Check for unicode corruptions
+    corruptions = []
+    for i, ch in enumerate(pdf_text):
+        if ch == '\uFFFD':
+            corruptions.append(i)
+
+    # 2. Build keyword list from resume data
+    keywords = set()
+    # From project tools
+    for proj in resume_data.get('projects', resume_data.get('projekte', [])):
+        if isinstance(proj, dict):
+            for t in proj.get('tools', []):
+                if t and len(str(t)) > 1:
+                    keywords.add(str(t).strip())
+    # From technical skills
+    for cat in resume_data.get('technical_skills', resume_data.get('technische_fähigkeiten', resume_data.get('technische fähigkeiten', []))):
+        if isinstance(cat, dict):
+            for s in cat.get('skills', []):
+                if s and len(str(s)) > 1:
+                    keywords.add(str(s).strip())
+    # Always check these critical ATS terms
+    keywords.update(['dbt', 'Snowflake', 'Airflow', 'Python', 'SQL'])
+
+    # Check keyword recovery (case-insensitive substring match)
+    pdf_text_lower = pdf_text.lower()
+    missing = []
+    for kw in sorted(keywords):
+        if kw.lower() not in pdf_text_lower:
+            missing.append(kw)
+
+    total_keywords = len(keywords)
+    recovered = total_keywords - len(missing)
+    recovery_pct = int((recovered / total_keywords * 100)) if total_keywords > 0 else 100
+
+    status = "Pass" if (not corruptions and recovery_pct == 100) else "Fail"
+
+    return {
+        "status": status,
+        "unicode_corruptions": corruptions,
+        "missing_keywords": missing,
+        "keyword_recovery_pct": recovery_pct,
+    }
+
+
+def _write_parse_integrity_report(report_path: str, audit_result: dict, fallback_triggered: bool = False) -> None:
+    """Write (or merge into) Layout_Audit_Report.yaml with parse-integrity results."""
+    entry = {
+        "status": audit_result["status"],
+        "unicode_corruptions": audit_result.get("unicode_corruptions", []),
+        "missing_keywords": audit_result.get("missing_keywords", []),
+        "keyword_recovery_pct": audit_result.get("keyword_recovery_pct", 0),
+        "fallback_triggered": fallback_triggered,
+    }
+
+    if os.path.exists(report_path):
+        try:
+            with open(report_path, 'r', encoding='utf-8') as f:
+                existing = yaml.safe_load(f)
+            if not isinstance(existing, dict):
+                existing = {}
+        except Exception:
+            existing = {}
+    else:
+        existing = {}
+
+    existing["parse_integrity_verification"] = entry
+
+    try:
+        with open(report_path, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(existing, f, default_flow_style=False, sort_keys=False)
+    except Exception as e:
+        print(f"Warning: Could not write parse-integrity report to {report_path}: {e}", file=sys.stderr)
 
 
 # ── LaTeX renderer ────────────────────────────────────────────────────────────
@@ -191,6 +298,9 @@ def create_resume_pdf(data, output_path):
     projects_list = data.get('projects', data.get('projekte', []))
     for i, proj in enumerate(projects_list):
         proj_name  = escape_latex(proj.get('name', ''))
+        repo_url   = proj.get('repo_url', proj.get('url', ''))
+        if repo_url:
+            proj_name = f"{proj_name} (\\href{{{repo_url}}}{{\\color{{darkblue}}\\small[GitHub]}})"
         tools      = [escape_latex(t) for t in proj.get('tools', [])]
         tools_str  = ", ".join(tools)
         bullets    = [escape_latex(b) for b in proj.get('bullets', [])]
@@ -266,6 +376,10 @@ def create_resume_pdf(data, output_path):
 \\usepackage{{textcomp}}
 \\usepackage{{xcolor}}
 
+\\input{{glyphtounicode}}
+\\pdfgentounicode=1
+\\usepackage[none]{{hyphenat}}
+
 \\definecolor{{darkblue}}{{HTML}}{{1A365D}}
 \\definecolor{{BLACK}}{{HTML}}{{000000}}
 
@@ -304,6 +418,40 @@ def create_resume_pdf(data, output_path):
     try:
         run_pdflatex(tex_filename, pdf_dir, label="Resume", keep_tex=True)
         print(f"Successfully compiled Resume via LaTeX: {output_path}")
+
+        # ── Parse-integrity audit ────────────────────────────────────────────
+        layout_report_path = os.path.join(pdf_dir, "Layout_Audit_Report.yaml")
+        if os.path.exists(output_path):
+            audit = _audit_pdf_parse_integrity(output_path, data)
+            fallback_triggered = False
+
+            if audit["status"] == "Fail":
+                print(f"\n*** PARSE-INTEGRITY AUDIT FAILED ***", file=sys.stderr)
+                if audit.get("unicode_corruptions"):
+                    print(f"  Unicode corruptions detected: {len(audit['unicode_corruptions'])} replacement glyphs (U+FFFD)", file=sys.stderr)
+                if audit.get("missing_keywords"):
+                    print(f"  Missing keywords from PDF text layer: {audit['missing_keywords']}", file=sys.stderr)
+                print(f"  Keyword recovery: {audit['keyword_recovery_pct']}%", file=sys.stderr)
+                print(f"  Triggering ReportLab fallback for ATS-safe PDF...", file=sys.stderr)
+
+                create_resume_pdf_reportlab(data, output_path)
+                fallback_triggered = True
+
+                # Re-audit the ReportLab PDF
+                if os.path.exists(output_path):
+                    rl_audit = _audit_pdf_parse_integrity(output_path, data)
+                    if rl_audit["status"] == "Fail":
+                        _write_parse_integrity_report(layout_report_path, rl_audit, fallback_triggered=True)
+                        print(f"\n*** FATAL: ReportLab fallback PDF also failed parse-integrity audit ***", file=sys.stderr)
+                        print(f"  Missing keywords: {rl_audit.get('missing_keywords', [])}", file=sys.stderr)
+                        raise Exception("Both LaTeX and ReportLab PDFs failed parse-integrity audit. Pipeline halted.")
+                    else:
+                        print(f"  ReportLab fallback passed parse-integrity audit (recovery: {rl_audit['keyword_recovery_pct']}%)", file=sys.stderr)
+                        _write_parse_integrity_report(layout_report_path, rl_audit, fallback_triggered=True)
+            else:
+                print(f"  Parse-integrity audit: PASS (keyword recovery: {audit['keyword_recovery_pct']}%)")
+                _write_parse_integrity_report(layout_report_path, audit, fallback_triggered=False)
+
     except Exception as e:
         print(f"Error compiling LaTeX: {e}", file=sys.stderr)
         print("Falling back to ReportLab compilation...", file=sys.stderr)
@@ -518,11 +666,13 @@ def create_resume_pdf_reportlab(data, output_path):
                 proj_block.append(add_section_header(h['projects']))
                 proj_block.append(Spacer(1, 4))
             name       = proj.get('name', '')
+            repo_url   = proj.get('repo_url', proj.get('url', ''))
             tools      = proj.get('tools', [])
             bullets    = proj.get('bullets', [])
             tools_str  = ", ".join(tools)
+            github_link = f" &nbsp;<a href='{repo_url}' color='#1A365D'><font size=8>[GitHub]</font></a>" if repo_url else ""
             proj_header_para = Paragraph(
-                f"<b>{name}</b> &nbsp;&nbsp;&nbsp;<font size=8.5 color='#444444'><i>{tools_str}</i></font>",
+                f"<b>{name}</b>{github_link} &nbsp;&nbsp;&nbsp;<font size=8.5 color='#444444'><i>{tools_str}</i></font>",
                 proj_title_style,
             )
             proj_block.append(proj_header_para)

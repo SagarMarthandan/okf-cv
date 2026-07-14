@@ -20,6 +20,7 @@ keywords:
 - initial
 archetypes:
 - Data Analyst
+repo_url: https://github.com/SagarMarthandan
 ---
 
 # SQL Practice and Revision

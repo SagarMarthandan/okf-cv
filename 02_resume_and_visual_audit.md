@@ -15,6 +15,12 @@ Generate a tailored, high-scannability resume (`Resume.yaml`) directly in struct
 - **Match Language:** Completely translate resume details (including job titles, summaries, bullets, and section headers) to the JD language confirmed in Step 1. Specify the target language in `Resume.yaml` using a top-level `language` key (e.g., `language: German` or `language: English`).
 - **Tailor Candidate Location:** Load `ATS_Report.yaml` and read the `closest_candidate_location` value computed in Step 1. Set the candidate location `contact_info.location` in `Resume.yaml` to this closest city (e.g., `"Frankfurt, Germany"` instead of defaulting to `"Kiel, Germany"`) to establish local alignment with the employer's region.
 - **Preserve Employment Dates:** Copy all employment date ranges (start and end month/year) exactly from the base resume. Do not generalize, approximate, or omit them.
+- **Project Verification Links:** For each project in `project_info.md`, read the `Repo:` line and copy the URL into the corresponding project block in `Resume.yaml` as a `repo_url:` field. This URL will be compiled as a clickable `[GitHub]` link next to the project title in the PDF.
+- **Resume Variation Strategy:** Select a `resume_variation` mode and set it as a top-level key in `Resume.yaml`:
+  - `Balanced` (default): The standard Jake Ryan structure — 3 projects, 4 experience bullets.
+  - `Project-Heavy`: Focus on execution — write verbose descriptions for 4 projects (up to 300 chars each), simplify the skills block.
+  - `Skills-Heavy`: Focus on tools — list only 3 projects, but expand the technical skills categories and bullet details.
+  Choose the variation that best counters the JD's emphasis. If the JD is tool-stack-heavy, use `Skills-Heavy`. If the JD emphasizes execution and project delivery, use `Project-Heavy`. Default to `Balanced` when unclear.
 - **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language in this exact order:
   1. Summary (Zusammenfassung)
   2. Technical Skills (Technische Fähigkeiten)
@@ -68,6 +74,10 @@ Immediately after compiling the initial PDF from YAML (which outputs the `.tex` 
 3. **Format:** Replace the project title, tools, and itemize blocks with:
    ```latex
    \noindent\textbf{[Project Name]} --- [Action verb] [what was built] [quantified metric] [tools woven in]. [Second/third sentences with detail/tools/outcomes/CI/CD].\par
+   ```
+   **Project Verification Links:** If the project has a `repo_url` in `Resume.yaml`, weave a clickable hypertarget next to the project title:
+   ```latex
+   \noindent\textbf{[Project Name]} (\href{repo_url}{GitHub}) --- [Action verb] [what was built] [quantified metric] [tools woven in]. [Second/third sentences].\par
    ```
    > **Critical:** The `\par` at the end is mandatory. Without it, LaTeX stays in horizontal mode and the `\vspace{6pt}` between projects is ignored — causing projects to run together on the same line.
 4. **Quantification:** Every project must contain at least one quantified metric (number, percentage, volume, or time unit).
@@ -126,6 +136,7 @@ optimized_v2_generated: false  # Set to true if SAGAR_MARTHANDAN_Resume_v2.yaml 
 ```yaml
 type: resume
 language: "English/German"
+resume_variation: "Balanced"  # Balanced | Project-Heavy | Skills-Heavy
 contact_info:
   name: "SAGAR MARTHANDAN"
   location: "[Closest candidate location — read from closest_candidate_location in ATS_Report.yaml]"
@@ -143,6 +154,7 @@ technical_skills:
       - "[Skill]"
 projects:
   - name: "[Project Name]"
+    repo_url: "[GitHub URL — read from Repo: line in project_info.md]"
     tools:
       - "[Tool]"          # 5-7 JD-aligned entries only
     bullets:

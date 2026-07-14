@@ -401,6 +401,9 @@ def parse_ats_yaml(path: Path) -> dict:
         "detractors": [],
         "skills_to_add": [],
         "skills_to_remove": [],
+        "ats_vendor": data.get("ats_vendor") or "",
+        "application_source": data.get("application_source") or "",
+        "weak_tie_contact": data.get("weak_tie_contact") or "",
     }
     matrix = data.get("ats_score_matrix", {})
     if isinstance(matrix, dict):
@@ -480,6 +483,9 @@ def parse_ats_md(path: Path) -> dict:
         "detractors": [],
         "skills_to_add": [],
         "skills_to_remove": [],
+        "ats_vendor": "",
+        "application_source": "",
+        "weak_tie_contact": "",
     }
 
     # Title: "# ATS Analysis Report: Company — Role"
@@ -553,6 +559,17 @@ def parse_ats_md(path: Path) -> dict:
     if remove_section:
         bullets = re.findall(r"^[-*]\s+(.+)$", remove_section.group(1), re.MULTILINE)
         result["skills_to_remove"] = [b.strip().strip("*") for b in bullets]
+
+    # ATS Vendor, Application Source, Weak-tie Contact
+    vendor_match = re.search(r"\*\*ATS Vendor:\*\*\s*(.+)", text)
+    if vendor_match:
+        result["ats_vendor"] = vendor_match.group(1).strip()
+    source_match = re.search(r"\*\*Source:\*\*\s*(.+)", text)
+    if source_match:
+        result["application_source"] = source_match.group(1).strip()
+    contact_match = re.search(r"\*\*Referral Contact:\*\*\s*(.+)", text)
+    if contact_match:
+        result["weak_tie_contact"] = contact_match.group(1).strip()
 
     return result
 
@@ -734,6 +751,9 @@ def parse_application(app_dir: Path) -> Optional[dict]:
         "detractors": ats.get("detractors", []),
         "skills_to_add": ats.get("skills_to_add", []),
         "skills_to_remove": ats.get("skills_to_remove", []),
+        "ats_vendor": ats.get("ats_vendor", ""),
+        "application_source": ats.get("application_source", ""),
+        "weak_tie_contact": ats.get("weak_tie_contact", ""),
         "skills": skills,
         "projects": projects,
     }
@@ -753,6 +773,11 @@ def generate_application_note(app: dict) -> str:
     lines.append(f"**Date:** {app['date']}")
     lines.append(f"**Company:** [[{app['company']}]]")
     lines.append(f"**Role:** [[{app['position']}]]")
+    if app.get("ats_vendor"):
+        lines.append(f"**ATS Vendor:** [[{app['ats_vendor']}]]")
+    if app.get("application_source"):
+        lines.append(f"**Source:** [[{app['application_source']}]]")
+    lines.append(f"**Referral Contact:** {app.get('weak_tie_contact') or 'None'}")
     if app["pre_total"] is not None:
         lines.append(f"**ATS Pre-rewrite:** {app['pre_total']}/100")
     if app["post_total"] is not None:
@@ -847,6 +872,8 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
     role_apps = defaultdict(list)      # role → [app_note_name]
     skill_apps = defaultdict(list)     # skill → [app_note_name]
     project_apps = defaultdict(list)   # project → [app_note_name]
+    vendor_apps = defaultdict(list)    # ats_vendor → [app_note_name]
+    source_apps = defaultdict(list)    # application_source → [app_note_name]
 
     for app in applications:
         note_name = app_note_name(app)
@@ -856,6 +883,10 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
             skill_apps[s].append(note_name)
         for p in app["projects"]:
             project_apps[p].append(note_name)
+        if app.get("ats_vendor"):
+            vendor_apps[app["ats_vendor"]].append(note_name)
+        if app.get("application_source"):
+            source_apps[app["application_source"]].append(note_name)
 
     # Prepare output directories
     dirs = {
@@ -864,6 +895,8 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
         "roles": OUTPUT_ROOT / "Roles",
         "skills": OUTPUT_ROOT / "Skills",
         "projects": OUTPUT_ROOT / "Projects",
+        "vendors": OUTPUT_ROOT / "Vendors",
+        "sources": OUTPUT_ROOT / "Sources",
     }
 
     if dry_run:
@@ -873,6 +906,8 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
         print(f"Would write {len(role_apps)} role notes")
         print(f"Would write {len(skill_apps)} skill notes")
         print(f"Would write {len(project_apps)} project notes")
+        print(f"Would write {len(vendor_apps)} vendor notes")
+        print(f"Would write {len(source_apps)} source notes")
         print(f"Output root: {OUTPUT_ROOT}")
         print("\nSample application note:")
         print("---")
@@ -926,6 +961,24 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
         )
         written += 1
 
+    # Write vendor notes
+    for vendor, apps in sorted(vendor_apps.items()):
+        note_path = dirs["vendors"] / f"{slugify(vendor)}.md"
+        note_path.write_text(
+            generate_entity_note(vendor, "Applications", apps),
+            encoding="utf-8",
+        )
+        written += 1
+
+    # Write source notes
+    for source, apps in sorted(source_apps.items()):
+        note_path = dirs["sources"] / f"{slugify(source)}.md"
+        note_path.write_text(
+            generate_entity_note(source, "Applications", apps),
+            encoding="utf-8",
+        )
+        written += 1
+
     # Write index notes
     indexes = {
         "Applications Index.md": [app_note_name(a) for a in applications],
@@ -933,6 +986,8 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
         "Roles Index.md": list(role_apps.keys()),
         "Skills Index.md": list(skill_apps.keys()),
         "Projects Index.md": list(project_apps.keys()),
+        "Vendors Index.md": list(vendor_apps.keys()),
+        "Sources Index.md": list(source_apps.keys()),
     }
     for filename, entries in indexes.items():
         note_path = OUTPUT_ROOT / filename
@@ -945,7 +1000,9 @@ def sync(dry_run: bool = False, verbose: bool = False) -> None:
     print(f"  {len(role_apps)} roles")
     print(f"  {len(skill_apps)} skills")
     print(f"  {len(project_apps)} projects")
-    print(f"  5 index notes")
+    print(f"  {len(vendor_apps)} vendors")
+    print(f"  {len(source_apps)} sources")
+    print(f"  7 index notes")
     print(f"\nOpen Obsidian -> Job Search -> graph view to see the mind map.")
 
 

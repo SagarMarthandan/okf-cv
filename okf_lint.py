@@ -121,6 +121,13 @@ def lint_file(filepath: str) -> List[str]:
                     f"(overlap: {sorted(overlap)})"
                 )
 
+    # Check repo_url (optional, but if present must be a valid URL)
+    repo_url = meta.get("repo_url")
+    if repo_url is not None:
+        repo_url_str = str(repo_url).strip()
+        if repo_url_str and not (repo_url_str.startswith("https://github.com/") or repo_url_str.startswith("https://")):
+            violations.append(f"{filename}: repo_url must start with 'https://github.com/' or 'https://' (got '{repo_url_str}')")
+
     return violations
 
 

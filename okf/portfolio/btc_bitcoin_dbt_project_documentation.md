@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Analytics Engineering
 - Data Engineering
+repo_url: https://github.com/SagarMarthandan
 ---
 
 # BTC - Bitcoin - dbt Project Documentation

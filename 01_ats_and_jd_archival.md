@@ -32,6 +32,26 @@ Before any scoring or analysis, perform the following verification and loading s
 
 Do not proceed to scoring without first running the dependency installation, the linter, and loading the base resume file. All gap analysis and keyword comparisons must reference the loaded resume content.
 
+### 0c. ATS Vendor Inference & Application Source
+Before scoring, gather monoculture-counter metadata:
+
+1. **ATS Vendor Inference:** Scan the JD text and any target application URL for common ATS system footprints:
+   - `myworkdayjobs.com` → `Workday`
+   - `personio.de` / `personio.com` → `Personio`
+   - `successfactors.eu` / `successfactors.com` → `SAP SuccessFactors`
+   - `greenhouse.io` → `Greenhouse`
+   - `lever.co` → `Lever`
+   - `taleo.net` → `Taleo`
+   - If none found, default to `Unknown`.
+2. **Application Source Selection:** Prompt the user for the application source. Valid values: `Cold Apply`, `Referral`, `LinkedIn Connection`, `Direct`.
+   - If the source is `Cold Apply` and the vendor is known (not `Unknown`), output a warning advising the user to check their network for weak ties before submitting.
+   - If the source is `Referral` or `LinkedIn Connection`, prompt for the optional `weak_tie_contact` (name or role of the contact).
+3. **Diversity Audit:** Run the clustering audit utility to check historical application distributions:
+   ```powershell
+   C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
+   ```
+   Review the output for vendor clustering warnings and referral-rate warnings before proceeding.
+
 ### 1. Requirements & Archetype Detection
 - Scan candidate-facing profile requirements.
 - Classify the JD into exactly one primary role archetype (e.g., Data Engineering, Analytics Engineering, Data Analyst, AI Engineer, AI/LLMOps, Agentic/Automation, ML Engineering, Backend/Platform Engineering).
@@ -84,6 +104,9 @@ type: ats_report
 company: "[Company Name]"      # Used by the PDF renderer for the report title
 position: "[Job Position Title]"  # Used by the PDF renderer for the report subtitle
 closest_candidate_location: "[Closest candidate location (Kiel, Frankfurt, Berlin, or Köln) determined via web search]"
+ats_vendor: "[Inferred ATS vendor (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo, or Unknown)]"
+application_source: "[Cold Apply, Referral, LinkedIn Connection, or Direct]"
+weak_tie_contact: null  # Optional name/role of referral or LinkedIn contact
 role_archetype:
   primary: "[Archetype Name]"
   secondary: "[Secondary Archetype — omit this field if JD is single-domain]"

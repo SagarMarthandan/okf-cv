@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
+repo_url: https://github.com/SagarMarthandan/DBT-Airbnb-Practice-Project
 ---
 
 # Airbnb Data Engineering Project (dbt + Snowflake + Dagster)

@@ -11,9 +11,13 @@ keywords:
 - document parsing
 - semantic search
 - question answering
+- context
+- data
+- follow
 archetypes:
 - AI Engineer
 - AI/LLMOps
+repo_url: https://github.com/SagarMarthandan/RAG-LLM-pdf-query
 ---
 
 # Retrieval-Augmented Generation (RAG) PDF Query System

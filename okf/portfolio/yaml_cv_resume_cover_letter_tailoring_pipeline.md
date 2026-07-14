@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering
+repo_url: https://github.com/SagarMarthandan
 ---
 
 # YAML-CV Resume & Cover Letter Tailoring Pipeline

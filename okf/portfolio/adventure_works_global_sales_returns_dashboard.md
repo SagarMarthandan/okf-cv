@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Data Analyst
 - Analytics Engineering
+repo_url: https://github.com/SagarMarthandan
 ---
 
 # Adventure Works: Global Sales  Returns Dashboard

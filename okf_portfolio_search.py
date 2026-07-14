@@ -247,6 +247,7 @@ def parse_okf_file(filepath: str) -> Dict[str, any]:
     metadata.setdefault("technologies", "")
     metadata.setdefault("keywords", [])
     metadata.setdefault("archetypes", [])
+    metadata.setdefault("repo_url", "")
     metadata["body"] = body
     metadata["filepath"] = filepath
     
@@ -455,6 +456,10 @@ def distill_project(proj: Dict[str, any]) -> str:
         parts.append(f"Tech: {techs}")
     if arch_str:
         parts.append(f"Archetypes: {arch_str}")
+
+    repo_url = proj.get("repo_url", "").strip()
+    if repo_url:
+        parts.append(f"Repo: {repo_url}")
 
     body = proj.get("body", "")
     body_summary = extract_body_summary(body)

@@ -20,6 +20,7 @@ keywords:
 - analytics
 archetypes:
 - Data Engineering
+repo_url: https://github.com/SagarMarthandan
 ---
 
 # Ergast Formula 1 Data Engineering Mini Project: Databricks Medallion Architecture

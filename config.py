@@ -34,4 +34,15 @@ EMBEDDING_DIMENSION = 384
 HYBRID_OKF_WEIGHT = 0.6
 HYBRID_ZVEC_WEIGHT = 0.4
 
+# Applications directory (where the pipeline saves application folders)
+APPLICATIONS_DIR = os.getenv(
+    "YAML_CV_APPLICATIONS_DIR",
+    os.path.join(PROJECT_ROOT, "Applications")
+)
+
+# Diversity audit thresholds
+DIVERSITY_VENDOR_CLUSTER_THRESHOLD = int(os.getenv("YAML_CV_DIVERSITY_VENDOR_THRESHOLD", "3"))
+DIVERSITY_REFERRAL_RATE_MIN = float(os.getenv("YAML_CV_DIVERSITY_REFERRAL_MIN", "0.20"))
+DIVERSITY_LOOKBACK_DAYS = int(os.getenv("YAML_CV_DIVERSITY_LOOKBACK_DAYS", "14"))
+
 

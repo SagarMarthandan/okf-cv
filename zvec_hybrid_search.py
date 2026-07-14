@@ -533,6 +533,10 @@ def distill_project_hybrid(proj: Dict[str, any]) -> str:
     if arch_str:
         parts.append(f"Archetypes: {arch_str}")
 
+    repo_url = proj.get("repo_url", "").strip()
+    if repo_url:
+        parts.append(f"Repo: {repo_url}")
+
     # Body summary
     from okf_portfolio_search import extract_body_summary
     body = proj.get("body", "")

@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
+repo_url: https://github.com/SagarMarthandan/ny-taxi-pipeline-2025
 ---
 
 # NYC Taxi Analytics Pipeline (2025)

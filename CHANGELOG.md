@@ -6,6 +6,44 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v25 — Countering Algorithmic Monoculture (ATS Vendor Tracking, Project Verification Links, Resume Variations, Parse-Integrity Audit)
+**Files:** All 15 `okf/portfolio/*.md` files, `okf_lint.py`, `okf_portfolio_search.py`, `zvec_hybrid_search.py`, `okf_diversity_audit.py` (new), `sync_to_obsidian.py`, `renderers/resume.py`, `config.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `IMPLEMENTATION_PLAN.md`
+
+**Motivation:** Integrates findings from the Stanford study on algorithmic monoculture. The pipeline now acts as a buffer against repetitive algorithmic filtration by tracking applicant-firm clustering by ATS vendors, prompting for application source diversification, highlighting project verification links, and offering resume variations.
+
+**Phase 1 — Portfolio Metadata Enrichment:**
+- Added optional `repo_url` field to the YAML frontmatter of all 15 portfolio files under `okf/portfolio/`. Three projects have canonical repo URLs (Airbnb dbt, NYC Taxi, RAG PDF Query); the remaining 12 use the GitHub profile fallback `https://github.com/SagarMarthandan`.
+- Updated `okf_lint.py` to validate `repo_url` if present (must start with `https://github.com/` or `https://`). Optional field — no violation if absent.
+- Updated `parse_okf_file` in `okf_portfolio_search.py` to `setdefault` `repo_url` to `""` so downstream code always has the key.
+
+**Phase 2 — Pipeline Schema Updates (Agent Guidelines):**
+- `01_ats_and_jd_archival.md`: New section 0c — ATS vendor inference from JD text/URL footprints (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo; default Unknown). Application source prompt (Cold Apply, Referral, LinkedIn Connection, Direct) with weak-tie warning on Cold Apply + known vendor. Three new root keys in `ATS_Report.yaml` schema: `ats_vendor`, `application_source`, `weak_tie_contact`. Diversity audit command added to the compilation section.
+- `02_resume_and_visual_audit.md`: Project verification links instruction (read `Repo:` from `project_info.md`, copy to `Resume.yaml` as `repo_url:`). Resume variation strategy (`Balanced` | `Project-Heavy` | `Skills-Heavy`) with tailoring rules. LaTeX polish updated to weave `\href{repo_url}{GitHub}` next to project title. `Resume.yaml` schema updated with `resume_variation` top-level key and `repo_url` per-project field.
+- `03_cover_letter.md`: Project `repo_url` links woven into paragraph deep dives. Referral contact (`weak_tie_contact`) mentioned in paragraph 1 when `application_source` is `Referral` or `LinkedIn Connection`.
+
+**Phase 3 — Script & Compiler Updates:**
+- `okf_portfolio_search.py` & `zvec_hybrid_search.py`: `distill_project` and `distill_project_hybrid` now emit a `Repo: <url>` line in `project_info.md` when the portfolio file has a `repo_url`.
+- `okf_diversity_audit.py` (new): Clustering audit utility that walks the `Applications/` tree, parses `ATS_Report.yaml` files for `ats_vendor` and `application_source`, and reports vendor clustering (warns at ≥3 applications to the same vendor in 14 days) and referral rate (warns at <20%). Advisory only — always exits 0. Handles missing fields gracefully for legacy applications.
+- `config.py`: Added `APPLICATIONS_DIR`, `DIVERSITY_VENDOR_CLUSTER_THRESHOLD` (3), `DIVERSITY_REFERRAL_RATE_MIN` (0.20), `DIVERSITY_LOOKBACK_DAYS` (14) with env var override support.
+- `sync_to_obsidian.py`: `parse_ats_yaml` and `parse_ats_md` now extract `ats_vendor`, `application_source`, `weak_tie_contact`. `parse_application` threads the 3 new fields into the returned app dict. `generate_application_note` emits `**ATS Vendor:**`, `**Source:**`, and `**Referral Contact:**` lines. `sync()` generates vendor backlink notes under `Job Search/Vendors/` and source backlink notes under `Job Search/Sources/`, plus `Vendors Index.md` and `Sources Index.md`. Updated dry-run output and final summary to include vendor/source counts.
+- `renderers/resume.py`:
+  - **LaTeX preamble safeguards:** Added `\input{glyphtounicode}`, `\pdfgentounicode=1`, and `\usepackage[none]{hyphenat}` to prevent font ligature corruption and auto-hyphenation in ATS PDF-to-text parsers (especially Workday).
+  - **Project verification links (LaTeX):** `\href{repo_url}{\color{darkblue}\small[GitHub]}` injected next to project title when `repo_url` is present. URL is not LaTeX-escaped (would break `\href`); only the project name is escaped.
+  - **Project verification links (ReportLab):** Clickable `<a href='...'>[GitHub]</a>` appended to project header paragraph when `repo_url` is present.
+  - **Parse-integrity audit:** New `_audit_pdf_parse_integrity()` function uses `pypdf` to extract the PDF text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. Returns status (Pass/Fail), corruption list, missing keywords, and recovery percentage.
+  - **Automated fallback:** After LaTeX compilation, the audit runs automatically. If it fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification` (status, unicode_corruptions, missing_keywords, keyword_recovery_pct, fallback_triggered).
+
+**Phase 4 — Testing & Verification:**
+- Linter: PASSED (15 portfolio files clean with new `repo_url` field).
+- OKF search test: PASSED (2/2 tests — DE with archetype boost, AI/RAG with dual archetype).
+- Hybrid search test: PASSED (2/2 tests — DE hybrid ranking, AI/RAG hybrid ranking).
+- Utils test suite: PASSED (30/30 tests).
+- Diversity audit: Runs on 249 existing applications, correctly reports 47 in lookback window, emits referral-rate warning (0% < 20%).
+- Obsidian sync dry-run: Vendor/source counts appear in summary; `**Referral Contact:** None` in sample application note (expected for legacy apps without the new fields).
+- Distill output: `Repo:` line correctly emitted with canonical URLs for matched projects.
+
+---
+
 ## v24 — Parallel Agent Safety, Session Naming, Documentation Restructure
 **Files:** `zvec_hybrid_search.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md` (new), `config.py`, `yaml_to_pdf.py`, `sync_to_obsidian.py`, `organize_applications.py`, `OKF_IMPROVEMENT_PLAN.md`, `.gitignore`
 
