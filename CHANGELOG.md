@@ -6,6 +6,34 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v27 — Resume Parseability Audit + ReportFallback Layout Fixes
+**Files:** `resume_parseability.py` (new), `renderers/parseability_report.py` (new), `yaml_to_pdf.py`, `renderers/resume_reportfallback.py`, `SKILL.md`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** Adds a standalone ATS parse-integrity audit that verifies the compiled resume PDF's text layer is machine-readable by ATS parsers. Also fixes several layout issues in the ReportFallback resume renderer.
+
+**Resume Parseability Audit:**
+- New `resume_parseability.py` script — takes a resume PDF + resume YAML as inputs, extracts the PDF text layer via pypdf, and runs 5 checks:
+  1. **Unicode Integrity** — scans for replacement glyphs (U+FFFD) indicating font encoding corruption
+  2. **Keyword Recovery** — extracts every tool, skill, and significant summary word from the YAML and verifies each is recoverable from the PDF text (handles line-break splitting via whitespace normalization)
+  3. **Section Header Detection** — verifies all 6 standard section headers are present
+  4. **Contact Info Extraction** — verifies name, phone, email, GitHub, LinkedIn are extractable
+  5. **Text Structure** — reports line count, average/max line length
+- Outputs `Parseability_Report.yaml` (structured) and `Parseability_Report.pdf` (human-readable, LM Roman 10, same style as ATS Report)
+- Exit code 0 = pass, 1 = fail, 2 = error
+- New `renderers/parseability_report.py` — renders the audit results as a PDF report with status tables, keyword recovery table, section detection table, contact extraction table, and a text preview section
+- Registered `parseability_report` as a new document type in `yaml_to_pdf.py` (with filename inference for `parseability`/`parse` keywords)
+- Integrated into Step 2 as Section 6 (Mandatory Post-Compilation) in `02_resume_and_visual_audit.md` with command, outputs, and pass criteria
+- Added to SKILL.md script structure, Step 2 description/output, and completion checklist
+
+**ReportFallback Resume Layout Fixes:**
+- **Zero-padding frame:** Replaced `SimpleDocTemplate` with `BaseDocTemplate` + custom `Frame(leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)` so that Tables (section headers) and Paragraphs (body text) both start at the exact same x position. Previously, the default 6pt frame padding caused body text to appear 6pt indented relative to section headers.
+- **Education dates right-aligned:** Restored the two-column Table layout for education (same as Professional Experience) — degree + university on the left, date right-aligned. University name is italic and 1 font size smaller (8.5pt), not bold.
+- **Project tools line:** Compressed (no spaces after commas), spaces within tool names replaced with non-breaking spaces to prevent mid-tool wrapping, adaptive font size (7.5pt / 7.0pt / 6.5pt) based on header length to keep tools on one line.
+- **Full justification:** Summary and project prose paragraphs use `alignment=4` (justify) for Ctrl+J-style text alignment.
+- **No indentation:** All styles explicitly set `leftIndent=0, firstLineIndent=0` — name, contact, summary, skills, projects, section headers all start flush from the left margin.
+
+---
+
 ## v26 — Render Mode Selection (LaTeX vs ReportFallback) + Renderer File Split + Calibri ReportFallback
 **Files:** `renderers/resume.py`, `renderers/resume_latex.py` (new), `renderers/resume_reportfallback.py` (new), `renderers/resume_common.py` (new), `renderers/cover_letter.py`, `renderers/cover_letter_latex.py` (new), `renderers/cover_letter_reportfallback.py` (new), `SKILL.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`
 
@@ -27,9 +55,11 @@ See [README.md](README.md) for architecture, setup, and usage.
 - `02_resume_and_visual_audit.md`: `render_mode` added to the `Resume.yaml` schema. When `reportfallback` is selected, the agent skips Section 4 (LaTeX Project Format Polish) and compilation Steps B/C (no `.tex` to edit or recompile) — the ReportFallback renderer already produces single-paragraph projects.
 - `03_cover_letter.md`: `render_mode` added to the `Cover_Letter.yaml` schema. Compilation commands section documents both modes.
 
-**Calibri Font for ReportFallback:**
-- The ReportFallback resume and cover letter renderers use `register_calibri()` (already present in `renderers/utils.py`) which registers the Calibri TTF family with ReportLab, falling back to Helvetica if the Calibri font files are not found on the system.
-- The previous Open Sans registration in the resume ReportLab path has been removed in favor of Calibri.
+**LM Roman 10 Font for ReportFallback:**
+- The ReportFallback resume and cover letter renderers use `register_lm_roman_10()` (already present in `renderers/utils.py`) which registers the LM Roman 10 TTF family with ReportLab, falling back to Times-Roman if the LM Roman 10 font files are not found on the system.
+- The previous Open Sans / Calibri registration in the resume ReportLab path has been removed in favor of LM Roman 10.
+- Line spacing (leading) tightened across both renderers to reduce vertical whitespace.
+- Resume header: name is now rendered large (24pt, dark blue, bold) on its own line. Photo integration removed — the header is name + contact lines only.
 
 ---
 

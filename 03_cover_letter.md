@@ -74,7 +74,7 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 
 The renderer reads the `render_mode` key from `Cover_Letter.yaml`:
 - `render_mode: latex` (default) — compiles via pdflatex and saves the `.tex` source.
-- `render_mode: reportfallback` — compiles via ReportLab using the Calibri font. No `.tex` file is produced. The Geschäftsbrief layout (sender, recipient, date, subject, salutation, body, closing) is reproduced identically to the LaTeX version.
+- `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. The Geschäftsbrief layout (sender, recipient, date, subject, salutation, body, closing) is reproduced identically to the LaTeX version.
 
 ## Post-Pipeline Step 1: Self-Learning Keyword Enrichment
 After the cover letter compiles, run the learning loop to enrich portfolio keywords from this JD:

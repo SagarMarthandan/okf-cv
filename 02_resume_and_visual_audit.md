@@ -51,7 +51,7 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. `photo_path` must point to `Sagar.jpg` in the base files.
 - **Render Mode:** The `render_mode` top-level key in `Resume.yaml` (set during the pipeline's "Select Render Mode" step) controls which renderer compiles the PDF:
   - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source, and the agent performs the Section 4 LaTeX project single-paragraph polish.
-  - `render_mode: reportfallback` — compiles via ReportLab using the Calibri font. No `.tex` file is produced. Projects are rendered in single-paragraph format automatically (bullets joined into prose) to match the LaTeX polished layout. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
+  - `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. Projects are rendered in single-paragraph format automatically (bullets joined into prose) to match the LaTeX polished layout. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
 
 ### 3. Visual Layout Audit & Stop-Slop Checks
 - Apply the **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, no throat-clearing openers).
@@ -114,6 +114,36 @@ Immediately after compiling the initial PDF from YAML (which outputs the `.tex` 
 - Update the `post_rewrite_ats_score` block in the existing `ATS_Report.yaml` file (do not overwrite the pre-rewrite section) with the final optimized score.
 - Recompile `ATS_Report.pdf` from the updated `ATS_Report.yaml` file using `yaml_to_pdf.py`.
 - Surface the score delta comparison to the user in the console output.
+
+### 6. Resume Parseability Audit (Mandatory Post-Compilation)
+
+After the final resume PDF is compiled (either via LaTeX or ReportFallback), run the parse-integrity audit to verify the PDF's text layer is ATS-parseable.
+
+#### What It Checks
+1. **Unicode Integrity:** Scans the extracted text for replacement glyphs (U+FFFD) that indicate font encoding corruption.
+2. **Keyword Recovery:** Extracts every tool, skill, and significant summary word from `Resume.yaml` and verifies each one is recoverable from the PDF text layer. Handles line-break splitting (keywords split across lines are still counted as recovered via whitespace normalization).
+3. **Section Header Detection:** Verifies all 6 standard section headers (SUMMARY, TECHNICAL SKILLS, PROJECTS, PROFESSIONAL EXPERIENCE, EDUCATION, SPOKEN LANGUAGES) are present in the text.
+4. **Contact Info Extraction:** Verifies name, phone, email, GitHub, and LinkedIn are all extractable from the text.
+5. **Text Structure:** Reports line count, average/max line length.
+
+#### Command
+```powershell
+cd "Applications/[Company Name] — [Job Role]/"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+```
+For German resumes, substitute `SAGAR_MARTHANDAN_Lebenslauf.pdf` as the first argument.
+
+#### Outputs
+- `Parseability_Report.yaml` — structured audit results (machine-readable)
+- `Parseability_Report.pdf` — human-readable report (LM Roman 10, same style as ATS Report)
+
+#### Pass Criteria
+- **Overall Status: PASS** when:
+  - Unicode integrity: Pass (zero replacement glyphs)
+  - Keyword recovery: 100% (all YAML keywords recovered from the PDF text)
+  - Section headers: 6/6 detected
+  - Contact info: 5/5 extracted
+- If the audit fails, investigate the PDF text layer (font embedding, encoding, or layout issues) and recompile.
 
 ## Output Target & Directory Structure
 Save the outputs inside the job folder:
@@ -241,6 +271,10 @@ pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 
 # Compile the updated ATS Report with post-rewrite scores
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+
+# Step D: Run the parseability audit on the final resume PDF
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+# For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.pdf" as the first argument
 ```
 
 ---

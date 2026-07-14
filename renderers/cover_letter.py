@@ -27,7 +27,7 @@ def _resolve_render_mode(data) -> str:
 def create_cover_letter_pdf(data, output_path):
     mode = _resolve_render_mode(data)
     if mode == 'reportfallback':
-        print(f"Render mode: reportfallback (ReportLab + Calibri)")
+        print(f"Render mode: reportfallback (ReportLab + LM Roman 10)")
         create_cover_letter_pdf_reportlab(data, output_path)
     else:
         print(f"Render mode: latex")

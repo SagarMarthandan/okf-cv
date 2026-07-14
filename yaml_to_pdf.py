@@ -5,10 +5,11 @@ Routes an input YAML file to the correct PDF renderer based on the document
 type declared in the YAML (or inferred from the filename).
 
 Supported types:
-  resume           → renderers/resume.py
-  cover_letter     → renderers/cover_letter.py
-  job_description  → renderers/job_description.py
-  ats_report       → renderers/ats_report.py
+  resume               → renderers/resume.py
+  cover_letter         → renderers/cover_letter.py
+  job_description      → renderers/job_description.py
+  ats_report           → renderers/ats_report.py
+  parseability_report  → renderers/parseability_report.py
 
 Usage:
   python yaml_to_pdf.py <input.yaml> <output.pdf>
@@ -18,12 +19,13 @@ import sys
 import yaml
 from typing import Dict, Any
 
-from renderers.resume          import create_resume_pdf
-from renderers.cover_letter    import create_cover_letter_pdf
-from renderers.job_description import create_job_description_pdf
-from renderers.ats_report      import create_ats_report_pdf
+from renderers.resume              import create_resume_pdf
+from renderers.cover_letter        import create_cover_letter_pdf
+from renderers.job_description     import create_job_description_pdf
+from renderers.ats_report          import create_ats_report_pdf
+from renderers.parseability_report import create_parseability_report_pdf
 
-VALID_TYPES = {'resume', 'cover_letter', 'job_description', 'ats_report'}
+VALID_TYPES = {'resume', 'cover_letter', 'job_description', 'ats_report', 'parseability_report'}
 
 
 def _infer_type(filename: str) -> str:
@@ -35,6 +37,8 @@ def _infer_type(filename: str) -> str:
         return 'cover_letter'
     if 'ats_report' in name or 'ats' in name:
         return 'ats_report'
+    if 'parseability' in name or 'parse' in name:
+        return 'parseability_report'
     if 'job_description' in name or 'job' in name:
         return 'job_description'
     return ''
@@ -75,10 +79,11 @@ def main() -> None:
         os.makedirs(pdf_dir, exist_ok=True)
 
     renderers = {
-        'resume':          create_resume_pdf,
-        'cover_letter':    create_cover_letter_pdf,
-        'job_description': create_job_description_pdf,
-        'ats_report':      create_ats_report_pdf,
+        'resume':              create_resume_pdf,
+        'cover_letter':        create_cover_letter_pdf,
+        'job_description':     create_job_description_pdf,
+        'ats_report':          create_ats_report_pdf,
+        'parseability_report': create_parseability_report_pdf,
     }
 
     if doc_type not in renderers:

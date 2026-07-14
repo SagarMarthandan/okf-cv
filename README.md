@@ -3,7 +3,7 @@
 
 An end-to-end, high-scannability, and ATS-optimized application materials generation pipeline. It uses structured YAML files for configuration, compiles them to PDF/LaTeX, and leverages Google OKF (Open Knowledge Format) matching to dynamically rank and inject relevant engineering projects from a master portfolio directory based on a target Job Description (JD).
 
-The pipeline also counters **algorithmic monoculture** — the Stanford-studied phenomenon where repetitive ATS algorithmic filtration narrows opportunity. It tracks applicant-firm clustering by ATS vendor, prompts for application source diversification (referrals vs cold applies), highlights project verification links (clickable GitHub URLs on the resume), offers resume layout variations, and runs an automated PDF parse-integrity audit with ReportLab fallback to guarantee ATS-readable output.
+The pipeline also counters **algorithmic monoculture** — the Stanford-studied phenomenon where repetitive ATS algorithmic filtration narrows opportunity. It tracks applicant-firm clustering by ATS vendor, prompts for application source diversification (referrals vs cold applies), highlights project verification links (clickable GitHub URLs on the resume), offers resume layout variations, lets the user choose between LaTeX and ReportLab (LM Roman 10) rendering modes, and runs an automated PDF parse-integrity audit (`resume_parseability.py`) that verifies the compiled PDF's text layer is ATS-parseable — checking unicode integrity, keyword recovery, section header detection, and contact info extraction.
 
 ---
 
@@ -49,6 +49,7 @@ graph TD
         LaTeX["📐 LaTeX Polish — Single-paragraph + GitHub links"]:::processing
         Audit["🔬 Visual Layout Audit — Layout_Audit_Report.yaml"]:::processing
         ParseIntegrity["🛡️ Parse-Integrity Audit — pypdf + ReportLab fallback"]:::processing
+        Parseability["📊 resume_parseability.py — PDF text layer audit"]:::processing
     end
 
     subgraph Step3 ["Step 3: Cover Letter Generation"]
@@ -72,6 +73,7 @@ graph TD
     OutATS["📊 ATS_Report.yaml / .pdf"]:::output
     OutProj["📝 project_info.md — Tailored Project List"]:::output
     OutRes["📄 Resume.yaml / SAGAR_MARTHANDAN_Resume.pdf"]:::output
+    OutParse["📊 Parseability_Report.yaml / .pdf"]:::output
     OutCL["✉ Cover_Letter.yaml / SAGAR_MARTHANDAN_Cover_Letter.pdf"]:::output
     OutLog["📋 okf/learning_log.json — Enrichment audit trail"]:::output
     OutVault["🔮 Obsidian Vault — Job Search notes"]:::output
@@ -98,7 +100,9 @@ graph TD
     Rewrite --> LaTeX
     LaTeX --> Audit
     Audit --> ParseIntegrity
-    ParseIntegrity --> OutRes
+    ParseIntegrity --> Parseability
+    Parseability --> OutRes
+    Parseability --> OutParse
 
     OutProj --> CL
     OutRes --> CL
@@ -159,9 +163,10 @@ The entire process is organized into 3 primary sequential steps, executed automa
 - **Naming Convention (Critical):** The application folder and session name MUST be `[Company Name] — [Job Role]` extracted directly from the JD content. No arbitrary names, timestamps, or placeholders. This makes it easy to identify which session is running which application when multiple agents run in parallel.
 
 ### STEP 2: Resume Rewrite & Visual Layout Audit
+- **Render Mode Selection:** Before compilation, the user chooses between `LaTeX` (pdflatex, `.tex` source preserved, agent-driven project polish) and `ReportFallback` (ReportLab with LM Roman 10 font, no `.tex` file, single-paragraph projects rendered automatically). The choice is stored as `render_mode` in `Resume.yaml` and `Cover_Letter.yaml`.
 - **Tuned Resume Generation:** Writes `Resume.yaml` by tailoring descriptions, skills, and summary to align with the target role archetype and the retrieved local projects, and sets the contact location to the computed closest candidate city. Supports three `resume_variation` modes: `Balanced` (default — 3 projects, 4 experience bullets), `Project-Heavy` (4 verbose projects, simplified skills), and `Skills-Heavy` (3 projects, expanded skills block).
 - **Project Verification Links:** Reads `Repo:` lines from `project_info.md` and copies them into each project block in `Resume.yaml` as `repo_url:`. These are compiled as clickable `[GitHub]` links next to project titles in the PDF — both in the LaTeX output (`\href{repo_url}{\color{darkblue}\small[GitHub]}`) and the ReportLab fallback (`<a href='...'>[GitHub]</a>`).
-- **LaTeX Compilation & Project Format Polish:** Generates a professional LaTeX resume (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex` for German) and converts project listings from standard bullet points into a compact, single-paragraph prose block with tools woven in naturally. The LaTeX preamble includes `glyphtounicode` and `hyphenat` safeguards to prevent font ligature corruption and auto-hyphenation in ATS PDF-to-text parsers.
+- **LaTeX Compilation & Project Format Polish:** Generates a professional LaTeX resume (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex` for German) and converts project listings from standard bullet points into a compact, single-paragraph prose block with tools woven in naturally. The LaTeX preamble includes `glyphtounicode` and `hyphenat` safeguards to prevent font ligature corruption and auto-hyphenation in ATS PDF-to-text parsers. (Skipped when `render_mode: reportfallback` — the ReportFallback renderer produces single-paragraph projects automatically.)
 - **Uniform Spacing:** All project and experience entries are separated by a consistent `\vspace{6pt}` — no double-spacing, no variable gaps.
 - **Constraints & Eye-Test Audit:** Runs character-length audits:
   - Experience bullets: Must be strictly single-line and `<= 105` characters.
@@ -169,9 +174,10 @@ The entire process is organized into 3 primary sequential steps, executed automa
   - Summary: Exactly 4 lines of text, maximum 420 characters (maximum 380 characters for German Zusammenfassung).
   - Stop-Slop writing rules: Strict active voice, no `-ly` adverbs, zero em-dashes, no filler text.
 - **Self-Correction:** Resolves any line-wraps or overflows dynamically.
-- **Parse-Integrity Audit:** After LaTeX compilation, the PDF is automatically audited using `pypdf` — extracts the text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. If the audit fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification`.
+- **Parse-Integrity Audit (LaTeX mode):** After LaTeX compilation, the PDF is automatically audited using `pypdf` — extracts the text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. If the audit fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification`.
+- **Resume Parseability Audit (both modes):** After the final resume PDF is compiled (either via LaTeX or ReportFallback), [resume_parseability.py](resume_parseability.py) runs a standalone parse-integrity audit on the PDF — the actual document submitted to companies. It extracts the PDF text layer via `pypdf` and checks: (1) Unicode integrity (no replacement glyphs), (2) keyword recovery (every tool, skill, and significant summary word from `Resume.yaml` is recoverable from the PDF text, with line-break splitting handled via whitespace normalization), (3) section header detection (all 6 standard sections present), (4) contact info extraction (name, phone, email, GitHub, LinkedIn), and (5) text structure stats. Outputs `Parseability_Report.yaml` (structured) and `Parseability_Report.pdf` (human-readable, LM Roman 10). Pass criteria: 100% keyword recovery, 6/6 sections, 5/5 contact fields, zero unicode corruptions.
 - **Post-Rewrite ATS Rescoring:** Updates `post_rewrite_ats_score` in `ATS_Report.yaml` and recompiles `ATS_Report.pdf`.
-- **Outputs:** `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (along with preserved LaTeX `.tex` sources), `Layout_Audit_Report.yaml` (including `parse_integrity_verification`), and the post-rewrite ATS rescoring results updated inside `ATS_Report.yaml`.
+- **Outputs:** `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (along with preserved LaTeX `.tex` sources when applicable), `Layout_Audit_Report.yaml` (including `parse_integrity_verification`), `Parseability_Report.yaml` & `Parseability_Report.pdf`, and the post-rewrite ATS rescoring results updated inside `ATS_Report.yaml`.
 
 ### STEP 3: Cover Letter Generation
 - **Geschäftsbrief Layout:** Generates a metric-grounded cover letter adapted to formal German business formatting, set to the computed closest candidate location (both in the sender address and date/city header).
@@ -213,7 +219,8 @@ YAML-CV/
 │       ├── 03_cover_letter.md            # Step 3 detailed agent rules
 │       ├── requirements.txt              # Pipeline dependencies (pyyaml, reportlab, pypdf, zvec, sentence-transformers)
 │       ├── config.py                     # Centralized paths and constants
-│       ├── yaml_to_pdf.py                # Main YAML compilation router
+│       ├── yaml_to_pdf.py                # Main YAML compilation router (supports resume, cover_letter, job_description, ats_report, parseability_report)
+│       ├── resume_parseability.py        # ATS parse-integrity audit script (checks PDF text layer: unicode, keywords, sections, contact info)
 │       ├── zvec_hybrid_search.py       # Hybrid search (OKF phrase matching + Zvec semantic embeddings, score fusion)
 │       ├── okf_portfolio_search.py       # OKF search engine (4-layer matching, archetype boost, Jaccard normalization) — fallback if Zvec unavailable
 │       ├── okf_lint.py                   # Frontmatter linter for portfolio files
@@ -230,11 +237,17 @@ YAML-CV/
 │       │   ├── photo/                    # Sagar.jpg for LaTeX templates
 │       │   └── learning_log.json         # Self-learning enrichment audit trail
 │       ├── renderers\                    # LaTeX/ReportLab rendering handlers
-│       │   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex)
-│       │   ├── resume.py                 # Resume renderer (LaTeX primary, ReportLab fallback)
-│       │   ├── cover_letter.py           # Cover Letter renderer (LaTeX primary, ReportLab fallback)
+│       │   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex, register_lm_roman_10)
+│       │   ├── resume_common.py          # Shared resume helpers (HEADERS, get_resume_language)
+│       │   ├── resume.py                 # Resume renderer dispatcher (reads render_mode, routes to latex or reportfallback)
+│       │   ├── resume_latex.py           # Resume LaTeX renderer + parse-integrity audit
+│       │   ├── resume_reportfallback.py  # Resume ReportLab renderer (LM Roman 10, single-paragraph projects)
+│       │   ├── cover_letter.py           # Cover Letter renderer dispatcher (reads render_mode)
+│       │   ├── cover_letter_latex.py     # Cover Letter LaTeX renderer
+│       │   ├── cover_letter_reportfallback.py  # Cover Letter ReportLab renderer (LM Roman 10)
 │       │   ├── job_description.py        # Job Description renderer (ReportLab only)
-│       │   └── ats_report.py             # ATS Report renderer (ReportLab only)
+│       │   ├── ats_report.py             # ATS Report renderer (ReportLab only)
+│       │   └── parseability_report.py    # Parseability Report renderer (ReportLab only, LM Roman 10)
 │       └── tests/
 │           ├── test_utils.py             # Unit tests for LaTeX escaping and formatting
 │           └── test_okf_search.py        # Automated test suite for OKF search
@@ -247,6 +260,7 @@ YAML-CV/
                     ├── ATS_Report.yaml / .pdf
                     ├── project_info.md               # Tailored & distilled project list
                     ├── Resume.yaml / Layout_Audit_Report.yaml / Cover_Letter.yaml
+                    ├── Parseability_Report.yaml / .pdf  # ATS parse-integrity audit results
                     ├── SAGAR_MARTHANDAN_Resume.pdf / .tex  (or Lebenslauf.pdf / .tex for German)
                     └── SAGAR_MARTHANDAN_Cover_Letter.pdf / .tex  (or Anschreiben.pdf / .tex for German)
 ```
@@ -292,6 +306,13 @@ Run the diversity audit standalone (checks vendor clustering and referral rate):
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
 ```
 
+Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
+```powershell
+cd "Applications/[Company Name] — [Job Role]/"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+```
+The script reads the compiled PDF (the document submitted to companies) and uses the YAML as the expected-values reference. It checks: unicode integrity (no replacement glyphs), keyword recovery (all tools/skills/summary words recoverable from the PDF text), section header detection (6/6), contact info extraction (5/5), and text structure stats. Outputs `Parseability_Report.yaml` + `Parseability_Report.pdf`. Exit code 0 = pass, 1 = fail, 2 = error.
+
 Run the self-learning loop standalone:
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
@@ -306,4 +327,4 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 
 ## 📋 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for the full version history (v1–v25).
+See [CHANGELOG.md](CHANGELOG.md) for the full version history (v1–v27).

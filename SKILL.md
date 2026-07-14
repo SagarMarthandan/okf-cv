@@ -57,12 +57,14 @@ Post-Pipeline Step 3: Sort ───────────► Moves the applic
   - `renderers/resume_common.py` — shared resume helpers (`HEADERS`, `get_resume_language`)
   - `renderers/resume.py` — Resume renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
   - `renderers/resume_latex.py` — Resume LaTeX renderer + parse-integrity audit
-  - `renderers/resume_reportfallback.py` — Resume ReportLab renderer (Calibri font, same layout as LaTeX)
+  - `renderers/resume_reportfallback.py` — Resume ReportLab renderer (LM Roman 10 font, same layout as LaTeX)
   - `renderers/cover_letter.py` — Cover Letter renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
   - `renderers/cover_letter_latex.py` — Cover Letter LaTeX renderer
-  - `renderers/cover_letter_reportfallback.py` — Cover Letter ReportLab renderer (Calibri font, same layout as LaTeX)
+  - `renderers/cover_letter_reportfallback.py` — Cover Letter ReportLab renderer (LM Roman 10 font, same layout as LaTeX)
   - `renderers/job_description.py` — Job Description renderer (ReportLab only)
   - `renderers/ats_report.py` — ATS Report renderer (ReportLab only)
+  - `renderers/parseability_report.py` — Parseability Report renderer (ReportLab only, LM Roman 10)
+  - `resume_parseability.py` — ATS parse-integrity audit script; checks PDF text layer for unicode corruption, keyword recovery, section headers, and contact info extraction; outputs `Parseability_Report.yaml` + `Parseability_Report.pdf` (run after resume compilation in Step 2)
   - `organize_applications.py` — Sorts application folders into a Year/Month/Date tree (run after Obsidian sync)
 
 ## General Writing & Style Rules (Stop-Slop)
@@ -88,7 +90,7 @@ Before executing any pipeline step, ask the user which render mode to use for th
 - **Header:** "Render mode"
 - **Options:**
   - `LaTeX` — Compile via pdflatex (primary). Produces a `.tex` source file alongside the PDF. The agent performs the LaTeX project single-paragraph polish post-compilation.
-  - `ReportFallback` — Compile via ReportLab using the Calibri font. No `.tex` file is produced. Projects are rendered in single-paragraph format automatically to match the LaTeX layout. Use this when pdflatex is unavailable or when a Calibri-styled PDF is preferred.
+  - `ReportFallback` — Compile via ReportLab using the LM Roman 10 font (TTF version installed locally). No `.tex` file is produced. Projects are rendered in single-paragraph format automatically to match the LaTeX layout. Use this when pdflatex is unavailable or when a LM Roman 10-styled PDF is preferred.
 
 The selected mode MUST be written as a top-level `render_mode` key in both `Resume.yaml` and `Cover_Letter.yaml`:
 - LaTeX → `render_mode: latex`
@@ -123,9 +125,9 @@ Runs dependency check, runs the frontmatter linter (`okf_lint.py`) to validate p
 
 Read and execute the full instructions in [02_resume_and_visual_audit.md](file:///c:/Users/sagar/Documents/YAML-CV/skills/okf-cv/02_resume_and_visual_audit.md).
 
-Rewrites the resume based on the ATS Improvement Blueprint and the tailored project list. Compiles the resume via LaTeX, performs a visual layout audit and Stop-Slop check, and updates the post-rewrite ATS score.
+Rewrites the resume based on the ATS Improvement Blueprint and the tailored project list. Compiles the resume via LaTeX, performs a visual layout audit and Stop-Slop check, updates the post-rewrite ATS score, and runs the parse-integrity audit (`resume_parseability.py`) to verify the PDF text layer is ATS-parseable.
 
-**Output:** `Resume.yaml`, `Layout_Audit_Report.yaml`, and `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (and `Resume_v2.pdf` / `Lebenslauf_v2.pdf` if needed).
+**Output:** `Resume.yaml`, `Layout_Audit_Report.yaml`, `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (and `Resume_v2.pdf` / `Lebenslauf_v2.pdf` if needed), `Parseability_Report.yaml`, and `Parseability_Report.pdf`.
 
 ---
 
@@ -158,6 +160,7 @@ After all 3 steps complete, verify:
 - [ ] `Resume.yaml` & `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` are generated with the tailored closest location
 - [ ] `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` & `SAGAR_MARTHANDAN_Cover_Letter.tex` / `SAGAR_MARTHANDAN_Anschreiben.tex` are preserved in the folder
 - [ ] `Layout_Audit_Report.yaml` is generated with all eye-test diagnostics at Pass status
+- [ ] `Parseability_Report.yaml` & `Parseability_Report.pdf` are generated with overall status PASS (100% keyword recovery, 6/6 sections, 5/5 contact fields, no unicode corruptions)
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
 - [ ] Professional Experience bullet points are strictly single-line and <= 105 characters
 - [ ] Project entries are in single-paragraph format, with name + `---` + description (no bullets), each <= 300 characters (<= 250 characters for German) and fitting on <= 3 lines

@@ -15,8 +15,9 @@ import sys
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer,
-    Table, TableStyle, Image,
+    BaseDocTemplate, Frame, PageTemplate,
+    Paragraph, Spacer,
+    Table, TableStyle,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -24,75 +25,100 @@ from reportlab.lib.units import inch
 
 from .utils import (
     TEXT_DARK, TEXT_MUTED, LINE_COLOR,
-    register_calibri,
+    register_lm_roman_10,
 )
 from .resume_common import HEADERS, get_resume_language
 
 
 def create_resume_pdf_reportlab(data, output_path):
-    F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC = register_calibri()
+    F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC = register_lm_roman_10()
 
     margin = 0.4 * inch
-    doc = SimpleDocTemplate(
+    printable_width = A4[0] - (2 * margin)
+    printable_height = A4[1] - (2 * margin)
+    # Use BaseDocTemplate with a zero-padding frame so that Tables (section
+    # headers) and Paragraphs (body text) both start at the exact same x
+    # position. SimpleDocTemplate uses a default 6pt frame padding which
+    # causes Paragraphs to appear 6pt indented relative to Tables.
+    doc = BaseDocTemplate(
         output_path, pagesize=A4,
         leftMargin=margin, rightMargin=margin,
         topMargin=margin, bottomMargin=margin,
     )
-    printable_width = A4[0] - (2 * margin)
+    frame = Frame(
+        margin, margin, printable_width, printable_height,
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
+        id='normal',
+    )
+    doc.addPageTemplates([PageTemplate(id='all', frames=[frame], pagesize=A4)])
     styles = getSampleStyleSheet()
 
     name_style = ParagraphStyle(
         'ResName', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=18, leading=22, textColor=colors.black,
+        fontName=F_BOLD, fontSize=24, leading=28, textColor=colors.HexColor('#1A365D'),
+        leftIndent=0, firstLineIndent=0,
     )
     contact_style = ParagraphStyle(
         'ResContact', parent=styles['Normal'],
-        fontName=F_REG, fontSize=8.5, leading=11.5, textColor=TEXT_MUTED,
+        fontName=F_REG, fontSize=8.5, leading=10, textColor=TEXT_MUTED,
+        leftIndent=0, firstLineIndent=0,
     )
     section_title_style = ParagraphStyle(
         'ResSectionTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=10.5, leading=13, textColor=colors.HexColor('#1A365D'),
+        fontName=F_BOLD, fontSize=10.5, leading=12, textColor=colors.HexColor('#1A365D'),
+        leftIndent=0, firstLineIndent=0,
     )
     summary_style = ParagraphStyle(
         'ResSummary', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=13.5, alignment=4, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=9.5, leading=12, alignment=4, textColor=TEXT_DARK,
+        leftIndent=0, firstLineIndent=0,
     )
     comp_style = ParagraphStyle(
         'ResComp', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=9.5, leading=12, textColor=colors.black,
+        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        leftIndent=0, firstLineIndent=0,
     )
     date_style = ParagraphStyle(
         'ResDate', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9, leading=12, alignment=2, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=9, leading=11, alignment=2, textColor=TEXT_DARK,
+        leftIndent=0, firstLineIndent=0,
     )
     title_style = ParagraphStyle(
         'ResTitle', parent=styles['Normal'],
-        fontName=F_ITALIC, fontSize=8.5, leading=11, textColor=TEXT_MUTED,
+        fontName=F_ITALIC, fontSize=8.5, leading=10, textColor=TEXT_MUTED,
+        leftIndent=0, firstLineIndent=0,
     )
     bullet_style = ParagraphStyle(
         'ResBullet', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=13.5,
-        leftIndent=12, firstLineIndent=-8, spaceAfter=2, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=9.5, leading=12,
+        leftIndent=12, firstLineIndent=-8, spaceAfter=1, textColor=TEXT_DARK,
     )
     skill_val_style = ParagraphStyle(
         'ResSkillVal', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9, leading=12,
-        leftIndent=6, firstLineIndent=-6, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=9, leading=11,
+        leftIndent=0, firstLineIndent=0, textColor=TEXT_DARK,
     )
     proj_title_style = ParagraphStyle(
         'ResProjTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=9.5, leading=12, textColor=colors.black,
+        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        leftIndent=0, firstLineIndent=0,
     )
     # Single-paragraph project prose style (mirrors the LaTeX polished format)
     proj_para_style = ParagraphStyle(
         'ResProjPara', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=13.5,
-        leftIndent=0, firstLineIndent=0, spaceAfter=2, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=9.5, leading=12, alignment=4,
+        leftIndent=0, firstLineIndent=0, spaceAfter=1, textColor=TEXT_DARK,
+    )
+    # Education: degree bold + university italic/smaller, all on one line
+    edu_style = ParagraphStyle(
+        'ResEdu', parent=styles['Normal'],
+        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        leftIndent=0, firstLineIndent=0,
     )
 
     story = []
 
-    # Header
+    # Header (no photo — name is the dominant element)
     contact  = data.get('contact_info', {})
     raw_name = contact.get('name', 'Sagar Marthandan')
     if raw_name.isupper():
@@ -119,36 +145,18 @@ def create_resume_pdf_reportlab(data, output_path):
     avail = contact.get('availability', '')
     line3 = f"{visa} &nbsp;&bull;&nbsp; {avail}"
 
-    contact_text      = f"{name_str}<br/><font size=8.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>"
-    contact_paragraph = Paragraph(contact_text, contact_style)
-
-    photo_path = contact.get('photo_path', '')
-    photo_elem = Paragraph("", contact_style)
-    if photo_path:
-        resolved_photo = os.path.abspath(photo_path)
-        if os.path.exists(resolved_photo):
-            photo_elem = Image(resolved_photo, width=80, height=70)
-            photo_elem.hAlign = 'RIGHT'
-        else:
-            print(f"Warning: Photo path not found: {resolved_photo}", file=sys.stderr)
-
-    header_table = Table([[contact_paragraph, photo_elem]], colWidths=[445, 92])
-    header_table.setStyle(TableStyle([
-        ('VALIGN',        (0,0), (-1,-1), 'BOTTOM'),
-        ('LEFTPADDING',   (0,0), (-1,-1), 0),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
-        ('TOPPADDING',    (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-    ]))
-    story.append(header_table)
-    story.append(Spacer(1, 10))
+    # Name on its own line, large; contact lines below in small muted text.
+    story.append(Paragraph(name_str, name_style))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph(f"<font size=8.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>", contact_style))
+    story.append(Spacer(1, 8))
 
     def add_section_header(title):
         t = Table([[Paragraph(f"<b>{title.upper()}</b>", section_title_style)]], colWidths=[printable_width])
         t.setStyle(TableStyle([
             ('LINEBELOW',     (0,0), (-1,-1), 0.5, LINE_COLOR),
-            ('TOPPADDING',    (0,0), (-1,-1), 6),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 1),
             ('LEFTPADDING',   (0,0), (-1,-1), 0),
             ('RIGHTPADDING',  (0,0), (-1,-1), 0),
         ]))
@@ -167,7 +175,7 @@ def create_resume_pdf_reportlab(data, output_path):
                 " ".join(summary_val) if isinstance(summary_val, list) else summary_val,
                 summary_style,
             ),
-            Spacer(1, 6)
+            Spacer(1, 4)
         ]
         story.extend(summary_block)
 
@@ -183,8 +191,8 @@ def create_resume_pdf_reportlab(data, output_path):
             skills_joined = " &bull; ".join(cat.get('skills', []))
             skills_block.append(Paragraph(f"<b>{category_name}:</b> {skills_joined}", skill_val_style))
             if i < len(skills_list) - 1:
-                skills_block.append(Spacer(1, 2))
-        skills_block.append(Spacer(1, 6))
+                skills_block.append(Spacer(1, 1))
+        skills_block.append(Spacer(1, 4))
         story.extend(skills_block)
 
     # Projects — single-paragraph format (mirrors the LaTeX polished layout)
@@ -206,16 +214,29 @@ def create_resume_pdf_reportlab(data, output_path):
             # single-paragraph project format. Tools are woven into the prose
             # only if a bullet already references them; otherwise appended.
             prose = " ".join(bullets).strip()
+            # Tools line: 1 font size less than title, compressed (no spaces after
+            # commas) to keep on one line. Replace spaces within tool names with
+            # non-breaking spaces so ReportLab doesn't wrap mid-tool.
+            tools_nbsp = [t.strip().replace(" ", "&nbsp;") for t in tools]
+            tools_compressed = ",".join(tools_nbsp)
+            # Adaptive font size: smaller for longer headers to fit on one line
+            header_len = len(name) + (12 if repo_url else 0) + len(tools_compressed)
+            if header_len <= 65:
+                tools_size = 7.5
+            elif header_len <= 80:
+                tools_size = 7.0
+            else:
+                tools_size = 6.5
             proj_header_para = Paragraph(
-                f"<b>{name}</b>{github_link} &nbsp;&nbsp;&nbsp;<font size=8.5 color='#444444'><i>{tools_str}</i></font>",
+                f"<b>{name}</b>{github_link} <font size={tools_size} color='#555555'><i>{tools_compressed}</i></font>",
                 proj_title_style,
             )
             proj_block.append(proj_header_para)
             proj_block.append(Spacer(1, 3))
             if prose:
                 proj_block.append(Paragraph(prose, proj_para_style))
-            # 8pt gap between projects; tighter gap after last project
-            proj_block.append(Spacer(1, 8 if i < len(projects_list) - 1 else 4))
+            # 6pt gap between projects; tighter gap after last project
+            proj_block.append(Spacer(1, 6 if i < len(projects_list) - 1 else 3))
             story.extend(proj_block)
 
     # Professional Experience
@@ -249,11 +270,12 @@ def create_resume_pdf_reportlab(data, output_path):
             exp_block.append(Spacer(1, 3))
             for b in bullets:
                 exp_block.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
-            # 8pt gap between companies; tighter gap after last entry
-            exp_block.append(Spacer(1, 8 if i < len(exp_list) - 1 else 4))
+            # 6pt gap between companies; tighter gap after last entry
+            exp_block.append(Spacer(1, 6 if i < len(exp_list) - 1 else 3))
             story.extend(exp_block)
 
-    # Education
+    # Education — degree (bold) + university (italic, 1 size less) on the left,
+    # date right-aligned (same two-column layout as Professional Experience).
     edu_list = data.get('education', data.get('ausbildung', []))
     if edu_list:
         edu_block = [
@@ -264,7 +286,7 @@ def create_resume_pdf_reportlab(data, output_path):
             degree      = edu.get('degree', '')
             univ        = edu.get('university', '')
             completion  = edu.get('date', '')
-            left_para   = Paragraph(f"<b>{degree}</b> &nbsp;&nbsp;<i>{univ}</i>", comp_style)
+            left_para   = Paragraph(f"<b>{degree}</b> <font size=8.5><i>{univ}</i></font>", edu_style)
             right_para  = Paragraph(completion, date_style)
             edu_table   = Table([[left_para, right_para]], colWidths=[387, 150])
             edu_table.setStyle(TableStyle([
@@ -275,7 +297,7 @@ def create_resume_pdf_reportlab(data, output_path):
                 ('BOTTOMPADDING', (0,0), (-1,-1), 0),
             ]))
             edu_block.append(edu_table)
-            edu_block.append(Spacer(1, 4))
+            edu_block.append(Spacer(1, 3))
         story.extend(edu_block)
 
     # Spoken Languages
@@ -283,11 +305,11 @@ def create_resume_pdf_reportlab(data, output_path):
     if lang_items:
         lang_block = [
             add_section_header(h['spoken_languages']),
-            Spacer(1, 4),
+            Spacer(1, 3),
             Paragraph(" &bull; ".join(lang_items), skill_val_style),
-            Spacer(1, 6)
+            Spacer(1, 4)
         ]
         story.extend(lang_block)
 
     doc.build(story)
-    print(f"Successfully compiled Resume via ReportLab (Calibri): {output_path}")
+    print(f"Successfully compiled Resume via ReportLab (LM Roman 10): {output_path}")
