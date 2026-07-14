@@ -55,64 +55,64 @@ def create_resume_pdf_reportlab(data, output_path):
 
     name_style = ParagraphStyle(
         'ResName', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=24, leading=28, textColor=colors.HexColor('#1A365D'),
+        fontName=F_BOLD, fontSize=22, leading=25, textColor=colors.HexColor('#1A365D'),
         leftIndent=0, firstLineIndent=0,
     )
     contact_style = ParagraphStyle(
         'ResContact', parent=styles['Normal'],
-        fontName=F_REG, fontSize=8.5, leading=10, textColor=TEXT_MUTED,
+        fontName=F_REG, fontSize=9, leading=10.5, textColor=TEXT_MUTED,
         leftIndent=0, firstLineIndent=0,
     )
     section_title_style = ParagraphStyle(
         'ResSectionTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=10.5, leading=12, textColor=colors.HexColor('#1A365D'),
+        fontName=F_BOLD, fontSize=11, leading=12, textColor=colors.HexColor('#1A365D'),
         leftIndent=0, firstLineIndent=0,
     )
     summary_style = ParagraphStyle(
         'ResSummary', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=12, alignment=4, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=10, leading=12.5, alignment=4, textColor=TEXT_DARK,
         leftIndent=0, firstLineIndent=0,
     )
     comp_style = ParagraphStyle(
         'ResComp', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        fontName=F_BOLD, fontSize=10, leading=11.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
     date_style = ParagraphStyle(
         'ResDate', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9, leading=11, alignment=2, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=10, leading=11.5, alignment=2, textColor=TEXT_DARK,
         leftIndent=0, firstLineIndent=0,
     )
     title_style = ParagraphStyle(
         'ResTitle', parent=styles['Normal'],
-        fontName=F_ITALIC, fontSize=8.5, leading=10, textColor=TEXT_MUTED,
+        fontName=F_ITALIC, fontSize=9, leading=10.5, textColor=TEXT_MUTED,
         leftIndent=0, firstLineIndent=0,
     )
     bullet_style = ParagraphStyle(
         'ResBullet', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=12,
+        fontName=F_REG, fontSize=10, leading=12.5,
         leftIndent=12, firstLineIndent=-8, spaceAfter=1, textColor=TEXT_DARK,
     )
     skill_val_style = ParagraphStyle(
         'ResSkillVal', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9, leading=11,
+        fontName=F_REG, fontSize=10, leading=12,
         leftIndent=0, firstLineIndent=0, textColor=TEXT_DARK,
     )
     proj_title_style = ParagraphStyle(
         'ResProjTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        fontName=F_BOLD, fontSize=10, leading=11.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
     # Single-paragraph project prose style (mirrors the LaTeX polished format)
     proj_para_style = ParagraphStyle(
         'ResProjPara', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9.5, leading=12, alignment=4,
+        fontName=F_REG, fontSize=10, leading=12.5, alignment=4,
         leftIndent=0, firstLineIndent=0, spaceAfter=1, textColor=TEXT_DARK,
     )
-    # Education: degree bold + university italic/smaller, all on one line
+    # Education: degree bold + university italic only (not bold), same font size
     edu_style = ParagraphStyle(
         'ResEdu', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=9.5, leading=11, textColor=colors.black,
+        fontName=F_REG, fontSize=10, leading=11.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
 
@@ -149,7 +149,7 @@ def create_resume_pdf_reportlab(data, output_path):
     story.append(Paragraph(name_str, name_style))
     story.append(Spacer(1, 2))
     story.append(Paragraph(f"<font size=8.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>", contact_style))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 5))
 
     def add_section_header(title):
         t = Table([[Paragraph(f"<b>{title.upper()}</b>", section_title_style)]], colWidths=[printable_width])
@@ -235,8 +235,8 @@ def create_resume_pdf_reportlab(data, output_path):
             proj_block.append(Spacer(1, 3))
             if prose:
                 proj_block.append(Paragraph(prose, proj_para_style))
-            # 6pt gap between projects; tighter gap after last project
-            proj_block.append(Spacer(1, 6 if i < len(projects_list) - 1 else 3))
+            # 4pt gap between projects; tighter gap after last project
+            proj_block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 2))
             story.extend(proj_block)
 
     # Professional Experience
@@ -270,11 +270,11 @@ def create_resume_pdf_reportlab(data, output_path):
             exp_block.append(Spacer(1, 3))
             for b in bullets:
                 exp_block.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
-            # 6pt gap between companies; tighter gap after last entry
-            exp_block.append(Spacer(1, 6 if i < len(exp_list) - 1 else 3))
+            # 4pt gap between companies; tighter gap after last entry
+            exp_block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 2))
             story.extend(exp_block)
 
-    # Education — degree (bold) + university (italic, 1 size less) on the left,
+    # Education — degree (bold) + university (italic only, not bold) on the left,
     # date right-aligned (same two-column layout as Professional Experience).
     edu_list = data.get('education', data.get('ausbildung', []))
     if edu_list:
@@ -286,7 +286,7 @@ def create_resume_pdf_reportlab(data, output_path):
             degree      = edu.get('degree', '')
             univ        = edu.get('university', '')
             completion  = edu.get('date', '')
-            left_para   = Paragraph(f"<b>{degree}</b> <font size=8.5><i>{univ}</i></font>", edu_style)
+            left_para   = Paragraph(f"<b>{degree}</b> <i>{univ}</i>", edu_style)
             right_para  = Paragraph(completion, date_style)
             edu_table   = Table([[left_para, right_para]], colWidths=[387, 150])
             edu_table.setStyle(TableStyle([

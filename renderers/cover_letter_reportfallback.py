@@ -36,24 +36,24 @@ def create_cover_letter_pdf_reportlab(data, output_path):
 
     sender_style = ParagraphStyle(
         'CLSender', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12,
+        fontName=F_REG, fontSize=11, leading=13.5,
         textColor=colors.HexColor('#333333'),
     )
     recipient_style = ParagraphStyle(
         'CLRecipient', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12, textColor=colors.black,
+        fontName=F_REG, fontSize=11, leading=13.5, textColor=colors.black,
     )
     date_style = ParagraphStyle(
         'CLDate', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12, alignment=2, textColor=colors.black,
+        fontName=F_REG, fontSize=11, leading=13.5, alignment=2, textColor=colors.black,
     )
     subject_style = ParagraphStyle(
         'CLSubject', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=11, leading=13, textColor=colors.black,
+        fontName=F_BOLD, fontSize=12, leading=14.5, textColor=colors.black,
     )
     body_style = ParagraphStyle(
         'CLBody', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10.5, leading=13.5, alignment=4, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=11, leading=14.5, alignment=4, textColor=TEXT_DARK,
     )
 
     story = []
