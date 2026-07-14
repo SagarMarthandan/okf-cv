@@ -57,64 +57,64 @@ def create_resume_pdf_reportlab(data, output_path):
 
     name_style = ParagraphStyle(
         'ResName', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=22, leading=25, textColor=colors.HexColor('#1A365D'),
+        fontName=F_BOLD, fontSize=23, leading=26, textColor=colors.HexColor('#1A365D'),
         leftIndent=0, firstLineIndent=0,
     )
     contact_style = ParagraphStyle(
         'ResContact', parent=styles['Normal'],
-        fontName=F_REG, fontSize=9, leading=10.5, textColor=TEXT_MUTED,
+        fontName=F_REG, fontSize=10, leading=11.5, textColor=TEXT_MUTED,
         leftIndent=0, firstLineIndent=0,
     )
     section_title_style = ParagraphStyle(
         'ResSectionTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=11, leading=12, textColor=colors.HexColor('#1A365D'),
+        fontName=F_BOLD, fontSize=12, leading=13, textColor=colors.HexColor('#1A365D'),
         leftIndent=0, firstLineIndent=0,
     )
     summary_style = ParagraphStyle(
         'ResSummary', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12.5, alignment=4, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=11, leading=13.5, alignment=4, textColor=TEXT_DARK,
         leftIndent=0, firstLineIndent=0,
     )
     comp_style = ParagraphStyle(
         'ResComp', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=10, leading=11.5, textColor=colors.black,
+        fontName=F_BOLD, fontSize=11, leading=12.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
     date_style = ParagraphStyle(
         'ResDate', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=11.5, alignment=2, textColor=TEXT_DARK,
+        fontName=F_REG, fontSize=11, leading=12.5, alignment=2, textColor=TEXT_DARK,
         leftIndent=0, firstLineIndent=0,
     )
     title_style = ParagraphStyle(
         'ResTitle', parent=styles['Normal'],
-        fontName=F_ITALIC, fontSize=9, leading=10.5, textColor=TEXT_MUTED,
+        fontName=F_ITALIC, fontSize=10, leading=11.5, textColor=TEXT_MUTED,
         leftIndent=0, firstLineIndent=0,
     )
     bullet_style = ParagraphStyle(
         'ResBullet', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12.5,
+        fontName=F_REG, fontSize=11, leading=13.5,
         leftIndent=12, firstLineIndent=-8, spaceAfter=1, textColor=TEXT_DARK,
     )
     skill_val_style = ParagraphStyle(
         'ResSkillVal', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12,
+        fontName=F_REG, fontSize=11, leading=13,
         leftIndent=0, firstLineIndent=0, textColor=TEXT_DARK,
     )
     proj_title_style = ParagraphStyle(
         'ResProjTitle', parent=styles['Normal'],
-        fontName=F_BOLD, fontSize=10, leading=11.5, textColor=colors.black,
+        fontName=F_BOLD, fontSize=11, leading=12.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
     # Single-paragraph project prose style (mirrors the LaTeX polished format)
     proj_para_style = ParagraphStyle(
         'ResProjPara', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=12.5, alignment=4,
+        fontName=F_REG, fontSize=11, leading=13.5, alignment=4,
         leftIndent=0, firstLineIndent=0, spaceAfter=1, textColor=TEXT_DARK,
     )
     # Education: degree bold + university italic only (not bold), same font size
     edu_style = ParagraphStyle(
         'ResEdu', parent=styles['Normal'],
-        fontName=F_REG, fontSize=10, leading=11.5, textColor=colors.black,
+        fontName=F_REG, fontSize=11, leading=12.5, textColor=colors.black,
         leftIndent=0, firstLineIndent=0,
     )
 
@@ -150,7 +150,7 @@ def create_resume_pdf_reportlab(data, output_path):
     # Name on its own line, large; contact lines below in small muted text.
     story.append(Paragraph(name_str, name_style))
     story.append(Spacer(1, 2))
-    story.append(Paragraph(f"<font size=8.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>", contact_style))
+    story.append(Paragraph(f"<font size=9.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>", contact_style))
     story.append(Spacer(1, 5))
 
     def add_section_header(title):
@@ -224,11 +224,11 @@ def create_resume_pdf_reportlab(data, output_path):
             # Adaptive font size: smaller for longer headers to fit on one line
             header_len = len(name) + (12 if repo_url else 0) + len(tools_compressed)
             if header_len <= 65:
-                tools_size = 7.5
+                tools_size = 8.5
             elif header_len <= 80:
-                tools_size = 7.0
+                tools_size = 8.0
             else:
-                tools_size = 6.5
+                tools_size = 7.5
             proj_header_para = Paragraph(
                 f"<b>{name}</b>{github_link} <font size={tools_size} color='#555555'><i>{tools_compressed}</i></font>",
                 proj_title_style,
@@ -288,9 +288,24 @@ def create_resume_pdf_reportlab(data, output_path):
             degree      = edu.get('degree', '')
             univ        = edu.get('university', '')
             completion  = edu.get('date', '')
-            left_para   = Paragraph(f"<b>{degree}</b> <font size=9><i>{univ}</i></font>", edu_style)
+            # Keep degree + university on one line: use non-breaking spaces in
+            # university name so ReportLab never wraps mid-name. Adaptive font
+            # size for the university so long names shrink instead of wrapping.
+            univ_nbsp   = univ.replace(' ', '&nbsp;')
+            degree_len  = len(degree)
+            univ_len    = len(univ)
+            # Base university font size is 10pt; shrink for long combined lines
+            if degree_len + univ_len <= 55:
+                univ_size = 10
+            elif degree_len + univ_len <= 65:
+                univ_size = 9.5
+            elif degree_len + univ_len <= 75:
+                univ_size = 9
+            else:
+                univ_size = 8.5
+            left_para   = Paragraph(f"<b>{degree}</b> <font size={univ_size}><i>{univ_nbsp}</i></font>", edu_style)
             right_para  = Paragraph(completion, date_style)
-            edu_table   = Table([[left_para, right_para]], colWidths=[387, 150])
+            edu_table   = Table([[left_para, right_para]], colWidths=[400, 137])
             edu_table.setStyle(TableStyle([
                 ('VALIGN',        (0,0), (-1,-1), 'TOP'),
                 ('LEFTPADDING',   (0,0), (-1,-1), 0),
