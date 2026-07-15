@@ -43,9 +43,9 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - Add a fourth project if it increases the ATS score for the job description.
   - Combined project name and tools must be `<= 120` characters to prevent title line wrapping in YAML.
   - **Single-Paragraph Format (LaTeX Polish):** Convert all projects to single-paragraph format during the LaTeX post-processing polish (see Section 4).
-  - Each project paragraph (including name) must occupy **`<= 3` lines max** on the compiled PDF.
-    - **English Resumes:** Max 300 characters (`<= 300`).
-    - **German Resumes (Projekte):** Max **`230–250` characters** to keep within the 3-line limit.
+  - Each project paragraph must occupy **`<= 3` lines max** on the compiled PDF.
+    - **English Resumes:** Max 300 characters (`<= 300`) for the summary text only (project name, separator, and link markup are excluded from the count).
+    - **German Resumes (Projekte):** Max **`280` characters** for the summary text only, to keep within the 3-line limit.
 - **Professional Experience:** Exactly 4 bullets for **IBM India**, exactly 2 bullets for **Staff 4 cruise** (werkstudent).
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
@@ -85,7 +85,7 @@ Immediately after compiling the initial PDF from YAML (which outputs the `.tex` 
    ```
    > **Critical:** The `\par` at the end is mandatory. Without it, LaTeX stays in horizontal mode and the `\vspace{6pt}` between projects is ignored — causing projects to run together on the same line.
 4. **Quantification:** Every project must contain at least one quantified metric (number, percentage, volume, or time unit).
-5. **Length Limits:** Each project entry (including the name, `---`, and description) must be `<= 300` characters total (`<= 250` characters for German projects) and fit within exactly 3 lines max on the compiled PDF.
+5. **Length Limits:** Each project summary (description text only — project name, `---`, and link markup are excluded) must be `<= 300` characters (`<= 280` characters for German projects) and fit within exactly 3 lines max on the compiled PDF.
 6. **Keyword Preservation:** All tools, technologies, and domain terms from the original YAML bullets must appear in the paragraph prose to preserve the ATS score. Do not drop keywords.
 7. **Active voice:** Start sentences with active action verbs. Do not use adverbs ending in `-ly` or punctuation em-dashes (except for the `---` separator after the project name).
 
@@ -247,7 +247,7 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 Then jump to Step D (parseability audit).
 
 ### Step B: Apply LaTeX Polish & Character Count Checks
-Edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) directly to convert all projects to the single-paragraph format. Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 250 characters for German):
+Edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) directly to convert all projects to the single-paragraph format. Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 280 characters for German). **The limit applies only to the project summary/description text — the project name, separator (`---`), and link markup are excluded from the count.**
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.tex"

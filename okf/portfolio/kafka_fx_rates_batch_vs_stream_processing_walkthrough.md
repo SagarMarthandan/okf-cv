@@ -12,6 +12,9 @@ keywords:
 - python producer
 - csv ingestion
 - throughput optimization
+- changes
+- context
+- data
 archetypes:
 - Data Engineering
 repo_url: https://github.com/SagarMarthandan

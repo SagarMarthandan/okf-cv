@@ -102,7 +102,7 @@ See [README.md](README.md) for architecture, setup, and usage.
 - **4.2 Folder sort folded into sync:** Added `--sort` flag to `sync_to_obsidian.py`. After a successful targeted sync, the folder is moved into the `Applications/YYYY/MM/DD/` tree. `organize_applications.py` remains as a standalone tool for manual use. Post-Pipeline Step 3 in `03_cover_letter.md` is now automatic via the `--sort` flag.
 
 **Phase 5 — Char-Count Check Consolidation:**
-- **5.1 `--check-tex` mode:** Added `--check-tex` mode to `resume_parseability.py`. Runs the LaTeX project paragraph length check (same regex, same limits: <= 300 chars English, <= 250 chars German). Step B in `02_resume_and_visual_audit.md` now calls `resume_parseability.py --check-tex` instead of an inline `python -c` one-liner.
+- **5.1 `--check-tex` mode:** Added `--check-tex` mode to `resume_parseability.py`. Runs the LaTeX project summary length check (same regex, same limits: <= 300 chars English, <= 280 chars German). The limit applies only to the project summary/description text — project name, separator (`---`), and link markup are excluded from the count. Step B in `02_resume_and_visual_audit.md` now calls `resume_parseability.py --check-tex` instead of an inline `python -c` one-liner.
 
 ---
 

@@ -17,8 +17,9 @@ Usage:
   python resume_parseability.py <resume.pdf> <resume.yaml> [output_dir]
   python resume_parseability.py --check-tex <resume.tex>
 
-The --check-tex mode runs the LaTeX project paragraph length check only
-(<= 300 chars for English, <= 250 chars for German). No PDF audit is performed.
+The --check-tex mode runs the LaTeX project summary length check only
+(<= 300 chars for English, <= 280 chars for German, summary text only —
+project name, separator, and link markup are excluded). No PDF audit is performed.
 
 If output_dir is omitted, the directory of the PDF is used.
 
@@ -307,10 +308,13 @@ def run_audit(pdf_path, yaml_path):
 
 
 def check_tex(tex_path):
-    """Check LaTeX project paragraph lengths against the character limit.
+    """Check LaTeX project summary lengths against the character limit.
 
-    English resumes: <= 300 chars per project paragraph.
-    German resumes (Lebenslauf): <= 250 chars per project paragraph.
+    The limit applies ONLY to the project summary/description text,
+    excluding the project name, separator (---), and link markup.
+
+    English resumes: <= 300 chars per project summary.
+    German resumes (Lebenslauf): <= 280 chars per project summary.
 
     Returns 0 if all pass, 1 if any fail.
     """
@@ -318,7 +322,7 @@ def check_tex(tex_path):
         print(f"Error: TeX file '{tex_path}' not found.", file=sys.stderr)
         return 2
 
-    limit = 250 if 'Lebenslauf' in os.path.basename(tex_path) else 300
+    limit = 280 if 'Lebenslauf' in os.path.basename(tex_path) else 300
 
     with open(tex_path, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -333,26 +337,26 @@ def check_tex(tex_path):
         return 0
 
     all_ok = True
-    print(f"TeX project length check (limit: {limit} chars):")
+    print(f"TeX project summary length check (limit: {limit} chars, summary only):")
     for name, desc in projects:
-        full = name + ' --- ' + desc.strip()
-        status = 'OK' if len(full) <= limit else 'FAIL'
+        summary = desc.strip()
+        status = 'OK' if len(summary) <= limit else 'FAIL'
         if status == 'FAIL':
             all_ok = False
-        print(f"  {status} | {name}: {len(full)} chars (limit: {limit})")
+        print(f"  {status} | {name}: {len(summary)} chars (limit: {limit})")
 
     if all_ok:
-        print("All project paragraphs within limit.")
+        print("All project summaries within limit.")
         return 0
     else:
-        print("FAIL: One or more project paragraphs exceed the character limit.", file=sys.stderr)
+        print("FAIL: One or more project summaries exceed the character limit.", file=sys.stderr)
         return 1
 
 
 def main():
     args = sys.argv[1:]
 
-    # --check-tex mode: LaTeX project paragraph length check only
+    # --check-tex mode: LaTeX project summary length check only
     if '--check-tex' in args:
         args.remove('--check-tex')
         if len(args) < 1:

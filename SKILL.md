@@ -165,7 +165,7 @@ After all 3 steps complete, verify:
 - [ ] `Parseability_Report.yaml` & `Parseability_Report.pdf` are generated with overall status PASS (100% keyword recovery, 6/6 sections, 5/5 contact fields, no unicode corruptions)
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
 - [ ] Professional Experience bullet points are strictly single-line and <= 105 characters
-- [ ] Project entries are in single-paragraph format, with name + `---` + description (no bullets), each <= 300 characters (<= 250 characters for German) and fitting on <= 3 lines
+- [ ] Project entries are in single-paragraph format, with name + `---` + description (no bullets), each summary <= 300 characters (<= 280 characters for German, summary text only) and fitting on <= 3 lines
 - [ ] Summary section is exactly 4 lines and <= 420 characters (<= 380 characters for German Zusammenfassung)
 - [ ] Cover letter fits on exactly one page and has 250–320 words (180–240 words for German Anschreiben)
 - [ ] All files match the target JD language and comply with the Stop-Slop guidelines
@@ -186,4 +186,3 @@ When the user says "refresh okf-cv" or similar:
 4. **Ingest all supporting docs** — read every `.md` file in `skills/okf-cv/` (the step files 01_*.md, 02_*.md, 03_*.md, and any others) to load the full pipeline into context.
 
 Do not perform any other actions.
-
