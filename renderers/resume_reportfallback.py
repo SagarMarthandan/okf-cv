@@ -214,30 +214,16 @@ def create_resume_pdf_reportlab(data, output_path):
                 block.append(Spacer(1, 4))
             name       = proj.get('name', '')
             repo_url   = proj.get('repo_url', proj.get('url', ''))
-            tools      = proj.get('tools', [])
             bullets    = proj.get('bullets', [])
-            tools_str  = ", ".join(tools)
             github_link = f" &nbsp;<a href='{repo_url}' color='#1A365D'><font size=8>[GitHub]</font></a>" if repo_url else ""
 
             # Join bullets into a single prose paragraph to match the LaTeX
-            # single-paragraph project format. Tools are woven into the prose
-            # only if a bullet already references them; otherwise appended.
+            # single-paragraph project format. Tools are not displayed in the
+            # project header (the LaTeX version keeps them inline, but the
+            # reportfallback header omits them for a cleaner look).
             prose = " ".join(bullets).strip()
-            # Tools line: 1 font size less than title, compressed (no spaces after
-            # commas) to keep on one line. Replace spaces within tool names with
-            # non-breaking spaces so ReportLab doesn't wrap mid-tool.
-            tools_nbsp = [t.strip().replace(" ", "&nbsp;") for t in tools]
-            tools_compressed = ",".join(tools_nbsp)
-            # Adaptive font size: smaller for longer headers to fit on one line
-            header_len = len(name) + (12 if repo_url else 0) + len(tools_compressed)
-            if header_len <= 65:
-                tools_size = 8.5
-            elif header_len <= 80:
-                tools_size = 8.0
-            else:
-                tools_size = 7.5
             proj_header_para = Paragraph(
-                f"<b>{name}</b>{github_link} <font size={tools_size} color='#555555'><i>{tools_compressed}</i></font>",
+                f"<b>{name}</b>{github_link}",
                 proj_title_style,
             )
             block.append(proj_header_para)

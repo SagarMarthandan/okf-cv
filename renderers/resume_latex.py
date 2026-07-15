@@ -201,13 +201,11 @@ def _generate_resume_tex(data, output_path):
         repo_url   = proj.get('repo_url', proj.get('url', ''))
         if repo_url:
             proj_name = f"{proj_name} (\\href{{{repo_url}}}{{\\color{{darkblue}}\\small[GitHub]}})"
-        tools      = [escape_latex(t) for t in proj.get('tools', [])]
-        tools_str  = ", ".join(tools)
         bullets    = [escape_latex(b) for b in proj.get('bullets', [])]
         bullets_tex = "\n".join([f"  \\resumeItem{{{b}}}" for b in bullets])
 
         item_tex = (
-            f"\\resumeProject{{{proj_name}}} \\projectTools{{Tools: {tools_str}}}\n"
+            f"\\resumeProject{{{proj_name}}}\\par\n"
             f"\\vspace{{2pt}}\n"
             f"\\begin{{itemize}}[leftmargin=*,nosep,itemsep=1pt]\n{bullets_tex}\n\\end{{itemize}}\\par"
         )
@@ -301,7 +299,6 @@ def _generate_resume_tex(data, output_path):
 \\newcommand{{\\resumeItem}}[1]{{\\item[$\\cdot$] {{#1}}}}
 \\newcommand{{\\eduEntry}}[3]{{\\textbf{{#1}} {{\\small\\textit{{#2}}}} \\hfill {{\\small\\textit{{#3}}}}}}
 \\newcommand{{\\resumeProject}}[1]{{{{\\normalsize\\textbf{{#1}}}}}}
-\\newcommand{{\\projectTools}}[1]{{{{\\footnotesize\\textit{{#1}}}}}}
 \\newcommand{{\\jobEntry}}[2]{{{{\\normalsize\\textbf{{#1}} \\hfill {{\\normalsize#2}}}}}}
 \\newcommand{{\\jobTitle}}[1]{{{{\\small\\textit{{#1}}}}}}
 

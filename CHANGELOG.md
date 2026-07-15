@@ -6,6 +6,21 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.8 — Project Header: Tools Removed + LaTeX Summary on New Line
+**Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** The project header in both renderers displayed the tools list inline with the project name (e.g. `RAG PDF-Abfragesystem [GitHub] LangChain,FAISS,OpenAI,PyPDF2,Python`), which cluttered the header and was inconsistent with the desired clean layout. Additionally, in the LaTeX version the project summary (bullets) started on the same line as the project name instead of on the next line.
+
+**Changes:**
+- `renderers/resume_reportfallback.py`: Removed the `tools` field read, the compressed-tools formatting logic (NBSP replacement, adaptive font sizing), and the tools `<font>` span from the project header paragraph. The header now renders only the project name + optional `[GitHub]` link.
+- `renderers/resume_latex.py`: Removed the `tools`/`tools_str` lines from the project loop and dropped `\projectTools{Tools: ...}` from the `item_tex` template. Added `\par` after `\resumeProject{...}` so the project summary (itemize block) starts on the next line. Removed the now-unused `\newcommand{\projectTools}` definition from the preamble.
+- The parseability audit in `resume_latex.py` (lines 57-62) still reads `tools` from the YAML to verify those keywords appear somewhere in the rendered PDF — this verification logic is unchanged.
+- Updated `README.md` Step 2 "LaTeX Compilation & Project Format Polish" bullet to reflect that tools are no longer displayed in the project header and that project names render on their own line with the summary starting on the next line.
+
+**Behavior:** Both renderers now produce identical project headers — project name + optional `[GitHub]` link only, no tools. The LaTeX version forces the summary onto the next line via `\par`. Tools remain in the YAML schema for the parseability keyword-recovery audit.
+
+---
+
 ## v28.5 — Self-Refresh Trigger + SKILL.md Self-Refresh Section + Stale Planning Docs Removed
 **Files:** `SKILL.md`, `README.md`, `CHANGELOG.md`, `IMPLEMENTATION_PLAN.md` (deleted), `OKF_IMPROVEMENT_PLAN.md` (deleted)
 
