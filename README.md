@@ -200,8 +200,7 @@ YAML-CV/
 │   └── okf-cv\
 │       ├── SKILL.md                      # Agent-facing skill metadata
 │       ├── README.md                     # This file (developer documentation)
-│       ├── OKF_IMPROVEMENT_PLAN.md       # OKF improvement plan & Phase 6 design
-│       ├── IMPLEMENTATION_PLAN.md        # Monoculture countermeasures implementation plan
+│       ├── (planning docs removed — IMPLEMENTATION_PLAN.md and OKF_IMPROVEMENT_PLAN.md were completed/stale and deleted in v28.5)
 │       ├── 01_ats_and_jd_archival.md     # Step 1 detailed agent rules
 │       ├── 02_resume_and_visual_audit.md # Step 2 detailed agent rules
 │       ├── 03_cover_letter.md            # Step 3 detailed agent rules
