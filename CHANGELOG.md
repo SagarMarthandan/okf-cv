@@ -6,6 +6,23 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.10 — Project Format: `name --- [GitHub] --- summary` Inline Single-Paragraph
+**Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `resume_parseability.py`, `02_resume_and_visual_audit.md`, `README.md`, `SKILL.md`, `CHANGELOG.md`
+
+**Motivation:** The previous project layout used a two-line structure — bold project name + `[GitHub]` link on the first line, then the summary prose on the next line (LaTeX) or as a separate paragraph (ReportLab). The user wanted a cleaner inline format where the project name, link, and summary all appear on a single line separated by em dashes: `project name --- [GitHub] --- summary`. The project name, em-dash separators, and link markup are excluded from the character count; only the summary text counts toward the `<= 300` char (English) / `<= 280` char (German) limit.
+
+**Changes:**
+- `renderers/resume_latex.py`: Replaced the `\resumeProject{name} (\href{...}{[GitHub]})\par` + `\begin{itemize}` bullet-list structure with a single inline `\noindent\textbf{name} --- \href{repo_url}{\color{darkblue}\small[GitHub]} --- summary.\par` line. The YAML `bullets` list is joined into prose. When no `repo_url` is present, the link segment is omitted (`\noindent\textbf{name} --- summary.\par`). The `\resumeProject` and `\resumeItem` command definitions remain in the preamble (the latter is still used by the Professional Experience section).
+- `renderers/resume_reportfallback.py`: Replaced the two-paragraph structure (bold header paragraph + separate prose paragraph) with a single `proj_para_style` paragraph: `<b>name</b> --- <a href='repo_url'>[GitHub]</a> --- summary.` The `proj_title_style` is no longer used by the project renderer but remains defined.
+- `resume_parseability.py`: Updated `check_tex()` regex to match the new inline format. The regex captures `\noindent\textbf{name} ...` up to `\par`, then splits the remainder on `---` and takes the last segment as the summary — correctly excluding the project name, em-dash separators, and link markup from the character count. Updated the docstring and module docstring to reference "em-dash separators" instead of "separator".
+- `02_resume_and_visual_audit.md`: Updated the Project Section rules to describe the `name --- [GitHub] --- summary` format and note that both renderers produce it directly. Rewrote Section 4 from "Mandatory Post-Processing" (manual bullet-to-prose conversion) to "Post-Processing — Prose Refinement Only" (the renderer already produces the format; the agent optionally tightens prose). Updated the render_mode descriptions, YAML schema comments, Step B description, and the Before/After example. Updated character-limit references to mention "em-dash separators" instead of "separator".
+- `README.md`: Updated the Render Mode Selection, Project Verification Links, and LaTeX Compilation & Project Format bullets to describe the new inline format. Updated the project summaries constraint text and the file tree comment for `resume_reportfallback.py`.
+- `SKILL.md`: Updated the render mode option descriptions and the completion checklist item for project entries.
+
+**Behavior:** Both renderers now produce identical project entries in the `name --- [GitHub] --- summary` inline format directly from the YAML `bullets` list. No manual LaTeX post-processing is required to convert bullet lists to single-paragraph format. The `check_tex` character count correctly excludes the project name, em-dash separators, and link markup, counting only the summary text toward the `<= 300` / `<= 280` char limit.
+
+---
+
 ## v28.8 — Project Header: Tools Removed + LaTeX Summary on New Line
 **Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `README.md`, `CHANGELOG.md`
 

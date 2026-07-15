@@ -42,17 +42,21 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - Select the best 3 projects first that resonate with the job description.
   - Add a fourth project if it increases the ATS score for the job description.
   - Combined project name and tools must be `<= 120` characters to prevent title line wrapping in YAML.
-  - **Single-Paragraph Format (LaTeX Polish):** Convert all projects to single-paragraph format during the LaTeX post-processing polish (see Section 4).
+  - **Single-Paragraph Format:** Each project renders as a single line in the format:
+    ```
+    project name --- [GitHub] --- summary
+    ```
+    The project name, em-dash separators (`---`), and link markup (`[GitHub]`) are **excluded** from the character count — they can be any length. Only the **summary** text counts toward the limit. Both renderers (LaTeX and ReportFallback) produce this format directly from the YAML `bullets` list (joined into prose); no manual LaTeX post-processing is required.
   - Each project paragraph must occupy **`<= 3` lines max** on the compiled PDF.
-    - **English Resumes:** Max 300 characters (`<= 300`) for the summary text only (project name, separator, and link markup are excluded from the count).
+    - **English Resumes:** Max 300 characters (`<= 300`) for the summary text only (project name, em-dash separators, and link markup are excluded from the count).
     - **German Resumes (Projekte):** Max **`280` characters** for the summary text only, to keep within the 3-line limit.
 - **Professional Experience:** Exactly 4 bullets for **IBM India**, exactly 2 bullets for **Staff 4 cruise** (werkstudent).
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
 - **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. No photo embedding — photos are added manually via a PDF editor if needed.
 - **Render Mode:** The `render_mode` top-level key in `Resume.yaml` (set during the pipeline's "Select Render Mode" step) controls which renderer compiles the PDF:
-  - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source, and the agent performs the Section 4 LaTeX project single-paragraph polish.
-  - `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. Projects are rendered in single-paragraph format automatically (bullets joined into prose) to match the LaTeX polished layout. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
+  - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source. Projects are rendered in the `name --- [GitHub] --- summary` single-paragraph format directly by the renderer.
+  - `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. Projects are rendered in the same `name --- [GitHub] --- summary` single-paragraph format automatically. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
 
 ### 3. Visual Layout Audit & Stop-Slop Checks
 - Apply the **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, no throat-clearing openers).
@@ -68,43 +72,40 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Self-Correction Rule:** If the audit detects layout violations (e.g., experience bullet wraps to next line or exceeds 105 chars, summary > 4 lines), **immediately adjust the text parameters** so the primary `Resume.yaml` compiles successfully without any layout warnings.
 - **v2 Trigger:** Generate `SAGAR_MARTHANDAN_Resume_v2.yaml` only if self-correction requires changing more than 3 bullets or restructuring an entire section. For smaller corrections, patch `Resume.yaml` in place. Set `optimized_v2_generated: true` in `Layout_Audit_Report.yaml` if a v2 file is written, otherwise leave it `false`.
 
-### 4. LaTeX Project Format Polish (Mandatory Post-Processing)
+### 4. LaTeX Project Format Polish (Post-Processing — Prose Refinement Only)
 
-Immediately after compiling the initial PDF from YAML (which outputs the `.tex` file using the standard template), you MUST modify the compiled LaTeX source file (`SAGAR_MARTHANDAN_Resume.tex`) to convert the project entries into a compact single-paragraph format.
+The LaTeX renderer now produces the `name --- [GitHub] --- summary` single-paragraph format **directly** from the YAML `bullets` list (joined into prose). No manual conversion from bullet lists to single-paragraph is needed. This section covers the optional prose refinement the agent performs on the generated `.tex` file to tighten the summary text, ensure quantification, and verify keyword preservation.
 
-#### Rules
-1. **No bullet points:** Remove the entire `\begin{itemize}...\end{itemize}` block for each project.
-2. **No separate "Tools:" line:** Tools must be woven naturally into the description prose (e.g., "orchestrated with Airflow DAGs on GCP" instead of "Tools: Airflow, GCP").
-3. **Format:** Replace the project title, tools, and itemize blocks with:
-   ```latex
-   \noindent\textbf{[Project Name]} --- [Action verb] [what was built] [quantified metric] [tools woven in]. [Second/third sentences with detail/tools/outcomes/CI/CD].\par
-   ```
-   **Project Verification Links:** If the project has a `repo_url` in `Resume.yaml`, weave a clickable hypertarget next to the project title:
-   ```latex
-   \noindent\textbf{[Project Name]} (\href{repo_url}{GitHub}) --- [Action verb] [what was built] [quantified metric] [tools woven in]. [Second/third sentences].\par
-   ```
-   > **Critical:** The `\par` at the end is mandatory. Without it, LaTeX stays in horizontal mode and the `\vspace{6pt}` between projects is ignored — causing projects to run together on the same line.
-4. **Quantification:** Every project must contain at least one quantified metric (number, percentage, volume, or time unit).
-5. **Length Limits:** Each project summary (description text only — project name, `---`, and link markup are excluded) must be `<= 300` characters (`<= 280` characters for German projects) and fit within exactly 3 lines max on the compiled PDF.
-6. **Keyword Preservation:** All tools, technologies, and domain terms from the original YAML bullets must appear in the paragraph prose to preserve the ATS score. Do not drop keywords.
-7. **Active voice:** Start sentences with active action verbs. Do not use adverbs ending in `-ly` or punctuation em-dashes (except for the `---` separator after the project name).
-
-#### LaTeX Changes Example:
-
-**Before (bullet-list format):**
+#### Renderer Output Format
+The renderer emits each project as:
 ```latex
-\resumeProject{Project Name} \projectTools{Tools: Python, Airflow, dbt, BigQuery, GCP}
-\vspace{1pt}
-\begin{itemize}[leftmargin=*,nosep,itemsep=1pt]
-  \resumeItem{Engineered ELT pipeline ingesting 37M records into BigQuery}
-  \resumeItem{Modeled dbt mart layers delivering KPIs across trip volumes}
-  \resumeItem{Provisioned GCP via Terraform with CI/CD on GitHub Actions}
-\end{itemize}
+\noindent\textbf{[Project Name]} --- \href{repo_url}{\color{darkblue}\small[GitHub]} --- [summary prose].\par
+```
+When no `repo_url` is present:
+```latex
+\noindent\textbf{[Project Name]} --- [summary prose].\par
+```
+> **Critical:** The `\par` at the end is mandatory. Without it, LaTeX stays in horizontal mode and the `\vspace{6pt}` between projects is ignored — causing projects to run together on the same line.
+
+#### Refinement Rules
+1. **No bullet points:** The renderer already joins bullets into a single prose paragraph. Do not reintroduce `\begin{itemize}...\end{itemize}` blocks.
+2. **No separate "Tools:" line:** Tools must be woven naturally into the description prose (e.g., "orchestrated with Airflow DAGs on GCP" instead of "Tools: Airflow, GCP").
+3. **Format preserved:** Keep the `name --- [GitHub] --- summary` structure. The project name, em-dash separators (`---`), and link markup (`[GitHub]`) are excluded from the character count — only the summary text counts.
+4. **Quantification:** Every project must contain at least one quantified metric (number, percentage, volume, or time unit).
+5. **Length Limits:** Each project summary (description text only — project name, em-dash separators, and link markup are excluded) must be `<= 300` characters (`<= 280` characters for German projects) and fit within exactly 3 lines max on the compiled PDF.
+6. **Keyword Preservation:** All tools, technologies, and domain terms from the original YAML bullets must appear in the paragraph prose to preserve the ATS score. Do not drop keywords.
+7. **Active voice:** Start sentences with active action verbs. Do not use adverbs ending in `-ly` or punctuation em-dashes (except for the `---` separators around the link).
+
+#### Example
+
+**Renderer output (from YAML bullets):**
+```latex
+\noindent\textbf{NYC Taxi Data Pipeline} --- \href{https://github.com/SagarMarthandan/nyc-taxi-dbt}{\color{darkblue}\small[GitHub]} --- ELT pipeline ingesting 37M records into BigQuery via Airbyte. Modeled dbt mart layers delivering KPIs. Provisioned GCP via Terraform with CI/CD on GitHub Actions.\par
 ```
 
-**After (single-paragraph format):**
+**After prose refinement (tightened, quantified, keywords preserved):**
 ```latex
-\noindent\textbf{Project Name} --- ELT pipeline ingesting 37M records into BigQuery via Airbyte, orchestrated with Airflow DAGs on GCP. Modeled dbt mart layers with incremental materialization delivering KPIs. GCP provisioned via Terraform with GitHub Actions CI/CD.\par
+\noindent\textbf{NYC Taxi Data Pipeline} --- \href{https://github.com/SagarMarthandan/nyc-taxi-dbt}{\color{darkblue}\small[GitHub]} --- ELT pipeline ingesting 37M records into BigQuery via Airbyte, orchestrated with Airflow DAGs on GCP. Modeled dbt mart layers with incremental materialization delivering KPIs. GCP provisioned via Terraform with GitHub Actions CI/CD.\par
 ```
 > **Spacing note:** The `\par` ends the paragraph and switches LaTeX to vertical mode. The `\vspace{6pt}` separator generated by the compiler between each project block then fires correctly, producing uniform gaps. Do NOT replace `\par` with `\vspace{...}` — that would put spacing in horizontal mode where it does nothing.
 
@@ -189,9 +190,9 @@ projects:
   - name: "[Project Name]"
     repo_url: "[GitHub URL — read from Repo: line in project_info.md]"
     tools:
-      - "[Tool]"          # 5-7 JD-aligned entries only
+      - "[Tool]"          # 5-7 JD-aligned entries only (used for parseability audit, not rendered)
     bullets:
-      - "[Outcome-focused bullet, <= 105 chars]"   # 3-5 bullets per project
+      - "[Outcome-focused bullet]"   # 3-5 bullets per project, joined into prose summary (<= 300 chars total for English, <= 280 for German; name/link/separators excluded)
 professional_experience:
   - company: "[Company Name]"
     location: "[City]"
@@ -246,8 +247,8 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 ```
 Then jump to Step D (parseability audit).
 
-### Step B: Apply LaTeX Polish & Character Count Checks
-Edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) directly to convert all projects to the single-paragraph format. Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 280 characters for German). **The limit applies only to the project summary/description text — the project name, separator (`---`), and link markup are excluded from the count.**
+### Step B: Prose Refinement & Character Count Checks
+The renderer already produces the `name --- [GitHub] --- summary` single-paragraph format in the `.tex` file. Optionally edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) to tighten prose, ensure quantification, and verify keyword preservation (see Section 4). Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 280 characters for German). **The limit applies only to the project summary text — the project name, em-dash separators (`---`), and link markup are excluded from the count.**
 ```powershell
 C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.tex"

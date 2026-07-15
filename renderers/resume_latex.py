@@ -193,22 +193,23 @@ def _generate_resume_tex(data, output_path):
         f"{skills_body}"
     ) if skills_tex_items else ""
 
-    # D. Projects
+    # D. Projects — single-paragraph format: name --- [GitHub] --- summary
+    # The project name, em-dash separators (---), and link markup are excluded
+    # from the character count; only the summary text counts toward the
+    # <= 300 char (English) / <= 280 char (German) limit.
     proj_tex_items = []
     projects_list = data.get('projects', data.get('projekte', []))
     for i, proj in enumerate(projects_list):
         proj_name  = escape_latex(proj.get('name', ''))
         repo_url   = proj.get('repo_url', proj.get('url', ''))
-        if repo_url:
-            proj_name = f"{proj_name} (\\href{{{repo_url}}}{{\\color{{darkblue}}\\small[GitHub]}})"
         bullets    = [escape_latex(b) for b in proj.get('bullets', [])]
-        bullets_tex = "\n".join([f"  \\resumeItem{{{b}}}" for b in bullets])
+        summary    = " ".join(bullets).strip()
 
-        item_tex = (
-            f"\\resumeProject{{{proj_name}}}\\par\n"
-            f"\\vspace{{2pt}}\n"
-            f"\\begin{{itemize}}[leftmargin=*,nosep,itemsep=1pt]\n{bullets_tex}\n\\end{{itemize}}\\par"
-        )
+        # \noindent\textbf{Name} --- \href{repo_url}{[GitHub]} --- summary.\par
+        # When no repo_url: \noindent\textbf{Name} --- summary.\par
+        link_tex = f" --- \\href{{{repo_url}}}{{\\color{{darkblue}}\\small[GitHub]}}" if repo_url else ""
+        item_tex = f"\\noindent\\textbf{{{proj_name}}}{link_tex} --- {summary}.\\par"
+
         if i == 0:
             proj_tex_items.append(
                 f"\\section{{{h['projects']}}}\n"

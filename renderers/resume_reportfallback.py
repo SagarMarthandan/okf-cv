@@ -203,7 +203,11 @@ def create_resume_pdf_reportlab(data, output_path):
         return block
 
     def render_projects():
-        # Single-paragraph format (mirrors the LaTeX polished layout)
+        # Single-paragraph format: name --- [GitHub] --- summary
+        # Mirrors the LaTeX layout. The project name, em-dash separators,
+        # and link markup are excluded from the character count; only the
+        # summary text counts toward the <= 300 char (English) /
+        # <= 280 char (German) limit.
         projects_list = data.get('projects', data.get('projekte', []))
         if not projects_list:
             return []
@@ -215,21 +219,14 @@ def create_resume_pdf_reportlab(data, output_path):
             name       = proj.get('name', '')
             repo_url   = proj.get('repo_url', proj.get('url', ''))
             bullets    = proj.get('bullets', [])
-            github_link = f" &nbsp;<a href='{repo_url}' color='#1A365D'><font size=8>[GitHub]</font></a>" if repo_url else ""
+            prose      = " ".join(bullets).strip()
 
-            # Join bullets into a single prose paragraph to match the LaTeX
-            # single-paragraph project format. Tools are not displayed in the
-            # project header (the LaTeX version keeps them inline, but the
-            # reportfallback header omits them for a cleaner look).
-            prose = " ".join(bullets).strip()
-            proj_header_para = Paragraph(
-                f"<b>{name}</b>{github_link}",
-                proj_title_style,
-            )
-            block.append(proj_header_para)
-            block.append(Spacer(1, 3))
-            if prose:
-                block.append(Paragraph(prose, proj_para_style))
+            # Build: <b>Name</b> --- <a href='repo_url'>[GitHub]</a> --- summary
+            # When no repo_url: <b>Name</b> --- summary
+            github_link = f" --- <a href='{repo_url}' color='#1A365D'><font size=8>[GitHub]</font></a>" if repo_url else ""
+            line = f"<b>{name}</b>{github_link} --- {prose}."
+
+            block.append(Paragraph(line, proj_para_style))
             # 4pt gap between projects; tighter gap after last project
             block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 2))
         return block

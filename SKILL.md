@@ -92,8 +92,8 @@ Before executing any pipeline step, ask the user which render mode to use for th
 - **Question:** "Which render mode should the resume and cover letter use?"
 - **Header:** "Render mode"
 - **Options:**
-  - `LaTeX` — Compile via pdflatex (primary). Produces a `.tex` source file alongside the PDF. The agent performs the LaTeX project single-paragraph polish post-compilation.
-  - `ReportFallback` — Compile via ReportLab using the LM Roman 10 font (TTF version installed locally). No `.tex` file is produced. Projects are rendered in single-paragraph format automatically to match the LaTeX layout. Use this when pdflatex is unavailable or when a LM Roman 10-styled PDF is preferred.
+  - `LaTeX` — Compile via pdflatex (primary). Produces a `.tex` source file alongside the PDF. Projects are rendered in `name --- [GitHub] --- summary` single-paragraph format directly by the renderer. The agent may optionally refine the prose post-compilation.
+  - `ReportFallback` — Compile via ReportLab using the LM Roman 10 font (TTF version installed locally). No `.tex` file is produced. Projects are rendered in the same `name --- [GitHub] --- summary` single-paragraph format automatically. Use this when pdflatex is unavailable or when a LM Roman 10-styled PDF is preferred.
 
 The selected mode MUST be written as a top-level `render_mode` key in both `Resume.yaml` and `Cover_Letter.yaml`:
 - LaTeX → `render_mode: latex`
@@ -165,7 +165,7 @@ After all 3 steps complete, verify:
 - [ ] `Parseability_Report.yaml` & `Parseability_Report.pdf` are generated with overall status PASS (100% keyword recovery, 6/6 sections, 5/5 contact fields, no unicode corruptions)
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
 - [ ] Professional Experience bullet points are strictly single-line and <= 105 characters
-- [ ] Project entries are in single-paragraph format, with name + `---` + description (no bullets), each summary <= 300 characters (<= 280 characters for German, summary text only) and fitting on <= 3 lines
+- [ ] Project entries are in `name --- [GitHub] --- summary` single-paragraph format (no bullets), each summary <= 300 characters (<= 280 characters for German, summary text only — project name, em-dash separators, and link markup are excluded from the count) and fitting on <= 3 lines
 - [ ] Summary section is exactly 4 lines and <= 420 characters (<= 380 characters for German Zusammenfassung)
 - [ ] Cover letter fits on exactly one page and has 250–320 words (180–240 words for German Anschreiben)
 - [ ] All files match the target JD language and comply with the Stop-Slop guidelines

@@ -152,7 +152,7 @@ The core pipeline operates as a sequence of discrete steps, each backed by expli
   * Apply the project swaps and technical skills tuning from Step 1.
   * Ensure no numeric prefixes exist in section headers.
   * **Typography Architecture:** Left-align the company name and right-align date blocks. Drop job titles to a dedicated newline in *small italics* (implemented via a `\\[2pt]` linebreak in LaTeX) to avoid horizontal layout overlaps.
-  * Pair each project with its tool stack on the same line (`\resumeProject{...} \projectTools{...}`).
+  * Pair each project with its tool stack on the same line (`\noindent\textbf{name} --- \href{repo_url}{[GitHub]} --- summary.\par`).
 
 ### 3. Cover Letter Generation (`03_cover_letter.md`)
 * **Objective:** Draft a formal business cover letter adapted to the target language and structured under strict German business letter standards (*Geschäftsbrief*).
