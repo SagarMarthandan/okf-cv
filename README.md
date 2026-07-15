@@ -272,6 +272,16 @@ To execute the pipeline:
 2. Type: **`execute okf-cv`** (or keywords like *"tailor resume"* / *"optimize resume"*).
 3. The agent will automatically run the end-to-end flow: installing dependencies, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `Applications/YYYY/MM/DD/` date tree.
 
+### Self-Refresh
+
+To reload the skill into the current CLI/harness skill store (e.g. after pulling updates or switching branches), type: **`refresh okf-cv`**. The agent will:
+1. Identify the CLI environment (Devin, Claude Code, agy, opencode, etc.) and its skill/workflows directory.
+2. Copy `skills/okf-cv/SKILL.md` (the ground truth) to the CLI's active skill store path.
+3. Confirm the load via the CLI's skill resolution mechanism.
+4. Ingest all supporting `.md` files in `skills/okf-cv/` (the step files `01_*.md`, `02_*.md`, `03_*.md`, and any others) to load the full pipeline into context.
+
+No other actions are performed. This is a metadata/context reload only — it does not run the pipeline or modify any application files.
+
 ---
 
 ## 🧪 Testing

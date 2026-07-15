@@ -1,7 +1,7 @@
 ---
 name: okf-cv
 description: >-
-  Use when the user wants to generate an ATS-optimized resume and cover letter from a job description using the hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger on keywords like "job description", "resume", "cover letter", "ATS", "apply", "job application", "tailor resume", "optimize resume", "OKF", "Open Knowledge Format", "hybrid search", "Zvec".
+  Use when the user wants to generate an ATS-optimized resume and cover letter from a job description using the hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger on keywords like "job description", "resume", "cover letter", "ATS", "apply", "job application", "tailor resume", "optimize resume", "OKF", "Open Knowledge Format", "hybrid search", "Zvec", "refresh".
 dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-transformers
 ---
 
@@ -172,4 +172,18 @@ After all 3 steps complete, verify:
 - [ ] `okf_learn.py` has enriched portfolio keywords from this JD (check `okf/learning_log.json` for changes)
 - [ ] `sync_to_obsidian.py` has synced the application to the Obsidian vault (check `<vault>/Job Search/` for notes)
 - [ ] `organize_applications.py` has moved the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/` (MUST run after Obsidian sync completes, not before)
+
+## Self-Refresh
+
+When the user says "refresh okf-cv" or similar:
+
+1. **Identify this CLI/harness.** Determine what CLI environment you're running under (Devin, Claude Code, agy, opencode, etc.) and its skill/workflows directory location.
+
+2. **Copy SKILL.md** from `skills/okf-cv/SKILL.md` (ground truth) to this CLI's active skill store path.
+
+3. **Confirm the load** via this CLI's skill resolution mechanism (e.g. `skill://okf-cv` if supported, otherwise by reading back the destination file).
+
+4. **Ingest all supporting docs** — read every `.md` file in `skills/okf-cv/` (the step files 01_*.md, 02_*.md, 03_*.md, and any others) to load the full pipeline into context.
+
+Do not perform any other actions.
 

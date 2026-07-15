@@ -6,6 +6,20 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.5 — Self-Refresh Trigger + SKILL.md Self-Refresh Section
+**Files:** `SKILL.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** After pulling updates or switching branches, the skill metadata in the active CLI/harness skill store can be stale. Added a `refresh` trigger keyword and a Self-Refresh procedure so the user can reload the skill into the current CLI's skill store on demand.
+
+**Changes:**
+- Added `"refresh"` to the trigger keywords in `SKILL.md` frontmatter description.
+- Appended a `## Self-Refresh` section to `SKILL.md` with a 4-step procedure: identify the CLI/harness, copy `SKILL.md` (ground truth) to the CLI's active skill store path, confirm the load via the CLI's skill resolution mechanism, and ingest all supporting `.md` files in `skills/okf-cv/` to load the full pipeline into context. Closes with "Do not perform any other actions."
+- Added a `### Self-Refresh` subsection to `README.md` under "How to Run the Pipeline" documenting the `refresh okf-cv` command and the 4-step procedure.
+
+**Behavior:** Typing `refresh okf-cv` (or similar) triggers a metadata/context reload only — it does not run the pipeline or modify any application files.
+
+---
+
 ## v28.4 — Dynamic Section Ordering
 **Files:** `renderers/resume_common.py`, `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
 
