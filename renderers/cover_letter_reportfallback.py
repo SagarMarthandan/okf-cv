@@ -55,7 +55,10 @@ def create_cover_letter_pdf_reportlab(data, output_path):
         'CLBody', parent=styles['Normal'],
         fontName=F_REG, fontSize=11, leading=14.5, alignment=4, textColor=TEXT_DARK,
     )
-
+    left_body_style = ParagraphStyle(
+        'CLLeftBody', parent=styles['Normal'],
+        fontName=F_REG, fontSize=11, leading=14.5, alignment=0, textColor=TEXT_DARK,
+    )
     story = []
 
     sender      = data.get('sender', {})
@@ -81,7 +84,7 @@ def create_cover_letter_pdf_reportlab(data, output_path):
     story.append(Paragraph(f"<b>{data.get('subject', '')}</b>", subject_style))
     story.append(Spacer(1, 10))
 
-    story.append(Paragraph(data.get('salutation', 'Sehr geehrte Damen und Herren,'), body_style))
+    story.append(Paragraph(data.get('salutation', 'Sehr geehrte Damen und Herren,'), left_body_style))
     story.append(Spacer(1, 6))
 
     for p in data.get('paragraphs', []):
@@ -94,7 +97,7 @@ def create_cover_letter_pdf_reportlab(data, output_path):
     sig_name   = data.get('signature_name', '')
     if sig_name.isupper():
         sig_name = sig_name.title()
-    story.append(Paragraph(f"{closing}<br/><br/><b>{sig_name}</b>", body_style))
+    story.append(Paragraph(f"{closing}<br/><br/><b>{sig_name}</b>", left_body_style))
 
     doc.build(story)
     print(f"Successfully compiled Cover Letter via ReportLab (LM Roman 10): {output_path}")

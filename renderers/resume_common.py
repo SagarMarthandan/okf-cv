@@ -24,6 +24,33 @@ HEADERS = {
     }
 }
 
+# Default order of resume sections, top to bottom. Both renderers read from
+# this list so they stay in sync. A resume YAML may override the order by
+# supplying a top-level `section_order` key (a list of these section keys);
+# any key not present in the data is skipped, and any unknown key is ignored.
+DEFAULT_SECTION_ORDER = [
+    'summary',
+    'technical_skills',
+    'projects',
+    'professional_experience',
+    'education',
+    'spoken_languages',
+]
+
+
+def get_section_order(data):
+    """Return the section order for a resume.
+
+    Reads `data['section_order']` if present (must be a list of section keys
+    from DEFAULT_SECTION_ORDER). Falls back to DEFAULT_SECTION_ORDER.
+    Unknown keys are dropped; the result preserves the caller's ordering.
+    """
+    raw = data.get('section_order')
+    if not raw or not isinstance(raw, list):
+        return list(DEFAULT_SECTION_ORDER)
+    valid = set(DEFAULT_SECTION_ORDER)
+    return [k for k in raw if k in valid]
+
 
 def get_resume_language(data):
     # Check top-level language field first

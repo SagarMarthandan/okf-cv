@@ -27,7 +27,7 @@ from .utils import (
     TEXT_DARK, TEXT_MUTED, LINE_COLOR,
     register_lm_roman_10,
 )
-from .resume_common import HEADERS, get_resume_language
+from .resume_common import HEADERS, get_resume_language, get_section_order
 
 
 def create_resume_pdf_reportlab(data, output_path):
@@ -164,13 +164,18 @@ def create_resume_pdf_reportlab(data, output_path):
         ]))
         return t
 
-    # Summary
+    # Section renderers — each returns a list of flowables for one section.
+    # The main body iterates over the (optionally YAML-overridden) section
+    # order and extends `story` with whichever the renderer produces, so the
+    # layout order is data-driven rather than hardcoded.
     lang_code = get_resume_language(data)
     h = HEADERS[lang_code]
 
-    summary_val = data.get('summary', data.get('zusammenfassung'))
-    if summary_val:
-        summary_block = [
+    def render_summary():
+        summary_val = data.get('summary', data.get('zusammenfassung'))
+        if not summary_val:
+            return []
+        return [
             add_section_header(h['summary']),
             Spacer(1, 4),
             Paragraph(
@@ -179,32 +184,34 @@ def create_resume_pdf_reportlab(data, output_path):
             ),
             Spacer(1, 4)
         ]
-        story.extend(summary_block)
 
-    # Technical Skills
-    skills_list = data.get('technical_skills', data.get('technische_fähigkeiten', data.get('technische fähigkeiten', [])))
-    if skills_list:
-        skills_block = [
+    def render_technical_skills():
+        skills_list = data.get('technical_skills', data.get('technische_fähigkeiten', data.get('technische fähigkeiten', [])))
+        if not skills_list:
+            return []
+        block = [
             add_section_header(h['technical_skills']),
             Spacer(1, 4)
         ]
         for i, cat in enumerate(skills_list):
             category_name = cat.get('category', '')
             skills_joined = " &bull; ".join(cat.get('skills', []))
-            skills_block.append(Paragraph(f"<b>{category_name}:</b> {skills_joined}", skill_val_style))
+            block.append(Paragraph(f"<b>{category_name}:</b> {skills_joined}", skill_val_style))
             if i < len(skills_list) - 1:
-                skills_block.append(Spacer(1, 1))
-        skills_block.append(Spacer(1, 4))
-        story.extend(skills_block)
+                block.append(Spacer(1, 1))
+        block.append(Spacer(1, 4))
+        return block
 
-    # Projects — single-paragraph format (mirrors the LaTeX polished layout)
-    projects_list = data.get('projects', data.get('projekte', []))
-    if projects_list:
+    def render_projects():
+        # Single-paragraph format (mirrors the LaTeX polished layout)
+        projects_list = data.get('projects', data.get('projekte', []))
+        if not projects_list:
+            return []
+        block = []
         for i, proj in enumerate(projects_list):
-            proj_block = []
             if i == 0:
-                proj_block.append(add_section_header(h['projects']))
-                proj_block.append(Spacer(1, 4))
+                block.append(add_section_header(h['projects']))
+                block.append(Spacer(1, 4))
             name       = proj.get('name', '')
             repo_url   = proj.get('repo_url', proj.get('url', ''))
             tools      = proj.get('tools', [])
@@ -233,22 +240,23 @@ def create_resume_pdf_reportlab(data, output_path):
                 f"<b>{name}</b>{github_link} <font size={tools_size} color='#555555'><i>{tools_compressed}</i></font>",
                 proj_title_style,
             )
-            proj_block.append(proj_header_para)
-            proj_block.append(Spacer(1, 3))
+            block.append(proj_header_para)
+            block.append(Spacer(1, 3))
             if prose:
-                proj_block.append(Paragraph(prose, proj_para_style))
+                block.append(Paragraph(prose, proj_para_style))
             # 4pt gap between projects; tighter gap after last project
-            proj_block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 2))
-            story.extend(proj_block)
+            block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 2))
+        return block
 
-    # Professional Experience
-    exp_list = data.get('professional_experience', data.get('berufserfahrung', []))
-    if exp_list:
+    def render_professional_experience():
+        exp_list = data.get('professional_experience', data.get('berufserfahrung', []))
+        if not exp_list:
+            return []
+        block = []
         for i, exp in enumerate(exp_list):
-            exp_block  = []
             if i == 0:
-                exp_block.append(add_section_header(h['professional_experience']))
-                exp_block.append(Spacer(1, 4))
+                block.append(add_section_header(h['professional_experience']))
+                block.append(Spacer(1, 4))
             company    = exp.get('company', '')
             date_range = exp.get('date', '')
             job_title  = exp.get('title', '')
@@ -268,19 +276,21 @@ def create_resume_pdf_reportlab(data, output_path):
                 ('TOPPADDING',    (0,0), (-1,-1), 0),
                 ('BOTTOMPADDING', (0,0), (-1,-1), 0),
             ]))
-            exp_block.append(exp_table)
-            exp_block.append(Spacer(1, 3))
+            block.append(exp_table)
+            block.append(Spacer(1, 3))
             for b in bullets:
-                exp_block.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
+                block.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
             # 4pt gap between companies; tighter gap after last entry
-            exp_block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 2))
-            story.extend(exp_block)
+            block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 2))
+        return block
 
-    # Education — degree (bold) + university (italic only, not bold) on the left,
-    # date right-aligned (same two-column layout as Professional Experience).
-    edu_list = data.get('education', data.get('ausbildung', []))
-    if edu_list:
-        edu_block = [
+    def render_education():
+        # degree (bold) + university (italic only, not bold) on the left,
+        # date right-aligned (same two-column layout as Professional Experience).
+        edu_list = data.get('education', data.get('ausbildung', []))
+        if not edu_list:
+            return []
+        block = [
             add_section_header(h['education']),
             Spacer(1, 4)
         ]
@@ -313,20 +323,31 @@ def create_resume_pdf_reportlab(data, output_path):
                 ('TOPPADDING',    (0,0), (-1,-1), 0),
                 ('BOTTOMPADDING', (0,0), (-1,-1), 0),
             ]))
-            edu_block.append(edu_table)
-            edu_block.append(Spacer(1, 3))
-        story.extend(edu_block)
+            block.append(edu_table)
+            block.append(Spacer(1, 3))
+        return block
 
-    # Spoken Languages
-    lang_items = data.get('languages', data.get('spoken_languages', data.get('sprachen', [])))
-    if lang_items:
-        lang_block = [
+    def render_spoken_languages():
+        lang_items = data.get('languages', data.get('spoken_languages', data.get('sprachen', [])))
+        if not lang_items:
+            return []
+        return [
             add_section_header(h['spoken_languages']),
             Spacer(1, 3),
             Paragraph(" &bull; ".join(lang_items), skill_val_style),
             Spacer(1, 4)
         ]
-        story.extend(lang_block)
+
+    section_renderers = {
+        'summary': render_summary,
+        'technical_skills': render_technical_skills,
+        'projects': render_projects,
+        'professional_experience': render_professional_experience,
+        'education': render_education,
+        'spoken_languages': render_spoken_languages,
+    }
+    for key in get_section_order(data):
+        story.extend(section_renderers[key]())
 
     doc.build(story)
     print(f"Successfully compiled Resume via ReportLab (LM Roman 10): {output_path}")

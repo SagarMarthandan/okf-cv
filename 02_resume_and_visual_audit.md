@@ -21,13 +21,14 @@ Generate a tailored, high-scannability resume (`Resume.yaml`) directly in struct
   - `Project-Heavy`: Focus on execution — write verbose descriptions for 4 projects (up to 300 chars each), simplify the skills block.
   - `Skills-Heavy`: Focus on tools — list only 3 projects, but expand the technical skills categories and bullet details.
   Choose the variation that best counters the JD's emphasis. If the JD is tool-stack-heavy, use `Skills-Heavy`. If the JD emphasizes execution and project delivery, use `Project-Heavy`. Default to `Balanced` when unclear.
-- **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language in this exact order:
+- **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language. The default order is:
   1. Summary (Zusammenfassung)
   2. Technical Skills (Technische Fähigkeiten)
   3. Projects (Projekte)
   4. Professional Experience (Berufserfahrung)
   5. Education (Ausbildung)
   6. Spoken Languages (Sprachen)
+  The order is data-driven: a resume YAML may supply a top-level `section_order` key (a list of section keys: `summary`, `technical_skills`, `projects`, `professional_experience`, `education`, `spoken_languages`) to reorder sections per-application. Unknown keys are ignored; omitted sections are skipped. When `section_order` is absent, the default order above is used. Both the LaTeX and ReportFallback renderers read from the same source of truth (`DEFAULT_SECTION_ORDER` in `renderers/resume_common.py`) so they stay in sync.
 
 ### 2. Structural & Layout Constraints
 To pass the visual audit and recruiter "eye test," the resume MUST fit within a clean 1.5-page layout:

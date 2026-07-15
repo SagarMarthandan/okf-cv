@@ -17,6 +17,7 @@ keywords:
 - retrieval-augmented generation
 - augmented
 - document
+- configure
 archetypes:
 - AI Engineer
 - AI/LLMOps

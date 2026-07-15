@@ -6,6 +6,22 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.4 — Dynamic Section Ordering
+**Files:** `renderers/resume_common.py`, `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** Section order was hardcoded in both renderers (LaTeX joined a fixed list of section strings; ReportFallback appended blocks to `story` in a fixed sequence). This made per-application reordering impossible without code changes.
+
+**Changes:**
+- Added `DEFAULT_SECTION_ORDER` list and `get_section_order(data)` helper to `renderers/resume_common.py`. The helper reads an optional top-level `section_order` key from the resume YAML, validates keys against the known set (drops unknown keys), and falls back to the default order when the key is absent or not a list.
+- Refactored `renderers/resume_latex.py`: section strings are now collected into a `section_map` dict and emitted in `get_section_order(data)` order instead of a hardcoded list.
+- Refactored `renderers/resume_reportfallback.py`: each section's rendering logic extracted into an inner function (`render_summary`, `render_technical_skills`, `render_projects`, `render_professional_experience`, `render_education`, `render_spoken_languages`) returning a list of flowables. The main body iterates `get_section_order(data)` and dispatches through a `section_renderers` dict.
+- Updated `02_resume_and_visual_audit.md` spec: documented the `section_order` YAML override and that both renderers share the same source of truth.
+- Updated `README.md` Step 2 with a Dynamic Section Ordering bullet.
+
+**Behavior:** Default order unchanged (Summary → Skills → Projects → Experience → Education → Languages). Opt-in override via `section_order` in the resume YAML — the model/harness can emit it when explicitly asked to reorder; otherwise the default applies.
+
+---
+
 ## v28 — Pipeline Optimizations + Archetype-Specific Base Resumes + Photo Removal
 **Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `yaml_to_pdf.py`, `okf_lint.py`, `okf_learn.py`, `config.py`, `sync_to_obsidian.py`, `resume_parseability.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `SKILL.md`, `README.md`, `CHANGELOG.md`, `.gitignore`, `okf/base_files/english/resume_data_engineer.md` (new), `okf/base_files/english/resume_data_analyst.md` (new), `okf/base_files/english/resume_analytics_engineer.md` (new), `okf/base_files/english/resume_ai_data_engineer.md` (new), `okf/photo/` (deleted)
 

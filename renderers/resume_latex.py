@@ -11,7 +11,7 @@ import sys
 import yaml
 
 from .utils import TEXT_DARK, escape_latex, run_pdflatex
-from .resume_common import HEADERS, get_resume_language
+from .resume_common import HEADERS, get_resume_language, get_section_order
 
 
 # ── Parse-integrity audit (fallback trigger only) ─────────────────────────────
@@ -259,8 +259,17 @@ def _generate_resume_tex(data, output_path):
     else:
         lang_tex = ""
 
-    sections = [s for s in [summary_tex, skills_tex, projects_tex,
-                             experience_tex, education_tex, lang_tex] if s]
+    section_map = {
+        'summary': summary_tex,
+        'technical_skills': skills_tex,
+        'projects': projects_tex,
+        'professional_experience': experience_tex,
+        'education': education_tex,
+        'spoken_languages': lang_tex,
+    }
+    order = get_section_order(data)
+    sections = [section_map[k] for k in order
+                if k in section_map and section_map[k]]
     body_tex = "\n\n\\vspace{6pt}\n\n".join(sections)
 
     # 4. Generate LaTeX document
