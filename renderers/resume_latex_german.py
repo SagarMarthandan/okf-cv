@@ -189,7 +189,7 @@ def _generate_resume_tex_germany(data, output_path):
             )
         else:
             proj_tex_items.append(item_tex)
-    projects_tex = "\n\\vspace{6pt}\n".join(proj_tex_items) if proj_tex_items else ""
+    projects_tex = "\n\\vspace{4pt}\n".join(proj_tex_items) if proj_tex_items else ""
 
     # F. Spoken Languages
     lang_items = data.get('languages', data.get('spoken_languages', data.get('sprachen', [])))
