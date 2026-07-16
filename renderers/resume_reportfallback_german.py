@@ -9,12 +9,7 @@ ReportLab using the LM Roman 10 font family. Used as:
 
 Section order follows German Lebenslauf convention:
   Summary → Professional Experience → Education → Technical Skills →
-  Projects → Spoken Languages → Date & Signature
-
-The Date & Signature block renders at the bottom with no section header:
-  City, den DD.MM.YYYY
-  [signature line]
-  Sagar Marthandan
+  Projects → Spoken Languages
 """
 import os
 import sys

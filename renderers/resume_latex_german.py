@@ -3,16 +3,11 @@ Resume LaTeX renderer — German market style.
 
 Produces a Lebenslauf PDF with German-convention section ordering:
   Summary → Professional Experience → Education → Technical Skills →
-  Projects → Spoken Languages → Date & Signature
-
-The Date & Signature block renders at the bottom with no section header:
-  City, den DD.MM.YYYY
-  [signature space]
-  Sagar Marthandan
+  Projects → Spoken Languages
 
 Language is determined by get_resume_language(data) — automatic from JD.
 The renderer works for both German and English language content; the
-*style* (section order, date/signature block) is always German market.
+*style* (section order) is always German market.
 
 Used when the user selects:
   render_mode: latex

@@ -24,9 +24,9 @@ Generate a tailored, high-scannability resume (`Resume.yaml`) directly in struct
   Choose the variation that best counters the JD's emphasis. If the JD is tool-stack-heavy, use `Skills-Heavy`. If the JD emphasizes execution and project delivery, use `Project-Heavy`. Default to `Balanced` when unclear.
 - **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language. The section order depends on the `resume_style` key in `Resume.yaml`:
   - **US Style** (`resume_style: us`, default): Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages
-  - **German Style** (`resume_style: german`): Summary → Professional Experience → Education → Technical Skills → Spoken Languages → Date & Signature
+  - **German Style** (`resume_style: german`): Summary → Professional Experience → Education → Technical Skills → Spoken Languages
 
-  The German style follows Lebenslauf convention: experience before skills, no separate Projects section (projects are folded into the Professional Experience section as bullet points under an "Independent Data Engineering & Professional Development" entry — see below), and a Date & Signature block at the bottom (no section header — renders as `City, den DD.MM.YYYY` / signature line / `Sagar Marthandan`). The date is auto-generated. The city is taken from `contact_info.location` (first comma-separated part) or a `signature_city` key if present.
+  The German style follows Lebenslauf convention: experience before skills, no separate Projects section (projects are folded into the Professional Experience section as bullet points under an "Independent Data Engineering & Professional Development" entry — see below).
 
   **German Style — Independent Data Engineering Entry:** When using German style, the 3 JD-aligned projects from `project_info.md` are NOT rendered as a separate Projects section. Instead, they are added as `project_bullets` within a special entry in the `professional_experience` list:
   ```yaml
@@ -156,7 +156,7 @@ After the final resume PDF is compiled (either via LaTeX or ReportFallback), run
 #### What It Checks
 1. **Unicode Integrity:** Scans the extracted text for replacement glyphs (U+FFFD) that indicate font encoding corruption.
 2. **Keyword Recovery:** Extracts every tool, skill, and significant summary word from `Resume.yaml` and verifies each one is recoverable from the PDF text layer. Handles line-break splitting (keywords split across lines are still counted as recovered via whitespace normalization).
-3. **Section Header Detection:** Verifies all expected section headers are present in the text. The expected set depends on `resume_style`: US style checks 6 headers (Summary, Technical Skills, Projects, Professional Experience, Education, Spoken Languages); German style checks 5 headers (Summary, Professional Experience, Education, Technical Skills, Spoken Languages) — no Projects header since projects are folded into the experience section. The Date & Signature block has no section header and is not checked.
+3. **Section Header Detection:** Verifies all expected section headers are present in the text. The expected set depends on `resume_style`: US style checks 6 headers (Summary, Technical Skills, Projects, Professional Experience, Education, Spoken Languages); German style checks 5 headers (Summary, Professional Experience, Education, Technical Skills, Spoken Languages) — no Projects header since projects are folded into the experience section.
 4. **Contact Info Extraction:** Verifies name, phone, email, GitHub, and LinkedIn are all extractable from the text.
 5. **Text Structure:** Reports line count, average/max line length.
 

@@ -64,7 +64,7 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
   - `renderers/resume.py` — Resume renderer dispatcher (reads `render_mode` + `resume_style`, routes to 4 renderer combinations)
   - `renderers/resume_latex_us.py` — Resume LaTeX renderer (US style) + parse-integrity audit
   - `renderers/resume_reportfallback_us.py` — Resume ReportLab renderer (US style, LM Roman 10 font)
-  - `renderers/resume_latex_german.py` — Resume LaTeX renderer (German style: Lebenslauf section order + date/signature block)
+  - `renderers/resume_latex_german.py` — Resume LaTeX renderer (German style: Lebenslauf section order)
   - `renderers/resume_reportfallback_german.py` — Resume ReportLab renderer (German style, LM Roman 10, same German section order)
   - `renderers/cover_letter.py` — Cover Letter renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
   - `renderers/cover_letter_latex.py` — Cover Letter LaTeX renderer
@@ -111,8 +111,8 @@ Use the `ask_user_question` tool with a single-select question:
 - **Question:** "Which resume style should be used?"
 - **Header:** "Resume style"
 - **Options:**
-  - `US Style` — US-convention section order: Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages. No date/signature block.
-  - `German Style` — German Lebenslauf convention: Summary → Professional Experience → Education → Technical Skills → Spoken Languages → Date & Signature (city, date, signature line, name). No separate Projects section — the 3 JD-aligned projects are folded into the Professional Experience section as `project_bullets` under an "Independent Data Engineering & Professional Development" entry (rendered in `name --- [GitHub] --- summary` format with quantified metrics), plus a 4th plain-text bullet for other skills/tools. The entry date ends at April 2025 (candidate is now studying economics). The title uses a concrete role (e.g., `Data Engineer`, `Analytics Engineer`) — never `Architect`/`Lead`/`Manager`. Required for German market applications.
+  - `US Style` — US-convention section order: Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages.
+  - `German Style` — German Lebenslauf convention: Summary → Professional Experience → Education → Technical Skills → Spoken Languages. No separate Projects section — the 3 JD-aligned projects are folded into the Professional Experience section as `project_bullets` under an "Independent Data Engineering & Professional Development" entry (rendered in `name --- [GitHub] --- summary` format with quantified metrics), plus a 4th plain-text bullet for other skills/tools. The entry date ends at April 2025 (candidate is now studying economics). The title uses a concrete role (e.g., `Data Engineer`, `Analytics Engineer`) — never `Architect`/`Lead`/`Manager`. Required for German market applications.
 
 ### Storing the Selections
 

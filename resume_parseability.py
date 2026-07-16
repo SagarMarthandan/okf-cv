@@ -285,9 +285,8 @@ def _check_keyword_recovery(pdf_text, keywords):
 def _check_section_headers(pdf_text, lang='english', resume_style='us'):
     """Check that all expected section headers are present in the text.
 
-    For German-style resumes, the date_signature block has no section header,
-    so it is excluded from the expected set. The section set is also
-    order-aware: German style uses a different order than US style.
+    The section set is order-aware: German style uses a different order
+    than US style.
     """
     if resume_style == 'german':
         expected = {
