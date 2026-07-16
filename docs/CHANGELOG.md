@@ -6,6 +6,89 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.14 — Embedding Daemon (eliminates redundant model loads across pipeline invocations)
+
+**Files:** `embedding_server.py` (new), `zvec_hybrid_search.py`, `.gitignore`, `SKILL.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** The pipeline invokes `zvec_hybrid_search.py` 3 times per run (pre-rewrite similarity, hybrid portfolio search, post-rewrite similarity). Each invocation loads the `all-MiniLM-L6-v2` SentenceTransformer model fresh — ~21s on CPU, ~63s total wasted on model loading per pipeline run. The actual embedding computation is <0.05s per text.
+
+**Changes:**
+- **Created `embedding_server.py`:** Local TCP daemon (127.0.0.1, ports 54321-54325) that holds the SentenceTransformer model in memory. JSON-line protocol over TCP (`ping`, `embed_batch` methods). Auto-shuts down after 30 min of inactivity via idle watchdog. State file: `okf/.embedding_server.json` (port + PID for client coordination). Log: `okf/.embedding_server.log`. Manual control: `python embedding_server.py --status` / `--stop`.
+- **Modified `zvec_hybrid_search.py`:** `get_embedding()` and `get_embeddings_batch()` now try the daemon first (via TCP), falling back to direct `_get_model()` if the daemon is unavailable. `_ensure_daemon()` auto-starts the daemon via `subprocess.Popen` with `CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` on Windows (detaches from the parent's Job Object so the daemon survives after the calling process exits). Removed redundant `_get_model()` call in `ingest_portfolio()` (daemon handles model loading internally).
+- **Critical Windows fix:** PyTorch on Windows CPU segfaults when `model.encode()` is called from a different thread than the one that loaded the model. The daemon uses a **single-threaded** `TCPServer` (not `ThreadingMixIn`) and loads the model in the **main thread** before calling `serve_forever()`. This ensures both model load and encode happen in the same thread.
+- **Added `okf/.embedding_server.json` to `.gitignore`** (state file is runtime-generated).
+- **Updated `SKILL.md` and `README.md`** with accurate daemon description, port range, protocol, and manual control commands.
+
+**Behavior:**
+- First invocation: auto-starts daemon, model loads in ~21s, embed request served. Total: ~21s (same as before — no regression).
+- Second and third invocations: daemon already running, model in memory. Each embed: ~0.03-0.05s. **Saves ~42s per pipeline run.**
+- If daemon unavailable (port conflict, crash, etc.): silently falls back to direct model loading. Pipeline still works, just at original speed.
+- Daemon auto-shuts down after 30 min of no requests (no zombie processes).
+
+**Test results:**
+- First call: 21.54s (daemon startup + model load + embed)
+- Second call: 0.028s (daemon running, model in memory) — **770x faster**
+- Third call (batch of 3): 0.040s
+- Fourth call (2 texts, simulating --similarity): 0.047s
+- All 30 unit tests pass. Hybrid search tests pass (Zvec results returned via daemon).
+- Daemon survives after calling process exits (verified with `tasklist` PID check).
+
+---
+
+## v28.13 — Resume Renderer File Rename (symmetry + YAML-key mirror)
+
+**Files:** `renderers/resume_latex_us.py` (renamed from `resume_latex.py`), `renderers/resume_latex_german.py` (renamed from `resume_latex_germany.py`), `renderers/resume_reportfallback_us.py` (renamed from `resume_reportfallback.py`), `renderers/resume_reportfallback_german.py` (renamed from `resume_reportfallback_germany.py`), `renderers/resume.py`, `yaml_to_pdf.py`, `resume_parseability.py`, `SKILL.md`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** The four resume renderer filenames were asymmetric — the US variants had no style suffix (implicit-by-omission) while the German variants used `_germany` (which didn't match the YAML `resume_style: german` value). This made the routing matrix harder to read and broke the filename↔YAML-key mirror.
+
+**Changes:**
+- Renamed `renderers/resume_latex.py` → `renderers/resume_latex_us.py` (US variant now explicit).
+- Renamed `renderers/resume_latex_germany.py` → `renderers/resume_latex_german.py` (`germany` → `german` to match the YAML `resume_style: german` value).
+- Renamed `renderers/resume_reportfallback.py` → `renderers/resume_reportfallback_us.py`.
+- Renamed `renderers/resume_reportfallback_germany.py` → `renderers/resume_reportfallback_german.py`.
+- Updated all imports: `renderers/resume.py` dispatcher, lazy imports in `yaml_to_pdf.py` (`--tex-only` path), cross-imports inside the LaTeX renderers (audit-failure fallback path), and the style-aware recovery imports in `resume_parseability.py`.
+- Updated filename references in `SKILL.md`, `02_resume_and_visual_audit.md`, `README.md` (file tree + Dynamic Section Ordering bullet).
+- Historical CHANGELOG entries (v28.0–v28.12) are intentionally left with the old filenames — they describe the codebase state at the time of those releases.
+
+**Behavior:** No behavioral change. The dispatcher routing matrix, YAML keys (`render_mode`, `resume_style`), and public function names (`create_resume_pdf_latex`, `create_resume_pdf_reportlab`, `create_resume_pdf_latex_germany`, `create_resume_pdf_reportlab_germany`) are unchanged — only the module filenames and import paths changed.
+
+---
+
+## v28.12 — German Style: Project-Format Bullets + Date/Title Corrections
+**Files:** `renderers/resume_latex_germany.py`, `renderers/resume_reportfallback_germany.py`, `02_resume_and_visual_audit.md`, `README.md`, `SKILL.md`, `CHANGELOG.md`
+
+**Motivation:** The German-style "Independent Data Engineering & Professional Development" entry previously rendered projects as plain text bullets without project names, GitHub links, or quantified metrics — making it impossible to showcase project evidence in German-style resumes. Additionally, the date was stale (April 2024) and the title "Remote" was misleading (sounded like an architect/lead role).
+
+**Changes:**
+- `renderers/resume_latex_germany.py`: Added `project_bullets` support in the professional experience section. When an experience entry has a `project_bullets` list, each item is rendered as a `\resumeItem` with `\textbf{name} --- [GitHub] --- summary.` format — identical to the US-style project section. Project bullets render before regular text bullets.
+- `renderers/resume_reportfallback_germany.py`: Same `project_bullets` support — each project renders as a bullet with `<b>name</b> --- [GitHub] --- summary.` inline. Project bullets render before regular text bullets.
+- `02_resume_and_visual_audit.md`: Updated the German Style Independent Data Engineering entry documentation with: (1) new `project_bullets` YAML schema (name, repo_url, bullets per project), (2) date must end at April 2025 (candidate studying economics), (3) title must be a concrete role (Data Engineer, Analytics Engineer, Data & AI Solutions Analyst) — never Architect/Lead/Manager, (4) project bullets must include quantified metrics, (5) 4th bullet is plain-text "other tools".
+- `README.md`: Updated Dynamic Section Ordering description to mention `project_bullets`, date till April 2025, and title rules.
+- `SKILL.md`: Updated German Style option description and completion checklist to mention `project_bullets` with quantified metrics.
+
+**Behavior:** German-style resumes now render the 3 JD-aligned projects within the Independent Data Engineering experience entry in the same `name --- [GitHub] --- summary` format as US-style project sections, with clickable GitHub links and quantified metrics. The entry date ends at April 2025 and the title reflects a concrete engineering role.
+
+---
+
+## v28.11 — Research Paper Integration: P1-P4 (Semantic Similarity, Skill Gaps, ATS Delta Tracking, Placement Weighting)
+**Files:** `resume_jd_similarity.py` (new), `okf_learn.py`, `renderers/ats_report.py`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `README.md`, `CHANGELOG.md`
+
+**Motivation:** Integration of actionable ideas from three research papers (Anand & Giri 2024, Gopika et al. 2025, Bevara et al. 2025) as outlined in `research_integration_plan.md`. Four features implemented (P1-P4); P5 (nDCG/RBO) and P6 (multi-embedding) deferred.
+
+**Changes:**
+- **P1 — Cosine Similarity (Resume ↔ JD):** New `resume_jd_similarity.py` module computes cosine similarity between Resume.yaml and Job_Description.yaml using the existing `all-MiniLM-L6-v2` embedding model from Zvec. Called in Step 1 (pre-rewrite, base resume vs JD) and Step 2 (post-rewrite, optimized resume vs JD). Results stored as `resume_jd_semantic_similarity.pre_rewrite_similarity` and `post_rewrite_ats_score.post_rewrite_similarity` in `ATS_Report.yaml`. Rendered in ATS Report PDF with before/after delta.
+- **P2 — Skill Gap Analysis:** New `skill_gaps` field in `ATS_Report.yaml` schema. Step 1 extracts required skills from JD, cross-references against base resume skills + matched project skills, and stores the difference as a flat list. Step 2 loads this list and makes targeted additions (add to skills section, weave into projects, or note as genuine gap). Rendered as a bulleted list in the ATS Report PDF.
+- **P3 — ATS Score Delta Tracking:** `okf_learn.py` now extracts `pre_rewrite_ats_score` and `post_rewrite_ats_score` from `ATS_Report.yaml` via new `load_ats_scores()` function. Each `learning_log.json` entry includes both scores, creating a longitudinal dataset of which keyword enrichments correlate with ATS score improvements.
+- **P4 — Contextual Placement Weighting:** New `placement_breakdown` field in `ATS_Report.yaml` schema. Step 1 checks which resume sections (skills, projects, experience) contain each critical JD keyword and applies placement multipliers (1.0x skills, 1.2x projects, 1.3x experience, 1.5x multiple sections). Informational sub-report — does not change the 4-category score. Rendered as a table in the ATS Report PDF.
+- `renderers/ats_report.py`: Added three new PDF sections — Resume-JD Semantic Similarity (with delta), Skill Gap Analysis (bulleted list), and Contextual Keyword Placement (table with keyword/sections/multiplier). Also added post-rewrite similarity display in the post-rewrite score section.
+- `01_ats_and_jd_archival.md`: Added new sections 3 (Skill Gap Analysis), 4 (Contextual Placement Weighting), 5 (Pre-Rewrite Semantic Similarity) to execution rules. Renumbered subsequent sections. Updated ATS_Report.yaml schema with `skill_gaps`, `resume_jd_semantic_similarity`, and `placement_breakdown` fields.
+- `02_resume_and_visual_audit.md`: Added Skill Gap Closure instruction to Document Rewrite section. Added Post-Rewrite Semantic Similarity computation instructions and command to Post-Rewrite ATS Rescoring section. Updated `post_rewrite_ats_score` schema with `post_rewrite_similarity` field.
+- `README.md`: Added P1/P2/P4 feature descriptions to Step 1, P1 to Step 2 post-rewrite, P3 to self-learning section. Added `resume_jd_similarity.py` to directory structure. Added standalone testing command for similarity script.
+
+**Behavior:** The pipeline now produces quantitative semantic alignment scores (P1), actionable skill gap lists (P2), ATS score delta tracking in the learning log (P3), and contextual keyword placement diagnostics (P4) — all rendered in the ATS Report PDF and structured in ATS_Report.yaml.
+
+---
+
 ## v28.10 — Project Format: `name --- [GitHub] --- summary` Inline Single-Paragraph
 **Files:** `renderers/resume_latex.py`, `renderers/resume_reportfallback.py`, `resume_parseability.py`, `02_resume_and_visual_audit.md`, `README.md`, `SKILL.md`, `CHANGELOG.md`
 

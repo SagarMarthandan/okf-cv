@@ -21,6 +21,7 @@ keywords:
 archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering
+- Data Engineering
 repo_url: https://github.com/SagarMarthandan
 ---
 

@@ -26,7 +26,7 @@ ZVEC_DB_PATH = os.getenv(
     "YAML_CV_ZVEC_DB_PATH",
     os.path.join(SKILL_DIR, "okf", "zvec_db")
 )
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = "C:/Users/sagar/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 EMBEDDING_DIMENSION = 384
 HYBRID_OKF_WEIGHT = 0.6
 HYBRID_ZVEC_WEIGHT = 0.4

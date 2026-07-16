@@ -23,13 +23,17 @@ import sys
 import yaml
 from typing import Dict, Any
 
-from renderers.resume              import create_resume_pdf
-from renderers.cover_letter        import create_cover_letter_pdf
-from renderers.job_description     import create_job_description_pdf
-from renderers.ats_report          import create_ats_report_pdf
-from renderers.parseability_report import create_parseability_report_pdf
-
 VALID_TYPES = {'resume', 'cover_letter', 'job_description', 'ats_report', 'parseability_report'}
+
+# Lazy renderer loader — only imports the renderer module actually needed,
+# avoiding loading reportlab/pdflatex/sentence-transformers for unrelated types.
+_RENDERER_IMPORTS = {
+    'resume':              'from renderers.resume import create_resume_pdf',
+    'cover_letter':        'from renderers.cover_letter import create_cover_letter_pdf',
+    'job_description':     'from renderers.job_description import create_job_description_pdf',
+    'ats_report':          'from renderers.ats_report import create_ats_report_pdf',
+    'parseability_report': 'from renderers.parseability_report import create_parseability_report_pdf',
+}
 
 
 def _infer_type(filename: str) -> str:
@@ -91,24 +95,21 @@ def main() -> None:
     # --tex-only is only meaningful for resume (LaTeX mode). For other types
     # it is silently ignored.
     if tex_only and doc_type == 'resume':
-        from renderers.resume import _resolve_render_mode
+        from renderers.resume import _resolve_render_mode, _resolve_resume_style
         mode = _resolve_render_mode(data)
+        style = _resolve_resume_style(data)
         if mode == 'latex':
-            from renderers.resume_latex import create_resume_pdf_latex_tex_only
-            create_resume_pdf_latex_tex_only(data, pdf_path)
+            if style == 'german':
+                from renderers.resume_latex_german import create_resume_pdf_latex_germany_tex_only
+                create_resume_pdf_latex_germany_tex_only(data, pdf_path)
+            else:
+                from renderers.resume_latex_us import create_resume_pdf_latex_tex_only
+                create_resume_pdf_latex_tex_only(data, pdf_path)
             return
         # reportfallback has no .tex polish step — fall through to normal compile
         print("--tex-only ignored for reportfallback mode (no .tex file produced).", file=sys.stderr)
 
-    renderers = {
-        'resume':              create_resume_pdf,
-        'cover_letter':        create_cover_letter_pdf,
-        'job_description':     create_job_description_pdf,
-        'ats_report':          create_ats_report_pdf,
-        'parseability_report': create_parseability_report_pdf,
-    }
-
-    if doc_type not in renderers:
+    if doc_type not in _RENDERER_IMPORTS:
         print(
             f"Error: Unknown document type '{doc_type}'. "
             f"Must be one of: {', '.join(sorted(VALID_TYPES))}",
@@ -116,7 +117,11 @@ def main() -> None:
         )
         sys.exit(1)
 
-    renderers[doc_type](data, pdf_path)
+    # Lazy import — only load the renderer module for the document type being compiled
+    ns = {}
+    exec(_RENDERER_IMPORTS[doc_type], ns)
+    render_fn = [v for k, v in ns.items() if k != '__builtins__'][0]
+    render_fn(data, pdf_path)
 
 
 if __name__ == '__main__':

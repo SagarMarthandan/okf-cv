@@ -146,6 +146,72 @@ def _create_ats_report_pdf_reportlab(data, output_path):
                 story.append(Paragraph(f'&bull;&nbsp;&nbsp;{s}', bullet))
         story.append(Spacer(1, 6))
 
+    # Semantic Similarity (Resume ↔ JD)
+    sim = data.get('resume_jd_semantic_similarity') or {}
+    pre_sim = sim.get('pre_rewrite_similarity')
+    post_sim = sim.get('post_rewrite_similarity')
+    if pre_sim is not None or post_sim is not None:
+        story.append(section_header('Resume-JD Semantic Similarity'))
+        story.append(Spacer(1, 4))
+        if pre_sim is not None:
+            story.append(Paragraph(
+                f'<b>Pre-rewrite:</b> {float(pre_sim):.4f}', body))
+        if post_sim is not None:
+            story.append(Paragraph(
+                f'<b>Post-rewrite:</b> {float(post_sim):.4f}', body))
+        if pre_sim is not None and post_sim is not None:
+            delta = float(post_sim) - float(pre_sim)
+            delta_color = '#1a7a1a' if delta >= 0 else '#a00000'
+            delta_str = f'+{delta:.4f}' if delta >= 0 else f'{delta:.4f}'
+            story.append(Paragraph(
+                f'<b>Delta:</b> <font color="{delta_color}"><b>{delta_str}</b></font>', body))
+        story.append(Spacer(1, 6))
+
+    # Skill Gap Analysis
+    skill_gaps = data.get('skill_gaps')
+    if skill_gaps and isinstance(skill_gaps, list) and skill_gaps:
+        story.append(section_header('Skill Gap Analysis'))
+        story.append(Spacer(1, 4))
+        for gap in skill_gaps:
+            story.append(Paragraph(f'&bull;&nbsp;&nbsp;{gap}', bullet))
+        story.append(Spacer(1, 6))
+
+    # Placement Breakdown (Contextual Keyword Placement)
+    placement = data.get('placement_breakdown') or {}
+    placement_items = placement.get('keywords') or []
+    if placement_items:
+        story.append(section_header('Contextual Keyword Placement'))
+        story.append(Spacer(1, 4))
+        placement_data = [[Paragraph('<b>Keyword</b>', h3),
+                           Paragraph('<b>Sections Found</b>', h3),
+                           Paragraph('<b>Multiplier</b>', h3)]]
+        for item in placement_items:
+            if isinstance(item, dict):
+                kw = str(item.get('keyword', ''))
+                sections = ', '.join(item.get('sections_found', []))
+                mult = item.get('multiplier', 1.0)
+                try:
+                    mult_str = f'{float(mult):.1f}x'
+                except (ValueError, TypeError):
+                    mult_str = str(mult)
+                placement_data.append([
+                    Paragraph(kw, body),
+                    Paragraph(sections, body),
+                    Paragraph(mult_str, body),
+                ])
+        placement_tbl = Table(placement_data, colWidths=[120, printable_width - 180, 60])
+        placement_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), colors.HexColor('#f0f0f0')),
+            ('LINEBELOW',     (0,0), (-1,0), 0.5, LINE_COLOR),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING',   (0,0), (-1,-1), 4),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 4),
+            ('TOPPADDING',    (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ]))
+        story.append(placement_tbl)
+        story.append(Spacer(1, 6))
+
     # Core Score Detractors
     detractors = data.get('core_score_detractors', [])
     if detractors:
@@ -363,6 +429,13 @@ def _create_ats_report_pdf_reportlab(data, output_path):
             post_fq_suggestions = post_fq.get('suggestions', []) or []
             for s in post_fq_suggestions:
                 story.append(Paragraph(f'&bull;&nbsp;&nbsp;{s}', bullet))
+
+        # Post-Rewrite Semantic Similarity (optional)
+        post_sim_val = post.get('post_rewrite_similarity')
+        if post_sim_val is not None:
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(
+                f'<b>Post-Rewrite Similarity:</b> {float(post_sim_val):.4f}', body))
 
     doc.build(story)
     print(f"Successfully compiled ATS Report via ReportLab: {output_path}")

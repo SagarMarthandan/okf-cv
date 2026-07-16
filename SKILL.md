@@ -7,6 +7,8 @@ dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-
 
 # OKF-CV Pipeline
 
+> **Scope note:** During pipeline execution, only read `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, and the Python scripts they reference. Do NOT read `README.md`, `CHANGELOG.md`, or `docs/` — they are human documentation and consume context tokens without contributing to pipeline execution.
+
 End-to-end pipeline that takes a **Job Description (JD)** and produces a tailored ATS-optimized resume + cover letter as compiled PDFs, plus an archived JD reference and a visual-optimized alternate version.
 
 ## Pipeline Overview
@@ -51,23 +53,26 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
 - **Working Directory:** `Applications/` (relative to project root)
 - **Pipeline Script Structure:**
   - `yaml_to_pdf.py` — entry point; routes YAML files to the correct renderer
-  - `zvec_hybrid_search.py` — Hybrid search engine (OKF phrase matching + Zvec semantic embeddings, score fusion 0.6/0.4, cross-process file lock for parallel agent safety)
+  - `zvec_hybrid_search.py` — Hybrid search engine (OKF phrase matching + Zvec semantic embeddings, score fusion 0.6/0.4, cross-process file lock for parallel agent safety). Also provides `--similarity <resume> <jd>` mode for resume-JD cosine similarity. Auto-starts `embedding_server.py` daemon if not running (holds the SentenceTransformer model in memory, eliminating ~21s model load per process — saves ~42s per pipeline run across 3 invocations). Falls back to direct model loading if the daemon is unavailable.
+  - `embedding_server.py` — Local TCP daemon (127.0.0.1, ports 54321-54325) that holds the `all-MiniLM-L6-v2` model in memory. Auto-started by `zvec_hybrid_search.py`, auto-shuts down after 30 min of inactivity. JSON-line protocol over TCP. Manual control: `python embedding_server.py --status` / `--stop`. State file: `okf/.embedding_server.json`, log: `okf/.embedding_server.log`.
   - `okf_portfolio_search.py` — OKF search & distillation engine (phrase-level matching, synonym expansion, stemming, fuzzy matching, archetype-boosted scoring, Jaccard normalization) — used as fallback if Zvec unavailable
   - `okf_lint.py` — Frontmatter linter; validates all portfolio files before scoring (run in Step 1)
   - `okf_learn.py` — Self-learning keyword enrichment; extracts JD terms and enriches portfolio keywords post-application (run after Step 3)
   - `sync_to_obsidian.py` — Syncs application data to Obsidian vault as linked notes for graph-view navigation (run after learning loop)
   - `renderers/utils.py` — shared utilities (`escape_latex`, color constants, `run_pdflatex`, font registration including Calibri)
   - `renderers/resume_common.py` — shared resume helpers (`HEADERS`, `get_resume_language`)
-  - `renderers/resume.py` — Resume renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
-  - `renderers/resume_latex.py` — Resume LaTeX renderer + parse-integrity audit
-  - `renderers/resume_reportfallback.py` — Resume ReportLab renderer (LM Roman 10 font, same layout as LaTeX)
+  - `renderers/resume.py` — Resume renderer dispatcher (reads `render_mode` + `resume_style`, routes to 4 renderer combinations)
+  - `renderers/resume_latex_us.py` — Resume LaTeX renderer (US style) + parse-integrity audit
+  - `renderers/resume_reportfallback_us.py` — Resume ReportLab renderer (US style, LM Roman 10 font)
+  - `renderers/resume_latex_german.py` — Resume LaTeX renderer (German style: Lebenslauf section order + date/signature block)
+  - `renderers/resume_reportfallback_german.py` — Resume ReportLab renderer (German style, LM Roman 10, same German section order)
   - `renderers/cover_letter.py` — Cover Letter renderer dispatcher (reads `render_mode`, routes to latex or reportfallback)
   - `renderers/cover_letter_latex.py` — Cover Letter LaTeX renderer
   - `renderers/cover_letter_reportfallback.py` — Cover Letter ReportLab renderer (LM Roman 10 font, same layout as LaTeX)
   - `renderers/job_description.py` — Job Description renderer (ReportLab only)
   - `renderers/ats_report.py` — ATS Report renderer (ReportLab only)
   - `renderers/parseability_report.py` — Parseability Report renderer (ReportLab only, LM Roman 10)
-  - `resume_parseability.py` — ATS parse-integrity audit script; checks PDF text layer for unicode corruption, keyword recovery, section headers, and contact info extraction; outputs `Parseability_Report.yaml` + `Parseability_Report.pdf` (run after resume compilation in Step 2)
+  - `resume_parseability.py` — ATS parse-integrity audit script; checks PDF text layer for unicode corruption, keyword recovery, section headers, and contact info extraction; outputs `Parseability_Report.yaml` + `Parseability_Report.pdf` (run after resume compilation in Step 2). If the audit fails, automatically re-compiles the resume with the ReportLab fallback renderer (style-aware) and re-audits. Use `--no-recovery` to disable.
   - `organize_applications.py` — Sorts application folders into a Year/Month/Date tree (run after Obsidian sync)
 
 ## General Writing & Style Rules (Stop-Slop)
@@ -85,9 +90,13 @@ The user must provide:
 1. **Job Description** — paste the full JD text
 2. (Optional) **Language override** — if the user wants the output in a specific language different from the JD language
 
-## First Action: Select Render Mode
+## First Action: Select Render Mode & Resume Style
 
-Before executing any pipeline step, ask the user which render mode to use for the resume and cover letter PDFs. Use the `ask_user_question` tool with a single-select question:
+Before executing any pipeline step, ask the user two questions:
+
+### Question 1: Render Mode
+
+Use the `ask_user_question` tool with a single-select question:
 
 - **Question:** "Which render mode should the resume and cover letter use?"
 - **Header:** "Render mode"
@@ -95,11 +104,25 @@ Before executing any pipeline step, ask the user which render mode to use for th
   - `LaTeX` — Compile via pdflatex (primary). Produces a `.tex` source file alongside the PDF. Projects are rendered in `name --- [GitHub] --- summary` single-paragraph format directly by the renderer. The agent may optionally refine the prose post-compilation.
   - `ReportFallback` — Compile via ReportLab using the LM Roman 10 font (TTF version installed locally). No `.tex` file is produced. Projects are rendered in the same `name --- [GitHub] --- summary` single-paragraph format automatically. Use this when pdflatex is unavailable or when a LM Roman 10-styled PDF is preferred.
 
-The selected mode MUST be written as a top-level `render_mode` key in both `Resume.yaml` and `Cover_Letter.yaml`:
+### Question 2: Resume Style
+
+Use the `ask_user_question` tool with a single-select question:
+
+- **Question:** "Which resume style should be used?"
+- **Header:** "Resume style"
+- **Options:**
+  - `US Style` — US-convention section order: Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages. No date/signature block.
+  - `German Style` — German Lebenslauf convention: Summary → Professional Experience → Education → Technical Skills → Spoken Languages → Date & Signature (city, date, signature line, name). No separate Projects section — the 3 JD-aligned projects are folded into the Professional Experience section as `project_bullets` under an "Independent Data Engineering & Professional Development" entry (rendered in `name --- [GitHub] --- summary` format with quantified metrics), plus a 4th plain-text bullet for other skills/tools. The entry date ends at April 2025 (candidate is now studying economics). The title uses a concrete role (e.g., `Data Engineer`, `Analytics Engineer`) — never `Architect`/`Lead`/`Manager`. Required for German market applications.
+
+### Storing the Selections
+
+Both selections MUST be written as top-level keys in `Resume.yaml` and `Cover_Letter.yaml`:
 - LaTeX → `render_mode: latex`
 - ReportFallback → `render_mode: reportfallback`
+- US Style → `resume_style: us`
+- German Style → `resume_style: german`
 
-The renderers read this key and dispatch accordingly. If the key is missing, `latex` is assumed (backward compatible). The choice applies to both the resume and the cover letter for this application.
+The renderers read these keys and dispatch accordingly. If `render_mode` is missing, `latex` is assumed. If `resume_style` is missing, `us` is assumed (backward compatible). Both choices apply to the resume for this application.
 
 ## Second Action: Name the Session
 
@@ -144,6 +167,14 @@ Generates a formal, metric-grounded cover letter standard conforming to German G
 
 ---
 
+## Post-Pipeline: Add One More Project
+
+After the pipeline completes, the user may ask to add an additional project to the resume (e.g., "add a 4th project", "add one more project"). Follow the procedure in [02_resume_and_visual_audit.md §"Optional: Add One More Project"](file:///c:/Users/sagar/Documents/YAML-CV/skills/okf-cv/02_resume_and_visual_audit.md).
+
+Summary: pick the next-ranked project from `project_info.md` (or re-run hybrid search with higher `top_k`), write it in the same `name --- [GitHub] --- summary` format, insert into `Resume.yaml` (`projects` list for US style, `project_bullets` for German style), recompile, and re-run the parse-integrity audit. If the resume spills to 2 pages, trim or swap a weaker project.
+
+---
+
 ## Error Handling
 
 If the compilation fails:
@@ -162,16 +193,16 @@ After all 3 steps complete, verify:
 - [ ] `Resume.yaml` & `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` are generated with the tailored closest location
 - [ ] `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` & `SAGAR_MARTHANDAN_Cover_Letter.tex` / `SAGAR_MARTHANDAN_Anschreiben.tex` are preserved in the folder
 - [ ] `Layout_Audit_Report.yaml` is generated with all eye-test diagnostics at Pass status
-- [ ] `Parseability_Report.yaml` & `Parseability_Report.pdf` are generated with overall status PASS (100% keyword recovery, 6/6 sections, 5/5 contact fields, no unicode corruptions)
+- [ ] `Parseability_Report.yaml` & `Parseability_Report.pdf` are generated with overall status PASS (100% keyword recovery, all section headers detected, 5/5 contact fields, no unicode corruptions)
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
-- [ ] Professional Experience bullet points are strictly single-line and <= 105 characters
-- [ ] Project entries are in `name --- [GitHub] --- summary` single-paragraph format (no bullets), each summary <= 300 characters (<= 280 characters for German, summary text only — project name, em-dash separators, and link markup are excluded from the count) and fitting on <= 3 lines
-- [ ] Summary section is exactly 4 lines and <= 420 characters (<= 380 characters for German Zusammenfassung)
-- [ ] Cover letter fits on exactly one page and has 250–320 words (180–240 words for German Anschreiben)
+- [ ] Professional Experience bullets are single-line, <= 105 chars (per 02 §Layout Constraints)
+- [ ] Projects in `name --- [GitHub] --- summary` format, summary <= 300 chars (<= 280 German), <= 3 lines (per 02 §Layout Constraints)
+- [ ] Summary is exactly 4 lines, <= 420 chars (<= 380 German) (per 02 §Layout Constraints)
+- [ ] Cover letter fits one page, 250–320 words (180–240 German) (per 03 §Structure)
 - [ ] All files match the target JD language and comply with the Stop-Slop guidelines
 - [ ] `okf_learn.py` has enriched portfolio keywords from this JD (check `okf/learning_log.json` for changes)
 - [ ] `sync_to_obsidian.py` has synced the application to the Obsidian vault (check `<vault>/Job Search/` for notes)
-- [ ] `organize_applications.py` has moved the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/` (MUST run after Obsidian sync completes, not before)
+- [ ] `sync_to_obsidian.py --sort` has moved the folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`
 
 ## Self-Refresh
 

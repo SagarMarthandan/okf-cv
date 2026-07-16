@@ -26,8 +26,11 @@ Usage:
 import os
 import re
 import sys
+import json
 import shutil
 import hashlib
+import socket
+import subprocess
 import threading
 import time
 import tempfile
@@ -122,33 +125,178 @@ def _get_zvec():
         _zvec = _z
     return _zvec
 
-
 def _get_model():
-    """Thread-safe lazy initialization of SentenceTransformer model."""
+    """Thread-safe lazy initialization of SentenceTransformer model (fallback only).
+
+    Used when the embedding daemon is not available. If the daemon is running,
+    get_embedding / get_embeddings_batch route through it instead and never
+    call this function.
+    """
     global _model_instance
     if _model_instance is None:
         with _model_lock:
             if _model_instance is None:
                 from sentence_transformers import SentenceTransformer
-                print(f"Loading local SentenceTransformer model '{EMBEDDING_MODEL_NAME}'...")
+                print(f"Loading SentenceTransformer model '{EMBEDDING_MODEL_NAME}'...")
                 _model_instance = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _model_instance
 
 
+# ─── Embedding daemon client ──────────────────────────────────────────────────
+# Tries to use a local embedding_server.py daemon (holds the model in memory,
+# eliminating ~21s model load per process). Falls back to direct _get_model()
+# if the daemon is unavailable — the pipeline still works, just slower.
+
+_DAEMON_STATE_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.json")
+_DAEMON_LOG_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.log")
+_daemon_status = "unknown"  # "unknown" | "available" | "unavailable"
+
+
+def _read_daemon_state():
+    """Read the daemon state file. Returns dict with port/pid or None."""
+    try:
+        with open(_DAEMON_STATE_FILE, 'r') as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _daemon_request(req: dict, timeout: float = 120) -> Optional[dict]:
+    """Send one JSON-line request to the daemon. Returns response dict or None."""
+    state = _read_daemon_state()
+    if state is None:
+        return None
+    port = state.get("port")
+    if not port:
+        return None
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout) as s:
+            s.sendall((json.dumps(req) + "\n").encode('utf-8'))
+            data = b""
+            while b"\n" not in data:
+                chunk = s.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+            return json.loads(data.decode('utf-8'))
+    except (ConnectionRefusedError, socket.timeout, OSError, json.JSONDecodeError):
+        return None
+
+
+def _start_daemon() -> bool:
+    """Start the embedding daemon in a detached background process."""
+    server_path = os.path.join(SKILL_DIR, "embedding_server.py")
+    if not os.path.exists(server_path):
+        return False
+    os.makedirs(os.path.dirname(_DAEMON_LOG_FILE), exist_ok=True)
+    try:
+        log_fd = open(_DAEMON_LOG_FILE, 'a')
+        if sys.platform == 'win32':
+            # CREATE_BREAKAWAY_FROM_JOB (0x01000000) — escape the parent's Job
+            #   Object so the daemon survives after the calling process exits.
+            # CREATE_NO_WINDOW (0x08000000) — no console window (the daemon
+            #   redirects its own stdout/stderr to the log file internally).
+            # CREATE_NEW_PROCESS_GROUP (0x00000200) — independent process group.
+            creationflags = 0x01000000 | 0x08000000 | 0x00000200
+            subprocess.Popen(
+                [sys.executable, server_path],
+                creationflags=creationflags,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+            )
+        else:
+            subprocess.Popen(
+                [sys.executable, server_path],
+                stdout=log_fd,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                close_fds=True,
+            )
+        return True
+    except Exception as e:
+        print(f"Warning: Failed to start embedding daemon: {e}")
+        return False
+
+
+def _ensure_daemon() -> bool:
+    """Ensure the daemon is running and responsive. Returns True if available.
+
+    1. Ping existing daemon (if state file exists).
+    2. If no response, start a new daemon.
+    3. Wait up to 30s for it to become responsive (ping).
+    4. If still no response, mark unavailable (caller falls back to direct load).
+    """
+    global _daemon_status
+    if _daemon_status == "available":
+        return True
+    if _daemon_status == "unavailable":
+        return False
+
+    # Try to ping an existing daemon
+    resp = _daemon_request({"method": "ping"}, timeout=5)
+    if resp and resp.get("pong"):
+        _daemon_status = "available"
+        return True
+
+    # Try to start a new daemon
+    if _start_daemon():
+        for attempt in range(60):  # 60 * 0.5s = 30s max wait
+            time.sleep(0.5)
+            resp = _daemon_request({"method": "ping"}, timeout=5)
+            if resp and resp.get("pong"):
+                _daemon_status = "available"
+                print("Embedding daemon started and ready.")
+                return True
+
+    _daemon_status = "unavailable"
+    print("Embedding daemon unavailable — falling back to direct model loading.")
+    return False
+
+
+def _daemon_embed_batch(texts: List[str]) -> Optional[List[List[float]]]:
+    """Embed texts via daemon. Returns list of embeddings or None on failure."""
+    resp = _daemon_request({"method": "embed_batch", "texts": texts}, timeout=120)
+    if resp and resp.get("error") is None:
+        return resp.get("embeddings")
+    return None
+
+
 def get_embedding(text: str) -> List[float]:
-    """Fetch vector embedding for a single text."""
+    """Fetch vector embedding for a single text.
+
+    Tries the embedding daemon first (model held in memory, ~0.03s).
+    Falls back to direct model loading (~21s) if daemon unavailable.
+    """
+    if _ensure_daemon():
+        result = _daemon_embed_batch([text])
+        if result is not None:
+            return result[0]
+        # Daemon failed mid-request — mark unavailable and fall back
+        global _daemon_status
+        _daemon_status = "unavailable"
     model = _get_model()
     vector = model.encode(text)
     return [float(x) for x in vector]
 
 
 def get_embeddings_batch(texts: List[str], batch_size: int = 32) -> List[List[float]]:
-    """Batch embed multiple texts for better performance."""
+    """Batch embed multiple texts for better performance.
+
+    Tries the embedding daemon first (model held in memory).
+    Falls back to direct model loading if daemon unavailable.
+    """
+    if _ensure_daemon():
+        result = _daemon_embed_batch(texts)
+        if result is not None:
+            return result
+        # Daemon failed mid-request — mark unavailable and fall back
+        global _daemon_status
+        _daemon_status = "unavailable"
     model = _get_model()
     embeddings = model.encode(texts, batch_size=batch_size, show_progress_bar=False)
     return [[float(x) for x in emb] for emb in embeddings]
-
-
 # ─── Portfolio ingestion ──────────────────────────────────────────────────────
 
 def _project_hash(filepath: str) -> str:
@@ -239,8 +387,8 @@ def ingest_portfolio(portfolio_dir: str = DEFAULT_PORTFOLIO_DIR, force_recreate:
         projects.append(proj)
 
     # Embed all projects in batch (outside lock — CPU-bound, no DB access)
+    # get_embeddings_batch handles model loading (daemon or direct) internally.
     texts = [_build_project_text(p) for p in projects]
-    _get_model()  # Ensure model is loaded
     embeddings = get_embeddings_batch(texts)
 
     # DB operations — acquire cross-process lock
@@ -561,17 +709,147 @@ def distill_project_hybrid(proj: Dict[str, any]) -> str:
     return "\n".join(parts)
 
 
+# ─── Resume-JD similarity (merged from resume_jd_similarity.py) ───────────────
+# Computing similarity in the same process as the hybrid search avoids a
+# second sentence-transformers model load (saves 3-8 seconds per run).
+
+import math
+
+
+def _extract_resume_text(resume_path: str) -> str:
+    """Extract all text content from a Resume.yaml file or read a markdown file directly."""
+    if resume_path.endswith('.md'):
+        with open(resume_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    with open(resume_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        return ""
+
+    parts = []
+
+    summary = data.get("summary", "")
+    if summary:
+        parts.append(str(summary))
+
+    for cat in data.get("technical_skills", []) or []:
+        if isinstance(cat, dict):
+            parts.append(str(cat.get("category", "")))
+            for skill in cat.get("skills", []) or []:
+                parts.append(str(skill))
+
+    for proj in data.get("projects", []) or []:
+        if isinstance(proj, dict):
+            parts.append(str(proj.get("name", "")))
+            for tool in proj.get("tools", []) or []:
+                parts.append(str(tool))
+            for bullet in proj.get("bullets", []) or []:
+                parts.append(str(bullet))
+
+    for exp in data.get("professional_experience", []) or []:
+        if isinstance(exp, dict):
+            parts.append(str(exp.get("company", "")))
+            parts.append(str(exp.get("title", "")))
+            for bullet in exp.get("bullets", []) or []:
+                parts.append(str(bullet))
+
+    for edu in data.get("education", []) or []:
+        if isinstance(edu, dict):
+            parts.append(str(edu.get("degree", "")))
+            parts.append(str(edu.get("university", "")))
+
+    for lang in data.get("languages", []) or []:
+        parts.append(str(lang))
+
+    return "\n".join(p for p in parts if p)
+
+
+def _extract_jd_text(jd_path: str) -> str:
+    """Extract all text content from a Job_Description.yaml file."""
+    with open(jd_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        return ""
+
+    parts = []
+
+    if data.get("position"):
+        parts.append(str(data["position"]))
+    if data.get("company"):
+        parts.append(str(data["company"]))
+
+    for sec in data.get("sections", []) or []:
+        if isinstance(sec, dict):
+            parts.append(str(sec.get("title", "")))
+            parts.append(str(sec.get("content", "")))
+            for bullet in sec.get("bullets", []) or []:
+                parts.append(str(bullet))
+
+    return "\n".join(p for p in parts if p)
+
+
+def compute_cosine_similarity(vec_a, vec_b) -> float:
+    """Compute cosine similarity between two embedding vectors."""
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def resume_jd_similarity(resume_path: str, jd_path: str) -> float:
+    """Compute cosine similarity between a resume YAML (or .md) and a JD YAML.
+
+    Returns a float in [0, 1] representing semantic alignment.
+    """
+    resume_text = _extract_resume_text(resume_path)
+    jd_text = _extract_jd_text(jd_path)
+
+    if not resume_text or not jd_text:
+        return 0.0
+
+    resume_emb = get_embedding(resume_text)
+    jd_emb = get_embedding(jd_text)
+
+    return compute_cosine_similarity(resume_emb, jd_emb)
+
+
 # ─── CLI entry point ──────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
+    args = sys.argv[1:]
+
+    # --similarity mode: compute cosine similarity between a resume and JD
+    # Usage: python zvec_hybrid_search.py --similarity <resume_path> <jd_path>
+    if '--similarity' in args:
+        args.remove('--similarity')
+        if len(args) < 2:
+            print("Usage: python zvec_hybrid_search.py --similarity <resume_path> <jd_path>", file=sys.stderr)
+            sys.exit(1)
+        resume_path = args[0]
+        jd_path = args[1]
+        if not os.path.exists(resume_path):
+            print(f"Error: Resume file not found: {resume_path}", file=sys.stderr)
+            sys.exit(1)
+        if not os.path.exists(jd_path):
+            print(f"Error: JD file not found: {jd_path}", file=sys.stderr)
+            sys.exit(1)
+        score = resume_jd_similarity(resume_path, jd_path)
+        print(f"resume_jd_semantic_similarity: {score:.4f}")
+        sys.exit(0)
+
+    if len(args) < 2:
         print("Usage: python zvec_hybrid_search.py <job_description_path> <output_project_info_path> [ats_report_path] [top_k]")
+        print("       python zvec_hybrid_search.py --similarity <resume_path> <jd_path>", file=sys.stderr)
         sys.exit(1)
 
-    jd_path = sys.argv[1]
-    out_path = sys.argv[2]
-    ats_report_path = sys.argv[3] if len(sys.argv) > 3 else None
-    top_k = int(sys.argv[4]) if len(sys.argv) > 4 else 4
+    jd_path = args[0]
+    out_path = args[1]
+    ats_report_path = args[2] if len(args) > 2 else None
+    top_k = int(args[3]) if len(args) > 3 else 4
 
     if not os.path.exists(jd_path):
         print(f"Error: Job description file not found at {jd_path}")

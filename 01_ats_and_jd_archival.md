@@ -10,10 +10,7 @@ Analyze the target job description (JD) against the candidate's base resume and 
 ## Execution Rules
 
 ### 0a. Name the Session
-Before any pipeline work, extract the **Company Name** and **Job Role** from the JD and rename this session/conversation to `[Company Name] — [Job Role]` in the agent UI. This makes it easy to identify which agent is handling which application when running multiple agents in parallel. Examples:
-- `SAP — Senior Data Engineer`
-- `Google Cloud — AI/ML Engineer`
-- `Deutsche Bank — Analytics Engineer`
+Per SKILL.md §"Name the Session" — extract Company Name and Job Role from the JD and rename this session to `[Company Name] — [Job Role]`.
 
 ### 0b. Pre-Scoring: Verify Dependencies & Load Base Files
 Before any scoring or analysis, perform the following verification and loading steps:
@@ -83,7 +80,43 @@ Before scoring, gather monoculture-counter metadata:
 - Save category details and total score in `ats_score_matrix`, and the formatting verdict in `formatting_quality`, in the YAML output.
 - **Score Gate:** If `total_score < 85`, set `score_gate_verdict: HOLD` and stop the pipeline. Populate `remedy_suggestions` as a structured list (see schema). Warn the user to review remedies before proceeding to Step 2. If `>= 85`, set `score_gate_verdict: PROCEED`.
 
-### 3. Improvement Blueprint Generation
+### 3. Skill Gap Analysis (P2)
+After scoring and project selection, extract a `skill_gaps` list:
+- Extract a `required_skills` list from the JD — technologies, tools, and methodologies explicitly mentioned as required or strongly preferred.
+- Collect `resume_skills` from the base resume's technical skills section and `project_skills` from the matched projects in `project_info.md` (technologies + keywords).
+- Compute `skill_gaps = required_skills - (resume_skills ∪ project_skills)`.
+- Store the result as a flat list of strings under `skill_gaps` in `ATS_Report.yaml`.
+- The agent uses this list during Step 2 to make targeted additions where justified (add to skills section, weave into project descriptions, or note as genuine gaps).
+
+### 4. Contextual Placement Weighting (P4)
+After the 4-category ATS score is computed, perform a contextual placement check on critical JD keywords:
+- Extract the top critical keywords from the JD (the same keywords used in the `keywords_and_terminology` scoring category).
+- For each keyword, check which sections of the base resume contain it: `skills`, `projects`, or `experience`.
+- Apply a placement multiplier per keyword:
+  - Found in skills section only: **1.0x**
+  - Found in project summary only: **1.2x**
+  - Found in experience bullet only: **1.3x**
+  - Found in multiple sections: **1.5x**
+  - Not found: omit from the list (already captured in `skill_gaps` or `keyword_inventory`)
+- Store results under `placement_breakdown` in `ATS_Report.yaml`:
+  ```yaml
+  placement_breakdown:
+    keywords:
+      - keyword: "Kafka"
+        sections_found: ["skills", "projects", "experience"]
+        multiplier: 1.5
+  ```
+- This sub-report is informational — it does not change the 4-category score. It highlights where evidence-based keyword usage is strong (multiple sections) and where it is weak (skills section only).
+
+### 5. Pre-Rewrite Semantic Similarity (P1)
+After writing `ATS_Report.yaml` and `Job_Description.yaml`, compute the pre-rewrite cosine similarity between the base resume and the JD:
+```powershell
+cd "Applications/[Company Name] — [Job Role]/"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" --similarity "[base_resume_path]" "Job_Description.yaml"
+```
+The base resume path is the archetype-specific file loaded in Step 0b (e.g., `okf/base_files/english/resume_data_engineer.md`). Write the returned float value to `resume_jd_semantic_similarity.pre_rewrite_similarity` in `ATS_Report.yaml`. (The `--similarity` flag uses the same model as the hybrid search, avoiding a second model load.)
+
+### 6. Improvement Blueprint Generation
 Populate each field of `improvement_blueprint` as follows:
 - **`bullet_point_density_audit`:** For each bullet in the base resume's experience and projects sections, check if it contains a quantified metric (number, percentage, or time unit). List any bullets that are metric-free as items requiring quantification.
 - **`project_swap_directive`:** Compare each project in the portfolio against the JD archetype. List projects that are misaligned under `remove_projects`. List archetype-aligned projects from `project_info.md` that are not currently in the base resume under `add_projects`, each with a one-sentence `justification`. Confirm exactly 3 (or 4 if score improves) are selected.
@@ -91,12 +124,12 @@ Populate each field of `improvement_blueprint` as follows:
 - **`technical_skills_tuning`:** List tools/technologies to add (present in JD, absent from resume skills section) and to remove (present in resume skills section but irrelevant or distracting for this role).
 - **`quantified_outcomes`:** For each metric-free bullet identified in the density audit, suggest a concrete revised version that adds a plausible quantified outcome.
 
-### 4. Job Description Archival & Location Extraction
+### 7. Job Description Archival & Location Extraction
 - Strip web tracking, cookies, duplicate fields, and metadata from the raw JD.
 - Extract the job location from the raw JD (e.g., Munich, Berlin, Remote, etc.). Save it under a top-level `location` field in `Job_Description.yaml`.
 - Structure into clean YAML sections (overview, requirements, responsibilities, stack) for permanent reference.
 
-### 5. Candidate Location Selection
+### 8. Candidate Location Selection
 - The candidate has 4 candidate cities: **Kiel** (home), **Frankfurt**, **Berlin**, and **Köln**.
 - **Static lookup + cache first:** Check the job location against the static geocode table and the persistent location cache in `config.py`. Run this Python one-liner to resolve:
   ```powershell
@@ -116,10 +149,7 @@ Create folder `Applications/[Company Name] — [Job Role]/` and save three files
 - `Job_Description.yaml`
 - `project_info.md` (tailored project portfolio generated via OKF search)
 
-**Naming Convention (Critical):** The application folder name MUST be `[Company Name] — [Job Role]` extracted directly from the JD. Do NOT use arbitrary names, timestamps, or placeholder text. Extract the company name and job title from the JD content before creating the folder. This naming convention applies to the application folder, the session/conversation name (if the agent supports session naming), and all downstream references. Examples:
-- `Applications/SAP — Senior Data Engineer/`
-- `Applications/Google Cloud — AI/ML Engineer/`
-- `Applications/Deutsche Bank — Analytics Engineer/`
+**Naming Convention:** Per SKILL.md — folder MUST be `Applications/[Company Name] — [Job Role]/`. No arbitrary names or timestamps.
 
 ### A. `ATS_Report.yaml` Schema
 ```yaml
@@ -146,6 +176,14 @@ formatting_quality:
   notes: "[Optional one-line rationale]"
   suggestions: []        # Populate ONLY when verdict is Average or Bad
 core_score_detractors: []
+skill_gaps: []              # JD-required skills/technologies not present in base resume or matched projects
+resume_jd_semantic_similarity:
+  pre_rewrite_similarity: null  # Cosine similarity (base resume ↔ JD) — computed via resume_jd_similarity.py
+  # post_rewrite_similarity: populated by Step 2 only
+placement_breakdown:        # Contextual keyword placement weighting (P4)
+  keywords: []
+  # Each entry: { keyword: "...", sections_found: ["skills", "projects", "experience"], multiplier: 1.5 }
+  # Multipliers: skills=1.0x, project summary=1.2x, experience bullet=1.3x, multiple sections=1.5x
 improvement_blueprint:
   target_language_confirmation: "German/English"
   bullet_point_density_audit:
@@ -173,6 +211,7 @@ improvement_blueprint:
       - "[Specific action: e.g., add missing keyword 'dbt' to Technical Skills]"
       - "[Specific action: e.g., rewrite IBM bullet 3 to include a throughput metric]"
 # post_rewrite_ats_score: populated by Step 2 only — do not fill during Step 1.
+#   Includes: ats_score_matrix, score_delta, post_rewrite_similarity, formatting_quality, score_gate_verdict, remaining_gaps
 ```
 
 ### B. `Job_Description.yaml` Schema

@@ -12,6 +12,7 @@ Generate a tailored, high-scannability resume (`Resume.yaml`) directly in struct
 
 ### 1. Document Rewrite & Project Selection
 - **Role Archetype Alignment:** Bias project order and phrasing toward the archetype detected in Step 1 (e.g., lead with archetype-aligned projects).
+- **Skill Gap Closure (P2):** Load the `skill_gaps` list from `ATS_Report.yaml`. For each gap, decide whether to: (a) add the skill to the technical skills section if it's a tool/technology the candidate genuinely knows, (b) weave it into a project description or experience bullet if the candidate has demonstrable experience, or (c) note it as a genuine gap (do not fabricate). Prioritize closing gaps that appear in the JD's required skills.
 - **Match Language:** Completely translate resume details (including job titles, summaries, bullets, and section headers) to the JD language confirmed in Step 1. Specify the target language in `Resume.yaml` using a top-level `language` key (e.g., `language: German` or `language: English`).
 - **Tailor Candidate Location:** Load `ATS_Report.yaml` and read the `closest_candidate_location` value computed in Step 1. Set the candidate location `contact_info.location` in `Resume.yaml` to this closest city (e.g., `"Frankfurt, Germany"` instead of defaulting to `"Kiel, Germany"`) to establish local alignment with the employer's region.
 - **Preserve Employment Dates:** Copy all employment date ranges (start and end month/year) exactly from the base resume. Do not generalize, approximate, or omit them.
@@ -21,14 +22,41 @@ Generate a tailored, high-scannability resume (`Resume.yaml`) directly in struct
   - `Project-Heavy`: Focus on execution — write verbose descriptions for 4 projects (up to 300 chars each), simplify the skills block.
   - `Skills-Heavy`: Focus on tools — list only 3 projects, but expand the technical skills categories and bullet details.
   Choose the variation that best counters the JD's emphasis. If the JD is tool-stack-heavy, use `Skills-Heavy`. If the JD emphasizes execution and project delivery, use `Project-Heavy`. Default to `Balanced` when unclear.
-- **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language. The default order is:
-  1. Summary (Zusammenfassung)
-  2. Technical Skills (Technische Fähigkeiten)
-  3. Projects (Projekte)
-  4. Professional Experience (Berufserfahrung)
-  5. Education (Ausbildung)
-  6. Spoken Languages (Sprachen)
-  The order is data-driven: a resume YAML may supply a top-level `section_order` key (a list of section keys: `summary`, `technical_skills`, `projects`, `professional_experience`, `education`, `spoken_languages`) to reorder sections per-application. Unknown keys are ignored; omitted sections are skipped. When `section_order` is absent, the default order above is used. Both the LaTeX and ReportFallback renderers read from the same source of truth (`DEFAULT_SECTION_ORDER` in `renderers/resume_common.py`) so they stay in sync.
+- **Section Order:** Plain uppercase header titles (no numeric prefixes) in the target language. The section order depends on the `resume_style` key in `Resume.yaml`:
+  - **US Style** (`resume_style: us`, default): Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages
+  - **German Style** (`resume_style: german`): Summary → Professional Experience → Education → Technical Skills → Spoken Languages → Date & Signature
+
+  The German style follows Lebenslauf convention: experience before skills, no separate Projects section (projects are folded into the Professional Experience section as bullet points under an "Independent Data Engineering & Professional Development" entry — see below), and a Date & Signature block at the bottom (no section header — renders as `City, den DD.MM.YYYY` / signature line / `Sagar Marthandan`). The date is auto-generated. The city is taken from `contact_info.location` (first comma-separated part) or a `signature_city` key if present.
+
+  **German Style — Independent Data Engineering Entry:** When using German style, the 3 JD-aligned projects from `project_info.md` are NOT rendered as a separate Projects section. Instead, they are added as `project_bullets` within a special entry in the `professional_experience` list:
+  ```yaml
+  - company: "Independent Data Engineering & Professional Development"
+    date: "Jan 2023 – April 2025"
+    title: "Data Engineer"
+    project_bullets:
+      - name: "NYC Taxi Data Pipeline"
+        repo_url: "https://github.com/SagarMarthandan/nyc-taxi-dbt"
+        bullets:
+          - "ELT pipeline ingesting 37M records into BigQuery via Airbyte, orchestrated with Airflow DAGs on GCP"
+      - name: "RAG PDF Search System"
+        repo_url: "https://github.com/SagarMarthandan/rag-pdf-search"
+        bullets:
+          - "RAG-based document search using LangChain, OpenAI embeddings, and FastAPI serving 10K+ PDFs"
+      - name: "dbt Transformation Layer"
+        repo_url: "https://github.com/SagarMarthandan/dbt-snowflake-transforms"
+        bullets:
+          - "dbt transformation layer on Snowflake, reducing query latency by 40% across 15M+ rows"
+    bullets:
+      - "Also worked with Docker, Kubernetes, Terraform, and Airflow for infrastructure and orchestration."
+  ```
+  **Key rules for this entry:**
+  - **Date:** Must end at `April 2025` (not "present" — the candidate is now studying economics). Start date is `Jan 2023`.
+  - **Title:** Use a concrete role title like `Data Engineer`, `Analytics Engineer`, or `Data & AI Solutions Analyst`. **Never** use `Architect`, `Lead`, or `Manager` — these are misleading for an independent/personal project period. Do not use `Remote` as the title.
+  - **Project bullets:** The first 3 entries in `project_bullets` are the JD-aligned projects from `project_info.md`. Each must include `name`, `repo_url`, and `bullets` (joined into prose). They render in the `name --- [GitHub] --- summary` format — identical to the US-style project section. Each project summary **must include quantified metrics** (throughput, latency reduction, record counts, etc.) — metric-free project bullets are not acceptable.
+  - **4th bullet:** The `bullets` list contains a single "other tools" bullet listing additional technologies worked on during this period. This is rendered as a plain text bullet after the project bullets.
+  - This frames the career gap as independent engineering work, placing JD-relevant keywords with quantified evidence in the experience section where ATS LLMs weight them most heavily.
+
+  The order is data-driven: a resume YAML may supply a top-level `section_order` key to reorder sections per-application. Unknown keys are ignored; omitted sections are skipped. When `section_order` is absent, the style-specific default is used. Both the LaTeX and ReportFallback renderers read from the same source of truth in `renderers/resume_common.py` (US) or `renderers/resume_latex_german.py` / `renderers/resume_reportfallback_german.py` (German).
 
 ### 2. Structural & Layout Constraints
 To pass the visual audit and recruiter "eye test," the resume MUST fit within a clean 1.5-page layout:
@@ -54,9 +82,7 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
 - **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. No photo embedding — photos are added manually via a PDF editor if needed.
-- **Render Mode:** The `render_mode` top-level key in `Resume.yaml` (set during the pipeline's "Select Render Mode" step) controls which renderer compiles the PDF:
-  - `render_mode: latex` (default) — compiles via pdflatex, saves the `.tex` source. Projects are rendered in the `name --- [GitHub] --- summary` single-paragraph format directly by the renderer.
-  - `render_mode: reportfallback` — compiles via ReportLab using the LM Roman 10 font (TTF installed locally). No `.tex` file is produced. Projects are rendered in the same `name --- [GitHub] --- summary` single-paragraph format automatically. **Skip Section 4 (LaTeX Polish) entirely when this mode is selected** — the ReportFallback renderer already produces the single-paragraph project format. Skip Step B and Step C of the compilation commands (no `.tex` file to edit or recompile); the initial `yaml_to_pdf.py` invocation produces the final PDF.
+- **Render Mode:** Per SKILL.md §"Select Render Mode" — `render_mode: latex` (default) or `render_mode: reportfallback`. When ReportFallback is selected, skip Section 4 (LaTeX Polish) and Steps B/C — the initial `yaml_to_pdf.py` invocation produces the final PDF.
 
 ### 3. Visual Layout Audit & Stop-Slop Checks
 - Apply the **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, no throat-clearing openers).
@@ -113,8 +139,14 @@ When no `repo_url` is present:
 - Re-run the **4-category** ATS matrix (25 points each, 100 total; no formatting category) on the optimized resume. Make sure to run it against the final polished LaTeX resume (since that represents the final output).
 - Re-issue the non-scored `formatting_quality` verdict (`Excellent` / `Good` / `Average` / `Bad`) on the polished resume, with `suggestions` only if `Average` or `Bad`.
 - Calculate `score_delta` (post_score - pre_score).
+- **Post-Rewrite Semantic Similarity (P1):** Compute cosine similarity between the optimized `Resume.yaml` and `Job_Description.yaml`:
+  ```powershell
+  cd "Applications/[Company Name] — [Job Role]/"
+  C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
+  ```
+  Store the returned float value as `post_rewrite_similarity` inside the `post_rewrite_ats_score` block in `ATS_Report.yaml`. Also update `resume_jd_semantic_similarity.post_rewrite_similarity` at the top level.
 - Update the `post_rewrite_ats_score` block in the existing `ATS_Report.yaml` file (do not overwrite the pre-rewrite section) with the final optimized score.
-- Surface the score delta comparison to the user in the console output.
+- Surface the score delta comparison and similarity delta to the user in the console output.
 - **Note:** The ATS_Report.pdf recompile happens once in Step C below — do not recompile it here.
 
 ### 6. Resume Parseability Audit (Mandatory Post-Compilation)
@@ -124,7 +156,7 @@ After the final resume PDF is compiled (either via LaTeX or ReportFallback), run
 #### What It Checks
 1. **Unicode Integrity:** Scans the extracted text for replacement glyphs (U+FFFD) that indicate font encoding corruption.
 2. **Keyword Recovery:** Extracts every tool, skill, and significant summary word from `Resume.yaml` and verifies each one is recoverable from the PDF text layer. Handles line-break splitting (keywords split across lines are still counted as recovered via whitespace normalization).
-3. **Section Header Detection:** Verifies all 6 standard section headers (SUMMARY, TECHNICAL SKILLS, PROJECTS, PROFESSIONAL EXPERIENCE, EDUCATION, SPOKEN LANGUAGES) are present in the text.
+3. **Section Header Detection:** Verifies all expected section headers are present in the text. The expected set depends on `resume_style`: US style checks 6 headers (Summary, Technical Skills, Projects, Professional Experience, Education, Spoken Languages); German style checks 5 headers (Summary, Professional Experience, Education, Technical Skills, Spoken Languages) — no Projects header since projects are folded into the experience section. The Date & Signature block has no section header and is not checked.
 4. **Contact Info Extraction:** Verifies name, phone, email, GitHub, and LinkedIn are all extractable from the text.
 5. **Text Structure:** Reports line count, average/max line length.
 
@@ -143,9 +175,42 @@ For German resumes, substitute `SAGAR_MARTHANDAN_Lebenslauf.pdf` as the first ar
 - **Overall Status: PASS** when:
   - Unicode integrity: Pass (zero replacement glyphs)
   - Keyword recovery: 100% (all YAML keywords recovered from the PDF text)
-  - Section headers: 6/6 detected
+  - Section headers: all expected headers detected (6 for US style, 5 for German style)
   - Contact info: 5/5 extracted
-- If the audit fails, investigate the PDF text layer (font embedding, encoding, or layout issues) and recompile.
+- **Automatic Recovery:** If the audit fails, `resume_parseability.py` automatically re-compiles the resume with the ReportLab fallback renderer (style-aware: US or German) and re-audits the recovered PDF. No manual intervention is needed. Use `--no-recovery` to disable this behavior if you want to debug the failure manually.
+
+## Optional: Add One More Project
+
+When the user asks to add an additional project to the resume (e.g., "add a 4th project", "add one more project"), follow this procedure:
+
+### 1. Select the Project
+- Read `project_info.md` in the application folder — it contains the top hybrid-scored projects from the initial search.
+- Pick the next-ranked project that is NOT already in the resume. If `project_info.md` doesn't have a spare, re-run the hybrid search with a higher `top_k`:
+```powershell
+cd "Applications/[Company Name] — [Job Role]/"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
+```
+- If the user names a specific project, use that one.
+
+### 2. Write the Project Entry
+- Read the project's portfolio `.md` file from `okf/portfolio/` to get the full description, tools, and repo URL.
+- Write a single-paragraph summary (same format as existing projects): `name --- [GitHub] --- summary prose`
+- Summary must be <= 300 chars (<= 280 for German), contain at least one quantified metric, and preserve all key tools/technologies as prose.
+
+### 3. Insert into Resume.yaml
+- **US style:** Add the project to the top-level `projects` list.
+- **German style:** Add it as a new entry in `project_bullets` under the "Independent Data Engineering & Professional Development" experience entry.
+
+### 4. Recompile & Re-audit
+```powershell
+cd "Applications/[Company Name] — [Job Role]/"
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+```
+Then re-run the parse-integrity audit to verify the new project's keywords are recoverable:
+```powershell
+C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+```
+- If the resume now spills to 2 pages, trim the summary or remove a weaker project to stay on 1 page.
 
 ## Output Target & Directory Structure
 Save the outputs inside the job folder:
@@ -217,11 +282,12 @@ post_rewrite_ats_score:
     technical_skills:          { max_score: 25, current_score: 0, evaluation_criteria: "" }
     soft_skills_and_language:  { max_score: 25, current_score: 0, evaluation_criteria: "" }
     total_score: 0
+  score_delta: 0
+  post_rewrite_similarity: null  # Cosine similarity (optimized resume ↔ JD) — computed via zvec_hybrid_search.py --similarity
   formatting_quality:
     verdict: "Excellent"   # one of: Excellent | Good | Average | Bad
     notes: "[Optional one-line rationale]"
     suggestions: []        # Populate ONLY when verdict is Average or Bad
-  score_delta: 0
   score_gate_verdict: "PROCEED/HOLD"
   remaining_gaps: []
 ```

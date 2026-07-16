@@ -285,6 +285,94 @@ def normalize_skill(raw: str) -> str:
     return s.title() if s.islower() else s
 
 
+# ─── Folder sort (merged from organize_applications.py) ──────────────────────
+
+import shutil
+from datetime import datetime as _dt
+
+
+def _is_year_folder(name: str) -> bool:
+    """True if name is a 4-digit year (top-level date bucket)."""
+    return len(name) == 4 and name.isdigit()
+
+
+def _creation_date(path: str) -> _dt:
+    """Return the folder creation timestamp as a datetime."""
+    return _dt.fromtimestamp(os.path.getctime(path))
+
+
+def _target_subpath(dt: _dt) -> str:
+    """Build the YYYY/MM/DD relative subpath for a given datetime."""
+    return os.path.join(f"{dt.year:04d}", f"{dt.month:02d}", f"{dt.day:02d}")
+
+
+def _move_into_tree(
+    folder_path: str,
+    applications_dir: str | None = None,
+    dry_run: bool = False,
+) -> str | None:
+    """
+    Move a single application folder into Applications/YYYY/MM/DD/.
+
+    Returns the new path on success, or None if the folder was already nested
+    under a date tree (or could not be moved).
+    """
+    apps_dir = applications_dir if applications_dir is not None else str(APPLICATIONS_DIR)
+    folder_path = os.path.abspath(folder_path)
+    if not os.path.isdir(folder_path):
+        print(f"  skip (not a directory): {folder_path}")
+        return None
+
+    # Skip folders already inside a YYYY/MM/DD tree.
+    rel = os.path.relpath(folder_path, apps_dir)
+    parts = rel.split(os.sep)
+    if len(parts) >= 4 and _is_year_folder(parts[0]):
+        print(f"  skip (already sorted): {rel}")
+        return None
+
+    dt = _creation_date(folder_path)
+    dest_dir = os.path.join(apps_dir, _target_subpath(dt))
+    dest_path = os.path.join(dest_dir, os.path.basename(folder_path))
+
+    if os.path.exists(dest_path):
+        if os.path.normcase(folder_path) == os.path.normcase(dest_path):
+            print(f"  skip (already in place): {rel}")
+            return None
+        print(f"  WARN destination exists, leaving in place: {dest_path}")
+        return None
+
+    if dry_run:
+        print(f"  [dry-run] {rel} -> {os.path.relpath(dest_path, apps_dir)}")
+        return dest_path
+
+    os.makedirs(dest_dir, exist_ok=True)
+    shutil.move(folder_path, dest_path)
+    print(f"  moved: {rel} -> {os.path.relpath(dest_path, apps_dir)}")
+    return dest_path
+
+
+def sort_all_folders(
+    applications_dir: str | None = None,
+    dry_run: bool = False,
+) -> int:
+    """Scan Applications/ top-level and move every non-year folder into the tree."""
+    apps_dir = applications_dir if applications_dir is not None else str(APPLICATIONS_DIR)
+    if not os.path.isdir(apps_dir):
+        print(f"Applications directory not found: {apps_dir}")
+        return 0
+
+    moved = 0
+    for name in sorted(os.listdir(apps_dir)):
+        full = os.path.join(apps_dir, name)
+        if not os.path.isdir(full):
+            continue
+        if _is_year_folder(name):
+            continue
+        if _move_into_tree(full, applications_dir=apps_dir, dry_run=dry_run):
+            moved += 1
+    return moved
+
+
 def normalize_project(raw: str) -> str:
     """Normalize a project name from portfolio/resume into a canonical form.
 
@@ -1180,7 +1268,6 @@ def sync_targeted(target_folder: str, dry_run: bool = False, verbose: bool = Fal
     # 4. Sort the folder into the YYYY/MM/DD tree (Phase 4.2)
     if do_sort:
         try:
-            from organize_applications import _move_into_tree
             new_path = _move_into_tree(str(target), applications_dir=str(APPLICATIONS_DIR))
             if new_path:
                 print(f"  Sorted to: {os.path.relpath(new_path, str(APPLICATIONS_DIR))}")

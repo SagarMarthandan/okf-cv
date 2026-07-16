@@ -309,6 +309,41 @@ def load_role_archetype(app_folder: str) -> Optional[str]:
         return None
 
 
+def load_ats_scores(app_folder: str) -> Dict:
+    """Extract pre-rewrite and post-rewrite ATS scores from ATS_Report.yaml.
+
+    Returns a dict with 'pre_rewrite_ats_score' and 'post_rewrite_ats_score' keys.
+    Values are None if not present.
+    """
+    ats_path = os.path.join(app_folder, "ATS_Report.yaml")
+    if not os.path.exists(ats_path):
+        return {"pre_rewrite_ats_score": None, "post_rewrite_ats_score": None}
+    try:
+        with open(ats_path, 'r', encoding='utf-8') as f:
+            report = yaml.safe_load(f)
+        if not isinstance(report, dict):
+            return {"pre_rewrite_ats_score": None, "post_rewrite_ats_score": None}
+
+        pre_score = None
+        matrix = report.get("ats_score_matrix", {})
+        if isinstance(matrix, dict):
+            pre_score = matrix.get("total_score")
+
+        post_score = None
+        post = report.get("post_rewrite_ats_score", {})
+        if isinstance(post, dict):
+            post_matrix = post.get("ats_score_matrix", {})
+            if isinstance(post_matrix, dict):
+                post_score = post_matrix.get("total_score")
+
+        return {
+            "pre_rewrite_ats_score": pre_score,
+            "post_rewrite_ats_score": post_score,
+        }
+    except Exception:
+        return {"pre_rewrite_ats_score": None, "post_rewrite_ats_score": None}
+
+
 def load_matched_project_titles(app_folder: str) -> List[str]:
     """Extract project titles from project_info.md."""
     proj_info_path = os.path.join(app_folder, "project_info.md")
@@ -554,6 +589,9 @@ def learn_from_application(app_folder: str, portfolio_dir: str) -> Dict:
     # 2. Load role archetype
     role_archetype = load_role_archetype(app_folder)
 
+    # 2b. Load ATS scores for delta tracking
+    ats_scores = load_ats_scores(app_folder)
+
     # 3. Load matched project titles from project_info.md
     matched_titles = load_matched_project_titles(app_folder)
     if not matched_titles:
@@ -649,6 +687,8 @@ def learn_from_application(app_folder: str, portfolio_dir: str) -> Dict:
         "timestamp": datetime.now().isoformat(timespec='seconds'),
         "jd_source": os.path.basename(os.path.normpath(app_folder)),
         "role_archetype": role_archetype,
+        "pre_rewrite_ats_score": ats_scores["pre_rewrite_ats_score"],
+        "post_rewrite_ats_score": ats_scores["post_rewrite_ats_score"],
         "changes": changes,
     }
     append_learning_log(log_entry)

@@ -5,9 +5,14 @@ Reads a resume PDF and its source YAML, extracts the PDF text layer via pypdf,
 and checks:
   1. Unicode corruption (replacement glyphs U+FFFD)
   2. Keyword recovery (all tools/skills from the YAML must appear in the text)
-  3. Section header detection (all 6 standard sections must be present)
+  3. Section header detection (style-aware: US style checks 6 headers, German style checks 5 — no Projects header since projects fold into experience)
   4. Contact info extraction (name, phone, email, GitHub, LinkedIn)
   5. Text structure stats (lines, avg/max line length)
+
+If the audit fails, the script automatically attempts recovery by re-compiling
+the resume with the ReportLab fallback renderer (style-aware: US or German),
+then re-audits the recovered PDF. This replaces the in-renderer audit that was
+previously embedded in resume_latex_us.py / resume_latex_german.py.
 
 Outputs:
   - Parseability_Report.yaml  (structured audit results)
@@ -16,10 +21,14 @@ Outputs:
 Usage:
   python resume_parseability.py <resume.pdf> <resume.yaml> [output_dir]
   python resume_parseability.py --check-tex <resume.tex>
+  python resume_parseability.py <resume.pdf> <resume.yaml> --no-recovery
 
 The --check-tex mode runs the LaTeX project summary length check only
 (<= 300 chars for English, <= 280 chars for German, summary text only —
 project name, em-dash separators, and link markup are excluded). No PDF audit is performed.
+
+The --no-recovery flag disables the automatic ReportLab re-compile on audit
+failure. By default recovery is attempted.
 
 If output_dir is omitted, the directory of the PDF is used.
 
@@ -35,6 +44,131 @@ import yaml
 import datetime
 
 from reportlab.lib.pagesizes import A4
+
+
+# ── Lightweight parse-integrity check (recovery trigger) ─────────────────────
+# Moved here from resume_latex_us.py. This is a fast subset of the full audit
+# used to decide whether to trigger a ReportLab re-compile. The full audit
+# (run_audit below) is the authoritative report writer.
+
+def check_parse_integrity(pdf_path, resume_data):
+    """Quick parse-integrity check on a compiled PDF.
+
+    Checks:
+      1. Unicode corruption (replacement glyphs U+FFFD).
+      2. Keyword recovery — critical tools/skills from resume_data must appear
+         in the extracted text layer.
+
+    Returns a dict:
+      {
+        "status": "Pass" | "Fail",
+        "unicode_corruptions": [list of corrupted char positions],
+        "missing_keywords": [list of keywords not found in text],
+        "keyword_recovery_pct": int (0-100),
+      }
+    """
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(pdf_path)
+        pdf_text = "".join(page.extract_text() or "" for page in reader.pages)
+    except Exception as e:
+        print(f"Warning: Could not extract PDF text for parse-integrity check: {e}", file=sys.stderr)
+        return {
+            "status": "Fail",
+            "unicode_corruptions": [],
+            "missing_keywords": [],
+            "keyword_recovery_pct": 0,
+            "error": str(e),
+        }
+
+    # 1. Check for unicode corruptions
+    corruptions = []
+    for i, ch in enumerate(pdf_text):
+        if ch == '\uFFFD':
+            corruptions.append(i)
+
+    # 2. Build keyword list from resume data
+    keywords = set()
+    # From project tools
+    for proj in resume_data.get('projects', resume_data.get('projekte', [])):
+        if isinstance(proj, dict):
+            for t in proj.get('tools', []):
+                if t and len(str(t)) > 1:
+                    keywords.add(str(t).strip())
+    # From technical skills
+    for cat in resume_data.get('technical_skills', resume_data.get('technische_fähigkeiten', resume_data.get('technische fähigkeiten', []))):
+        if isinstance(cat, dict):
+            for s in cat.get('skills', []):
+                if s and len(str(s)) > 1:
+                    keywords.add(str(s).strip())
+    # Always check these critical ATS terms
+    keywords.update(['dbt', 'Snowflake', 'Airflow', 'Python', 'SQL'])
+
+    # Check keyword recovery (case-insensitive substring match)
+    pdf_text_lower = pdf_text.lower()
+    missing = []
+    for kw in sorted(keywords):
+        if kw.lower() not in pdf_text_lower:
+            missing.append(kw)
+
+    total_keywords = len(keywords)
+    recovered = total_keywords - len(missing)
+    recovery_pct = int((recovered / total_keywords * 100)) if total_keywords > 0 else 100
+
+    status = "Pass" if (not corruptions and recovery_pct == 100) else "Fail"
+
+    return {
+        "status": status,
+        "unicode_corruptions": corruptions,
+        "missing_keywords": missing,
+        "keyword_recovery_pct": recovery_pct,
+    }
+
+
+def _recover_with_reportlab(pdf_path, yaml_path):
+    """Re-compile a resume PDF using the ReportLab fallback renderer.
+
+    Determines the resume style (us/german) from the YAML and calls the
+    appropriate ReportLab renderer. Returns True if the re-compiled PDF
+    passes the lightweight parse-integrity check, False otherwise.
+    """
+    try:
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            resume_data = yaml.safe_load(f)
+    except Exception as e:
+        print(f"Error loading YAML for recovery: {e}", file=sys.stderr)
+        return False
+
+    # Determine resume style
+    style = 'us'
+    style_val = str(resume_data.get('resume_style', '')).lower().strip()
+    if style_val in ('german', 'germany', 'de'):
+        style = 'german'
+
+    # Add renderers to path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+
+    print(f"  Triggering ReportLab fallback ({style} style) for ATS-safe PDF...", file=sys.stderr)
+    if style == 'german':
+        from renderers.resume_reportfallback_german import create_resume_pdf_reportlab_germany
+        create_resume_pdf_reportlab_germany(resume_data, pdf_path)
+    else:
+        from renderers.resume_reportfallback_us import create_resume_pdf_reportlab
+        create_resume_pdf_reportlab(resume_data, pdf_path)
+
+    # Re-audit the ReportLab PDF
+    if os.path.exists(pdf_path):
+        rl_audit = check_parse_integrity(pdf_path, resume_data)
+        if rl_audit["status"] == "Fail":
+            print(f"\n*** FATAL: ReportLab fallback PDF also failed parse-integrity audit ***", file=sys.stderr)
+            print(f"  Missing keywords: {rl_audit.get('missing_keywords', [])}", file=sys.stderr)
+            return False
+        else:
+            print(f"  ReportLab fallback passed parse-integrity audit (recovery: {rl_audit['keyword_recovery_pct']}%)", file=sys.stderr)
+            return True
+    return False
 
 
 def _extract_pdf_text(pdf_path):
@@ -148,14 +282,27 @@ def _check_keyword_recovery(pdf_text, keywords):
     }
 
 
-def _check_section_headers(pdf_text, lang='english'):
-    """Check that all expected section headers are present in the text."""
-    expected = {
-        'english': ['SUMMARY', 'TECHNICAL SKILLS', 'PROJECTS',
-                    'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SPOKEN LANGUAGES'],
-        'german': ['ZUSAMMENFASSUNG', 'TECHNISCHE FÄHIGKEITEN', 'PROJEKTE',
-                   'BERUFSERFAHRUNG', 'AUSBILDUNG', 'SPRACHEN'],
-    }
+def _check_section_headers(pdf_text, lang='english', resume_style='us'):
+    """Check that all expected section headers are present in the text.
+
+    For German-style resumes, the date_signature block has no section header,
+    so it is excluded from the expected set. The section set is also
+    order-aware: German style uses a different order than US style.
+    """
+    if resume_style == 'german':
+        expected = {
+            'english': ['SUMMARY', 'PROFESSIONAL EXPERIENCE', 'EDUCATION',
+                        'TECHNICAL SKILLS', 'SPOKEN LANGUAGES'],
+            'german': ['ZUSAMMENFASSUNG', 'BERUFSERFAHRUNG', 'AUSBILDUNG',
+                       'TECHNISCHE FÄHIGKEITEN', 'SPRACHEN'],
+        }
+    else:
+        expected = {
+            'english': ['SUMMARY', 'TECHNICAL SKILLS', 'PROJECTS',
+                        'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SPOKEN LANGUAGES'],
+            'german': ['ZUSAMMENFASSUNG', 'TECHNISCHE FÄHIGKEITEN', 'PROJEKTE',
+                       'BERUFSERFAHRUNG', 'AUSBILDUNG', 'SPRACHEN'],
+        }
     sections = expected.get(lang, expected['english'])
     pdf_upper = pdf_text.upper()
 
@@ -251,11 +398,17 @@ def run_audit(pdf_path, yaml_path):
     if 'german' in lang_val or 'deutsch' in lang_val or lang_val == 'de':
         lang = 'german'
 
+    # Determine resume style (us/german) for section header checking
+    resume_style = 'us'
+    style_val = str(resume_data.get('resume_style', '')).lower().strip()
+    if style_val in ('german', 'germany', 'de'):
+        resume_style = 'german'
+
     # Run all checks
     unicode_check = _check_unicode_corruption(pdf_text)
     keywords = _build_keyword_set(resume_data)
     keyword_check = _check_keyword_recovery(pdf_text, keywords)
-    section_check = _check_section_headers(pdf_text, lang)
+    section_check = _check_section_headers(pdf_text, lang, resume_style)
     contact_check = _check_contact_info(pdf_text, resume_data)
     stats = _text_stats(pdf_text)
 
@@ -378,8 +531,14 @@ def main():
             sys.exit(2)
         sys.exit(check_tex(args[0]))
 
+    # --no-recovery flag: disable automatic ReportLab re-compile on failure
+    no_recovery = False
+    if '--no-recovery' in args:
+        no_recovery = True
+        args.remove('--no-recovery')
+
     if len(args) < 2:
-        print("Usage: python resume_parseability.py <resume.pdf> <resume.yaml> [output_dir]", file=sys.stderr)
+        print("Usage: python resume_parseability.py <resume.pdf> <resume.yaml> [output_dir] [--no-recovery]", file=sys.stderr)
         print("       python resume_parseability.py --check-tex <resume.tex>", file=sys.stderr)
         sys.exit(2)
 
@@ -400,6 +559,26 @@ def main():
     if report is None:
         print("Error: Audit could not be completed.", file=sys.stderr)
         sys.exit(2)
+
+    # ── Recovery: re-compile with ReportLab if the audit failed ──────────
+    if report['overall_status'] == 'Fail' and not no_recovery:
+        print(f"\n*** PARSE-INTEGRITY AUDIT FAILED ***", file=sys.stderr)
+        if report.get('unicode_corruptions'):
+            print(f"  Unicode corruptions detected: {len(report['unicode_corruptions'])} replacement glyphs (U+FFFD)", file=sys.stderr)
+        if report.get('keywords_missing'):
+            print(f"  Missing keywords from PDF text layer: {report['keywords_missing']}", file=sys.stderr)
+        print(f"  Keyword recovery: {report['keyword_recovery_pct']}%", file=sys.stderr)
+
+        recovered = _recover_with_reportlab(pdf_path, yaml_path)
+        if recovered:
+            # Re-run the full audit on the recovered PDF
+            report = run_audit(pdf_path, yaml_path)
+            if report is None:
+                print("Error: Re-audit after recovery could not be completed.", file=sys.stderr)
+                sys.exit(2)
+        else:
+            print(f"\n*** FATAL: Recovery failed — both LaTeX and ReportLab PDFs failed parse-integrity audit ***", file=sys.stderr)
+            sys.exit(1)
 
     # Write YAML report
     yaml_out = os.path.join(output_dir, "Parseability_Report.yaml")

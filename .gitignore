@@ -18,6 +18,7 @@ okf/.lint_cache.json
 okf/.dep_check.json
 okf/.location_cache.json
 okf/.font_cache.json
+okf/.embedding_server.json
 *.lock
 okf-cv.code-workspace
 Applications/

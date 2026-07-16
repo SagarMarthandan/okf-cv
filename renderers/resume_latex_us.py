@@ -11,83 +11,7 @@ import sys
 import yaml
 
 from .utils import TEXT_DARK, escape_latex, run_pdflatex
-from .resume_common import HEADERS, get_resume_language, get_section_order
-
-
-# ── Parse-integrity audit (fallback trigger only) ─────────────────────────────
-
-def _audit_pdf_parse_integrity(pdf_path: str, resume_data: dict) -> dict:
-    """Audit a generated PDF for ATS parse-integrity.
-
-    Checks:
-      1. Unicode corruption (replacement glyphs U+FFFD).
-      2. Keyword recovery — critical tools/skills from resume_data must appear
-         in the extracted text layer.
-
-    Returns a dict:
-      {
-        "status": "Pass" | "Fail",
-        "unicode_corruptions": [list of corrupted char positions],
-        "missing_keywords": [list of keywords not found in text],
-        "keyword_recovery_pct": int (0-100),
-      }
-    """
-    try:
-        import pypdf
-        reader = pypdf.PdfReader(pdf_path)
-        pdf_text = "".join(page.extract_text() or "" for page in reader.pages)
-    except Exception as e:
-        print(f"Warning: Could not extract PDF text for parse-integrity audit: {e}", file=sys.stderr)
-        return {
-            "status": "Fail",
-            "unicode_corruptions": [],
-            "missing_keywords": [],
-            "keyword_recovery_pct": 0,
-            "error": str(e),
-        }
-
-    # 1. Check for unicode corruptions
-    corruptions = []
-    for i, ch in enumerate(pdf_text):
-        if ch == '\uFFFD':
-            corruptions.append(i)
-
-    # 2. Build keyword list from resume data
-    keywords = set()
-    # From project tools
-    for proj in resume_data.get('projects', resume_data.get('projekte', [])):
-        if isinstance(proj, dict):
-            for t in proj.get('tools', []):
-                if t and len(str(t)) > 1:
-                    keywords.add(str(t).strip())
-    # From technical skills
-    for cat in resume_data.get('technical_skills', resume_data.get('technische_fähigkeiten', resume_data.get('technische fähigkeiten', []))):
-        if isinstance(cat, dict):
-            for s in cat.get('skills', []):
-                if s and len(str(s)) > 1:
-                    keywords.add(str(s).strip())
-    # Always check these critical ATS terms
-    keywords.update(['dbt', 'Snowflake', 'Airflow', 'Python', 'SQL'])
-
-    # Check keyword recovery (case-insensitive substring match)
-    pdf_text_lower = pdf_text.lower()
-    missing = []
-    for kw in sorted(keywords):
-        if kw.lower() not in pdf_text_lower:
-            missing.append(kw)
-
-    total_keywords = len(keywords)
-    recovered = total_keywords - len(missing)
-    recovery_pct = int((recovered / total_keywords * 100)) if total_keywords > 0 else 100
-
-    status = "Pass" if (not corruptions and recovery_pct == 100) else "Fail"
-
-    return {
-        "status": status,
-        "unicode_corruptions": corruptions,
-        "missing_keywords": missing,
-        "keyword_recovery_pct": recovery_pct,
-    }
+from .resume_common import HEADERS, get_resume_language, get_section_order, format_date_numeric
 
 
 # ── LaTeX renderer ────────────────────────────────────────────────────────────
@@ -208,7 +132,7 @@ def _generate_resume_tex(data, output_path):
         # \noindent\textbf{Name} --- \href{repo_url}{[GitHub]} --- summary.\par
         # When no repo_url: \noindent\textbf{Name} --- summary.\par
         link_tex = f" --- \\href{{{repo_url}}}{{\\color{{darkblue}}\\small[GitHub]}}" if repo_url else ""
-        item_tex = f"\\noindent\\textbf{{{proj_name}}}{link_tex} --- {summary}.\\par"
+        item_tex = f"\\noindent\\textbf{{{proj_name}}}{link_tex} --- {summary.rstrip('.')}\\par"
 
         if i == 0:
             proj_tex_items.append(
@@ -225,7 +149,7 @@ def _generate_resume_tex(data, output_path):
     exp_list = data.get('professional_experience', data.get('berufserfahrung', []))
     for i, exp in enumerate(exp_list):
         company    = escape_latex(exp.get('company', ''))
-        date       = escape_latex(exp.get('date', ''))
+        date       = escape_latex(format_date_numeric(exp.get('date', '')))
         title      = escape_latex(exp.get('title', ''))
         bullets    = [escape_latex(b) for b in exp.get('bullets', [])]
         bullets_tex = "\n".join([f"  \\resumeItem{{{b}}}" for b in bullets])
@@ -235,7 +159,7 @@ def _generate_resume_tex(data, output_path):
             f"\\vspace{{2pt}}\n"
             f"\\jobTitle{{{title}}}\n"
             f"\\vspace{{2pt}}\n"
-            f"\\begin{{itemize}}[leftmargin=*,nosep,itemsep=1pt]\n{bullets_tex}\n\\end{{itemize}}\\par"
+            f"\\begin{{itemize}}[leftmargin=1.2em, itemindent=0pt, labelsep=0.4em, labelwidth=0.5em, nosep, itemsep=1pt]\n{bullets_tex}\n\\end{{itemize}}\\par"
         )
         if i == 0:
             exp_tex_items.append(
@@ -297,7 +221,7 @@ def _generate_resume_tex(data, output_path):
 \\titleformat{{\\section}}{{\\large\\bfseries\\color{{darkblue}}\\uppercase}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule]
 \\titlespacing{{\\section}}{{0pt}}{{6pt}}{{4pt}}
 
-\\newcommand{{\\resumeItem}}[1]{{\\item[$\\cdot$] {{#1}}}}
+\\newcommand{{\\resumeItem}}[1]{{\\item[$\\cdot$] \\fussy {{#1}}}}
 \\newcommand{{\\eduEntry}}[3]{{\\textbf{{#1}} {{\\small\\textit{{#2}}}} \\hfill {{\\small\\textit{{#3}}}}}}
 \\newcommand{{\\resumeProject}}[1]{{{{\\normalsize\\textbf{{#1}}}}}}
 \\newcommand{{\\jobEntry}}[2]{{{{\\normalsize\\textbf{{#1}} \\hfill {{\\normalsize#2}}}}}}
@@ -345,41 +269,8 @@ def create_resume_pdf_latex(data, output_path):
         run_pdflatex(tex_filename, pdf_dir, label="Resume", keep_tex=True)
         print(f"Successfully compiled Resume via LaTeX: {output_path}")
 
-        # ── Parse-integrity audit (fallback trigger only) ───────────────────
-        # The standalone resume_parseability.py (Step 2 Section 6) is the sole
-        # writer of the parse-integrity report. This in-renderer audit exists
-        # only to auto-recover to ReportLab when the LaTeX PDF's text layer is
-        # corrupted — the standalone audit can report but cannot recover.
-        if os.path.exists(output_path):
-            audit = _audit_pdf_parse_integrity(output_path, data)
-
-            if audit["status"] == "Fail":
-                print(f"\n*** PARSE-INTEGRITY AUDIT FAILED ***", file=sys.stderr)
-                if audit.get("unicode_corruptions"):
-                    print(f"  Unicode corruptions detected: {len(audit['unicode_corruptions'])} replacement glyphs (U+FFFD)", file=sys.stderr)
-                if audit.get("missing_keywords"):
-                    print(f"  Missing keywords from PDF text layer: {audit['missing_keywords']}", file=sys.stderr)
-                print(f"  Keyword recovery: {audit['keyword_recovery_pct']}%", file=sys.stderr)
-                print(f"  Triggering ReportLab fallback for ATS-safe PDF...", file=sys.stderr)
-
-                # Lazy import to avoid circular dependency
-                from .resume_reportfallback import create_resume_pdf_reportlab
-                create_resume_pdf_reportlab(data, output_path)
-
-                # Re-audit the ReportLab PDF
-                if os.path.exists(output_path):
-                    rl_audit = _audit_pdf_parse_integrity(output_path, data)
-                    if rl_audit["status"] == "Fail":
-                        print(f"\n*** FATAL: ReportLab fallback PDF also failed parse-integrity audit ***", file=sys.stderr)
-                        print(f"  Missing keywords: {rl_audit.get('missing_keywords', [])}", file=sys.stderr)
-                        raise Exception("Both LaTeX and ReportLab PDFs failed parse-integrity audit. Pipeline halted.")
-                    else:
-                        print(f"  ReportLab fallback passed parse-integrity audit (recovery: {rl_audit['keyword_recovery_pct']}%)", file=sys.stderr)
-            else:
-                print(f"  Parse-integrity audit: PASS (keyword recovery: {audit['keyword_recovery_pct']}%)")
-
     except Exception as e:
         print(f"Error compiling LaTeX: {e}", file=sys.stderr)
         print("Falling back to ReportLab compilation...", file=sys.stderr)
-        from .resume_reportfallback import create_resume_pdf_reportlab
+        from .resume_reportfallback_us import create_resume_pdf_reportlab
         create_resume_pdf_reportlab(data, output_path)

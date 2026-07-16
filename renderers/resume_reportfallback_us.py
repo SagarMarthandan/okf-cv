@@ -27,7 +27,7 @@ from .utils import (
     TEXT_DARK, TEXT_MUTED, LINE_COLOR,
     register_lm_roman_10,
 )
-from .resume_common import HEADERS, get_resume_language, get_section_order
+from .resume_common import HEADERS, get_resume_language, get_section_order, format_date_numeric
 
 
 def create_resume_pdf_reportlab(data, output_path):
@@ -93,7 +93,9 @@ def create_resume_pdf_reportlab(data, output_path):
     bullet_style = ParagraphStyle(
         'ResBullet', parent=styles['Normal'],
         fontName=F_REG, fontSize=11, leading=13.5,
-        leftIndent=12, firstLineIndent=-8, spaceAfter=1, textColor=TEXT_DARK,
+        leftIndent=16, firstLineIndent=-16, bulletIndent=0,
+        alignment=4,  # TA_JUSTIFY
+        spaceAfter=1, textColor=TEXT_DARK,
     )
     skill_val_style = ParagraphStyle(
         'ResSkillVal', parent=styles['Normal'],
@@ -224,7 +226,7 @@ def create_resume_pdf_reportlab(data, output_path):
             # Build: <b>Name</b> --- <a href='repo_url'>[GitHub]</a> --- summary
             # When no repo_url: <b>Name</b> --- summary
             github_link = f" --- <a href='{repo_url}' color='#1A365D'><font size=8>[GitHub]</font></a>" if repo_url else ""
-            line = f"<b>{name}</b>{github_link} --- {prose}."
+            line = f"<b>{name}</b>{github_link} --- {prose.rstrip('.')}."
 
             block.append(Paragraph(line, proj_para_style))
             # 4pt gap between projects; tighter gap after last project
@@ -241,7 +243,7 @@ def create_resume_pdf_reportlab(data, output_path):
                 block.append(add_section_header(h['professional_experience']))
                 block.append(Spacer(1, 4))
             company    = exp.get('company', '')
-            date_range = exp.get('date', '')
+            date_range = format_date_numeric(exp.get('date', ''))
             job_title  = exp.get('title', '')
             bullets    = exp.get('bullets', [])
 
@@ -262,7 +264,7 @@ def create_resume_pdf_reportlab(data, output_path):
             block.append(exp_table)
             block.append(Spacer(1, 3))
             for b in bullets:
-                block.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
+                block.append(Paragraph(f"<bullet>&bull;&nbsp;&nbsp;</bullet>{b}", bullet_style))
             # 4pt gap between companies; tighter gap after last entry
             block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 2))
         return block
