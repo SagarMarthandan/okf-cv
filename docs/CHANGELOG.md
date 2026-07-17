@@ -6,6 +6,25 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.18 — Portfolio Cleanup: OKF-CV Project Doc + Duplicate Removal
+
+**Files:** `okf/portfolio/OKF-CV Resume & Cover Letter Tailoring Pipeline.md` (new, cleaned), `okf/portfolio/yaml_cv_resume_cover_letter_tailoring_pipeline.md` (deleted), `okf/zvec_db/` (rebuilt), `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** The OKF-CV pipeline itself was not represented as a portfolio project — it was missing from the hybrid search corpus, so JDs targeting resume/ATS/pipeline engineering roles couldn't match it. A raw dump of the README + full changelog had been pasted into a new portfolio file (968 lines, no frontmatter), which would have failed the linter and polluted the Zvec embedding with changelog noise. Additionally, the pre-rebrand `yaml_cv_resume_cover_letter_tailoring_pipeline.md` was still in the portfolio — a stale duplicate of the same pipeline (the v24 rebrand renamed `yaml-cv-pipeline` → `okf-cv`), causing two near-identical embeddings to compete in search results.
+
+**Changes:**
+- **Cleaned `OKF-CV Resume & Cover Letter Tailoring Pipeline.md`:** Rewrote from 968 lines → 135 lines. Added proper YAML frontmatter (title, description, technologies, 14 keywords, 2 archetypes: `Agentic/Automation` + `Backend/Platform Engineering`, `repo_url: https://github.com/SagarMarthandan/okf-cv`). Kept the most important README topics: intro + monoculture framing, full Hybrid Search Architecture (OKF 4-layer + Zvec + score fusion + cross-process lock + embedding daemon), the 3-step pipeline + 2 post-pipeline steps with all P1–P4 metrics, key scripts reference, and the algorithmic monoculture countermeasures section. Dropped: the Mermaid diagram, the verbose directory tree, the "How to Run"/Testing sections, and the entire v1–v28.14 changelog (changelog noise would have diluted the Zvec embedding).
+- **Deleted `yaml_cv_resume_cover_letter_tailoring_pipeline.md`:** Pre-rebrand duplicate of the same pipeline. The v24 changelog explicitly rebranded `yaml-cv-pipeline` → `okf-cv` (renamed all references across `SKILL.md`, `config.py`, `yaml_to_pdf.py`, `sync_to_obsidian.py`). The old file was a stale, less-detailed snapshot (95 lines, no embedding daemon, no parse-integrity audit, no monoculture countermeasures, no P1–P4 metrics, generic `repo_url` fallback). Both files would have embedded into Zvec and split the search ranking for any JD matching "resume pipeline" / "ATS" / "hybrid search" keywords.
+- **Rebuilt Zvec database:** Full `force_recreate` re-ingestion after the deletion to clear the stale `proj_15` document. 15 projects now embedded (was 14 before the OKF-CV addition, briefly 16 with the duplicate, now 15 clean).
+- **Updated `README.md`:** Zvec Semantic Layer section "14 portfolio files" → "15 portfolio files". Changelog link "v1–v28.14" → "v1–v28.18".
+
+**Verification:**
+- `okf_lint.py --force`: PASSED (15 files linted, 0 violations).
+- Zvec ingestion: 15 files, 15 changed/re-embedding, 15 projects embedded.
+- Portfolio directory: 15 `.md` files (was 14 + 1 stale duplicate = 15, now 15 clean distinct projects).
+
+---
+
 ## v28.14 — Embedding Daemon (eliminates redundant model loads across pipeline invocations)
 
 **Files:** `embedding_server.py` (new), `zvec_hybrid_search.py`, `.gitignore`, `SKILL.md`, `README.md`, `CHANGELOG.md`

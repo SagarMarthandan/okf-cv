@@ -15,6 +15,9 @@ keywords:
 - changes
 - context
 - data
+- apache
+- batch
+- driven
 archetypes:
 - Data Engineering
 repo_url: https://github.com/SagarMarthandan
