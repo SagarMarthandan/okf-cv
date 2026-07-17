@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Data Engineer with 4+ years of production experience building ELT pipelines on GCP, AWS, and Azure using Python, Apache Airflow, dbt, and Terraform. Delivered end-to-end data products ingesting 37M+ records into BigQuery with dbt mart layers, Soda Core quality checks, and CI/CD via GitHub Actions. M.Sc. Computer Science, CAU Kiel.
+Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), complemented by hands-on self-taught data engineering skills in dbt, Apache Airflow, and ELT pipelines on GCP, AWS, and Azure. Built independent projects ingesting 37M+ records. M.Sc. Computer Science, CAU Kiel.
 
 ## TECHNICAL SKILLS
 

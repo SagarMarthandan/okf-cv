@@ -1,5 +1,7 @@
 # Pipeline Step 2: Resume Rewrite & Visual Layout Audit
 
+> **READ-ONLY SKILL FILES — HARD GUARDRAIL:** The `renderers/` directory, all top-level pipeline scripts (`yaml_to_pdf.py`, `config.py`, `resume_parseability.py`, etc.), `okf/base_files/`, `okf/portfolio/`, and all pipeline step docs (`SKILL.md`, `01_*.md`, `03_*.md`) are **PERMANENTLY READ-ONLY** during this step. The model MUST NOT edit, patch, or modify any of these files — not during the initial rewrite, not during self-correction, not during the visual audit, not during LaTeX polish. **The model's writable workspace is the application folder only:** `Resume.yaml` (edit freely for content, bullets, summary, wording), `Resume.tex` / `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` (edit freely for prose refinement, tightening, keyword preservation), plus `Layout_Audit_Report.yaml`, `Parseability_Report.yaml`, and optionally `SAGAR_MARTHANDAN_Resume_v2.yaml`. If a layout issue would require changing a renderer or skill file to fix, **do not touch the skill file** — fix it by adjusting the `Resume.yaml` or `.tex` content (shorter bullets, different wording, etc.) instead. This rule has no exceptions.
+
 ## Objective
 Generate a tailored, high-scannability resume (`Resume.yaml`) directly in structured YAML format based on the Step 1 `ATS_Report.yaml`, audit its layout parameters, self-correct any formatting issues, and re-evaluate the final ATS score.
 
@@ -66,6 +68,10 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Summary:** Must occupy **exactly 4 lines** of text.
   - **English Resumes:** Max 420 characters (`<= 420`).
   - **German Resumes (Zusammenfassung):** Max **`340–380` characters** to prevent overflow to a 5th line due to longer German words.
+  - **No Fabrication — Truthful Career Framing:** The summary MUST truthfully distinguish the candidate's two experience tracks:
+    1. **4 years of professional production environment experience** at IBM India (08/2014–12/2018) maintaining CICS/Db2 transaction infrastructure and IBM MQ messaging pipelines. This is the candidate's only professional production experience.
+    2. **Hands-on self-taught knowledge** in data engineering, AI/ML, dbt, Airflow, RAG, LangChain, etc. — acquired through independent projects and self-learning, NOT through professional employment.
+    The summary must NEVER claim "production experience" in data engineering, AI, RAG, or ELT pipelines. The "Independent Data Engineering & Professional Development" period (01/2023–04/2025) is self-directed learning and personal projects, not employment. Do not fabricate stories, metrics, or claims of delivering production data systems. Use phrases like "hands-on self-taught expertise", "independent projects", or "self-directed" — never "production experience" or "delivered production systems" for data/AI work.
 - **Project Section:**
   - Select the best 3 projects first that resonate with the job description.
   - Add a fourth project if it increases the ATS score for the job description.

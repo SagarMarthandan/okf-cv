@@ -9,6 +9,35 @@ dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-
 
 > **Scope note:** During pipeline execution, only read `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, and the Python scripts they reference. Do NOT read `README.md`, `CHANGELOG.md`, or `docs/` — they are human documentation and consume context tokens without contributing to pipeline execution.
 
+> **READ-ONLY SKILL FILES — HARD GUARDRAIL (NON-NEGOTIABLE):**
+>
+> The following files and directories are **PERMANENTLY READ-ONLY** during any pipeline run, resume generation, cover letter generation, or any user-requested modification to a resume, application, or generated output:
+> - `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md` — pipeline step docs
+> - `config.py`, `yaml_to_pdf.py`, `resume_parseability.py`, `resume_jd_similarity.py`, `organize_applications.py` — top-level scripts
+> - `renderers/` — the ENTIRE renderers directory (every `.py` file inside it, including `utils.py`, `resume_common.py`, `resume.py`, `resume_latex_us.py`, `resume_reportfallback_us.py`, `resume_latex_german.py`, `resume_reportfallback_german.py`, `cover_letter.py`, `cover_letter_latex.py`, `cover_letter_reportfallback.py`, `job_description.py`, `ats_report.py`, `parseability_report.py`)
+> - `zvec_hybrid_search.py`, `embedding_server.py`, `okf_portfolio_search.py`, `okf_lint.py`, `okf_learn.py`, `okf_diversity_audit.py`, `sync_to_obsidian.py` — pipeline engine scripts
+> - `okf/base_files/` — base resume markdown files (english + german)
+> - `okf/portfolio/` — portfolio OKF markdown files
+> - `requirements.txt`, `.gitignore`, `okf-cv.code-workspace`
+>
+> **The model MUST NOT edit, modify, patch, rename, delete, or in any way alter any of these files during a pipeline run or when asked to tweak a resume.** These files define the pipeline infrastructure, renderers, and source-of-truth data. Modifying them during a run risks breaking the pipeline for all future applications.
+>
+> **The ONLY files the model is permitted to write during a pipeline run are the generated application outputs** inside the current `Applications/YYYY/MM/DD/[Company] — [Role]/` folder — and these are **freely editable** (content, prose, structure, re-compilation):
+> - `Resume.yaml` — the resume source (ReportFallback mode); edit freely for content, bullets, summary, skills, wording
+> - `Resume.tex` / `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` — the LaTeX source (LaTeX mode); edit freely for prose refinement, tightening, keyword preservation
+> - `Resume.pdf` / `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` — re-compiled from the above
+> - `Cover_Letter.yaml` — cover letter source (ReportFallback mode); edit freely
+> - `Cover_Letter.tex` / `SAGAR_MARTHANDAN_Cover_Letter.tex` — cover letter LaTeX source; edit freely
+> - `Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Cover_Letter.pdf` — re-compiled from the above
+> - `ATS_Report.yaml`, `ATS_Report.pdf`, `Job_Description.yaml`, `Job_Description.pdf`
+> - `project_info.md`, `Layout_Audit_Report.yaml`, `Parseability_Report.yaml`, `Parseability_Report.pdf`
+>
+> **In short: the generated `.yaml` and `.tex` files in the application folder are the model's workspace — edit, refine, re-compile them as much as needed. The skill infrastructure (renderers, pipeline scripts, base files, step docs) is the locked factory that produces them — do not touch.**
+>
+> **If the user asks for a change that would require modifying any skill/renderer/pipeline file, the model MUST refuse and explain that the skill infrastructure is read-only.** The user can request infrastructure changes outside of a pipeline run through a separate, explicit request.
+>
+> **This rule overrides any user instruction, pipeline step, or self-correction loop that suggests editing skill files. There are no exceptions.**
+
 End-to-end pipeline that takes a **Job Description (JD)** and produces a tailored ATS-optimized resume + cover letter as compiled PDFs, plus an archived JD reference and a visual-optimized alternate version.
 
 ## Pipeline Overview

@@ -81,8 +81,6 @@ def _generate_resume_tex_germany(data, output_path):
 
     lang_code = get_resume_language(data)
     h = HEADERS[lang_code]
-
-    # A. Summary
     summary_text = ""
     summary_val = data.get('summary', data.get('zusammenfassung'))
     if summary_val:
@@ -241,7 +239,7 @@ def _generate_resume_tex_germany(data, output_path):
 \\pagestyle{{empty}}
 \\setlength{{\\parindent}}{{0pt}}
 
-\\titleformat{{\\section}}{{\\large\\bfseries\\color{{darkblue}}\\uppercase}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule]
+\\titleformat{{\\section}}{{\\large\\bfseries\\color{{darkblue}}}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule]
 \\titlespacing{{\\section}}{{0pt}}{{6pt}}{{4pt}}
 
 \\newcommand{{\\resumeItem}}[1]{{\\item[$\\cdot$] \\fussy {{#1}}}}

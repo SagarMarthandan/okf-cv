@@ -1,5 +1,7 @@
 # Pipeline Step 3: Cover Letter Generation & Compilation
 
+> **READ-ONLY SKILL FILES — HARD GUARDRAIL:** The `renderers/` directory, all top-level pipeline scripts, `okf/base_files/`, `okf/portfolio/`, and all pipeline step docs are **PERMANENTLY READ-ONLY** during this step. The model MUST NOT edit, patch, or modify any of these files. **The model's writable workspace is the application folder only:** `Cover_Letter.yaml` (edit freely for content, prose, structure) and `Cover_Letter.tex` / `SAGAR_MARTHANDAN_Cover_Letter.tex` (edit freely for prose refinement). If a layout issue would require changing a renderer or skill file to fix, **do not touch the skill file** — fix it by adjusting the `Cover_Letter.yaml` or `.tex` content instead. This rule has no exceptions.
+
 ## Objective
 Generate a formal, high-impact cover letter in YAML (`Cover_Letter.yaml`) grounded in project metrics, aligning with German business letter standards (*Geschäftsbrief*), and compile it to PDF.
 

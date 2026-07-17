@@ -161,7 +161,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
         t = Table([[Paragraph(f"<b>{title.upper()}</b>", section_title_style)]], colWidths=[printable_width])
         t.setStyle(TableStyle([
             ('LINEBELOW',     (0,0), (-1,-1), 0.5, LINE_COLOR),
-            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('TOPPADDING',    (0,0), (-1,-1), 7),
             ('BOTTOMPADDING', (0,0), (-1,-1), 1),
             ('LEFTPADDING',   (0,0), (-1,-1), 0),
             ('RIGHTPADDING',  (0,0), (-1,-1), 0),
@@ -182,7 +182,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
                 " ".join(summary_val) if isinstance(summary_val, list) else summary_val,
                 summary_style,
             ),
-            Spacer(1, 4)
+            Spacer(1, 7)
         ]
 
     def render_professional_experience():
@@ -214,7 +214,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
                 ('BOTTOMPADDING', (0,0), (-1,-1), 0),
             ]))
             block.append(exp_table)
-            block.append(Spacer(1, 3))
+            block.append(Spacer(1, 5))
 
             # Project-style bullets (name --- [GitHub] --- summary format)
             project_bullets = exp.get('project_bullets', [])
@@ -229,7 +229,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
 
             for b in bullets:
                 block.append(Paragraph(f"<bullet>&bull;&nbsp;&nbsp;</bullet>{b}", bullet_style))
-            block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 2))
+            block.append(Spacer(1, 4 if i < len(exp_list) - 1 else 5))
         return block
 
     def render_education():
@@ -283,7 +283,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
             block.append(Paragraph(f"<b>{category_name}:</b> {skills_joined}", skill_val_style))
             if i < len(skills_list) - 1:
                 block.append(Spacer(1, 1))
-        block.append(Spacer(1, 4))
+        block.append(Spacer(1, 7))
         return block
 
     def render_projects():
@@ -304,7 +304,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
             line = f"<b>{name}</b>{github_link} --- {prose.rstrip('.')}."
 
             block.append(Paragraph(line, proj_para_style))
-            block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 2))
+            block.append(Spacer(1, 4 if i < len(projects_list) - 1 else 5))
         return block
 
     def render_spoken_languages():
@@ -315,7 +315,7 @@ def create_resume_pdf_reportlab_germany(data, output_path):
             add_section_header(h['spoken_languages']),
             Spacer(1, 3),
             Paragraph(" &bull; ".join(lang_items), skill_val_style),
-            Spacer(1, 4)
+            Spacer(1, 7)
         ]
 
     section_renderers = {

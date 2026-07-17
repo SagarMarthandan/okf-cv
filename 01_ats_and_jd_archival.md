@@ -1,5 +1,7 @@
 # Pipeline Step 1: ATS Check & Job Description Archival
 
+> **READ-ONLY SKILL FILES — HARD GUARDRAIL:** The `renderers/` directory, all top-level pipeline scripts (`zvec_hybrid_search.py`, `okf_portfolio_search.py`, `okf_lint.py`, `embedding_server.py`, etc.), `okf/base_files/`, `okf/portfolio/`, and all pipeline step docs are **PERMANENTLY READ-ONLY** during this step. The model MUST NOT edit, patch, or modify any of these files. **The ONLY files the model writes in this step are** `ATS_Report.yaml`, `Job_Description.yaml`, `Job_Description.pdf`, and `project_info.md` (inside the current application folder). This rule has no exceptions.
+
 ## Objective
 Analyze the target job description (JD) against the candidate's base resume and project portfolio to detect gaps, classify the role archetype, calculate an ATS score, and structure the clean JD for archival.
 

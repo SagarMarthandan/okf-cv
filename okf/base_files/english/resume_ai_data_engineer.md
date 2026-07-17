@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-AI Data Engineer with production experience building RAG pipelines, agentic LLM workflows, and end-to-end data infrastructure on GCP, AWS, and Azure. Built FAISS vector stores with LangChain QA chains, integrated Ollama/Qwen agents into Airflow/dbt pipelines ingesting 37M records. M.Sc. Computer Science (ML), CAU Kiel.
+Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), now applying hands-on self-taught expertise in RAG pipelines, agentic LLM workflows, and data engineering with Python, LangChain, dbt, and Airflow. Built independent projects on GCP and AWS. M.Sc. Computer Science, CAU Kiel.
 
 ## TECHNICAL SKILLS
 

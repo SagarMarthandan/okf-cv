@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Data Analyst with hands-on experience transforming complex datasets into KPI dashboards, dimensional models, and stakeholder reports using SQL, Python, Power BI, dbt, and Snowflake. Built Star Schema models, SCD Type 2 pipelines, and anomaly detection systems grounded in M.Sc. Computer Science and Quantitative Economics from CAU Kiel.
+Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), augmented by hands-on self-taught skills in data analysis, SQL, Power BI, dbt, and dimensional modeling. Built independent analytics projects with KPI dashboards and SCD Type 2 pipelines. M.Sc. Computer Science and Quantitative Economics, CAU Kiel.
 
 ## TECHNICAL SKILLS
 

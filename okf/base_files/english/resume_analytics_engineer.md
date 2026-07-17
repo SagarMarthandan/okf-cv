@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Analytics Engineer with deep dbt expertise across Snowflake and BigQuery, delivering dimensional models, SCD Type 2 snapshots, incremental fact tables, and dbt_expectations quality checks for production analytics pipelines. Proven track record building semantic data marts from 37M-record datasets. M.Sc. Computer Science, CAU Kiel.
+Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), with hands-on self-taught analytics engineering skills in dbt, Snowflake, and BigQuery. Built independent projects with dimensional models, SCD Type 2 snapshots, and incremental fact tables. M.Sc. Computer Science, CAU Kiel.
 
 ## TECHNICAL SKILLS
 
