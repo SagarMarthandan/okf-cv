@@ -6,6 +6,27 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.19 — Cover Letter DIN 5008 Layout + Gender-Tag Stripping
+
+**Files:** `renderers/cover_letter_reportfallback.py`, `renderers/cover_letter_latex.py`, `renderers/utils.py`, `renderers/cover_letter.py`, `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** The cover letter renderers produced an Anglo-American business letter layout (large multi-line sender block with phone/email, no enclosures section) rather than the DIN 5008 Form B convention used in German business correspondence. Additionally, German job postings commonly append gender-equality tags to role titles (e.g., `(w/m/f)`, `(m/w/d)`) which leaked into the cover letter subject line — visual noise the applicant wanted stripped at render time.
+
+**Changes:**
+- **Anschriftfeld (DIN 5008 Form B):** Both renderers now produce a two-part address field: a small single-line sender line (`Name • Address`, ~8pt) above the recipient block, suitable for window envelopes. The previous large multi-line sender block (bold name + address + phone + email) is removed.
+- **Phone/email moved to footer:** Contact details no longer appear in the sender block. In the ReportFallback renderer, they are drawn via `onFirstPage`/`onLaterPages` canvas callbacks (passed to `doc.build()`, not the `SimpleDocTemplate` constructor — the constructor args are silently ignored by ReportLab). In the LaTeX renderer, they appear in a small gray `\vspace` block after the Anlagen section. `\vfill` was removed because it pushed the footer to a new page on dense letters.
+- **Anlagen (enclosures) support:** New optional `enclosures` field in the cover letter YAML schema (list of strings). When present, an `Anlagen:` section is rendered after the signature listing the enclosed documents. Omitted when the field is absent — backward compatible with existing YAMLs.
+- **Gender-tag stripping:** New `strip_gender_tags()` helper in `renderers/utils.py` strips German gender-equality tags from the subject line at render time via regex `\s*\(\s*[wfmxdWFMXD](?:\s*/\s*[wfmxdWFMXD])*\s*\)`. Only strips parentheticals containing single letters from `{w, m, f, d, x}` separated by slashes — meaningful parentheticals (e.g., `(Tech Foundations, Finops and Tech Metrics)`) are preserved. Applied in both renderers; the YAML keeps the original subject text.
+- **LaTeX 1-page fix:** Tightened vspaces (date→subject 55pt→25pt, closing→signature 60pt→30pt, etc.) and removed the `bottom=1.5in` geometry override so dense cover letters fit on a single A4 page.
+- **New font helpers:** Added `register_segoe_ui()` and `register_cambria()` in `renderers/utils.py` (the latter handles Cambria's `.ttc` regular face via `subfontIndex=0`). Currently unused — the fallback renderers remain on `register_lm_roman_10()` after A/B testing Segoe UI, Cambria, and Times-Roman+Helvetica against LM Roman 10 for the German market.
+
+**Verification:**
+- adago (reportfallback): 1-page PDF, footer visible, Anlagen section present.
+- Delivery Hero (LaTeX): 1-page PDF confirmed via `pypdf` page count, Anlagen + footer on same page.
+- Gender-tag regex: 7 test cases pass (strips `(w/m/f)`, `(m/w/d)`, `(f/m/x)`, `(w/m)`, `( m / w / d )`; preserves `(Tech Foundations, Finops and Tech Metrics)` and no-parenthetical subjects).
+
+---
+
 ## v28.18 — Portfolio Cleanup: OKF-CV Project Doc + Duplicate Removal
 
 **Files:** `okf/portfolio/OKF-CV Resume & Cover Letter Tailoring Pipeline.md` (new, cleaned), `okf/portfolio/yaml_cv_resume_cover_letter_tailoring_pipeline.md` (deleted), `okf/zvec_db/` (rebuilt), `README.md`, `docs/CHANGELOG.md`

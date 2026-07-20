@@ -175,9 +175,11 @@ The entire process is organized into 3 primary sequential steps, executed automa
 - **Outputs:** `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (along with preserved LaTeX `.tex` sources when applicable), `Layout_Audit_Report.yaml` (including `parse_integrity_verification`), `Parseability_Report.yaml` & `Parseability_Report.pdf`, and the post-rewrite ATS rescoring results updated inside `ATS_Report.yaml`.
 
 ### STEP 3: Cover Letter Generation
-- **Geschäftsbrief Layout:** Generates a metric-grounded cover letter adapted to formal German business formatting, set to the computed closest candidate location (both in the sender address and date/city header).
+- **Geschäftsbrief Layout:** Generates a metric-grounded cover letter adapted to formal German business formatting, set to the computed closest candidate location (both in the sender address and date/city header). Both renderers (LaTeX and ReportFallback) now produce a DIN 5008 Form B-style layout: Anschriftfeld (small single-line sender line above the recipient block, suitable for window envelopes), right-aligned date, bold subject (Betreff), salutation, body, closing + signature, an `Anlagen:` (enclosures) section after the signature, and a footer line with phone/email at the bottom of the page (drawn via `onFirstPage`/`onLaterPages` canvas callbacks in ReportFallback, and via a small `\vspace` block in LaTeX — `\vfill` was removed because it pushed the footer to a new page on dense letters).
+- **Gender-Tag Stripping:** German job postings commonly append gender-equality tags to role titles (e.g., `Application for Analyst (w/m/f)`, `Bewerbung als Entwickler (m/w/d)`). The `strip_gender_tags()` helper in `renderers/utils.py` strips these from the subject line at render time via a regex that matches parentheticals containing only single letters from `{w, m, f, d, x}` separated by slashes. Meaningful parentheticals (e.g., `(Tech Foundations, Finops and Tech Metrics)`) are preserved. The YAML keeps the original subject — only the PDF output is cleaned.
 - **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mentions the `weak_tie_contact` name/role in paragraph 1. Project `repo_url` links are woven into paragraph deep dives where relevant.
 - **Strict Limits:** Restricts cover letter content to exactly one page, 4 paragraphs, and **250–320 words** total (restricted to **180–240 words** for German cover letters to prevent A4 overflow).
+- **Enclosures (Anlagen):** The cover letter YAML schema now supports an optional `enclosures` field (list of strings). When present, an `Anlagen:` section is rendered after the signature listing the enclosed documents (e.g., `Lebenslauf`, `Zeugnisse`). Omitted when the field is absent — backward compatible with existing YAMLs.
 - **Outputs:** `Cover_Letter.yaml` and compiled `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` (along with preserved LaTeX `.tex` sources).
 
 ### Post-Pipeline Step 1: Self-Learning Keyword Enrichment
@@ -350,4 +352,4 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 
 ## 📋 Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.18).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.19).

@@ -1,14 +1,18 @@
 """
 Cover letter LaTeX renderer.
 
-Compiles a cover letter YAML into a PDF via pdflatex. If compilation fails,
-the caller is responsible for triggering the ReportFallback renderer (see
-cover_letter.py dispatcher).
+Compiles a cover letter YAML into a PDF via pdflatex using a DIN 5008 Form B
+layout: Anschriftfeld (small sender line + recipient block), right-aligned
+date, bold subject, salutation, body, closing + signature, Anlagen section,
+and a footer line with phone/email.
+
+If compilation fails, the caller is responsible for triggering the
+ReportFallback renderer (see cover_letter.py dispatcher).
 """
 import os
 import sys
 
-from .utils import escape_latex, run_pdflatex, format_address
+from .utils import escape_latex, run_pdflatex, format_address, strip_gender_tags
 
 
 def create_cover_letter_pdf_latex(data, output_path):
@@ -20,7 +24,12 @@ def create_cover_letter_pdf_latex(data, output_path):
         raw_sender = raw_sender.title()
     sender_name = escape_latex(raw_sender)
 
-    sender_addr = format_address(sender.get('address', ''), latex=True)
+    # Short address for the Anschriftfeld sender line (single line)
+    sender_addr_raw = sender.get('address', '')
+    if isinstance(sender_addr_raw, list):
+        sender_addr_short = escape_latex(", ".join(sender_addr_raw))
+    else:
+        sender_addr_short = escape_latex(sender_addr_raw)
 
     sender_phone = escape_latex(sender.get('phone', ''))
     sender_email = escape_latex(sender.get('email', ''))
@@ -32,7 +41,7 @@ def create_cover_letter_pdf_latex(data, output_path):
     rec_addr = format_address(recipient.get('address', ''), latex=True)
 
     date_val       = escape_latex(data.get('date', ''))
-    subject_val    = escape_latex(data.get('subject', ''))
+    subject_val    = escape_latex(strip_gender_tags(data.get('subject', '')))
     salutation_val = escape_latex(data.get('salutation', ''))
 
     paragraphs_tex = "\n\n".join([escape_latex(p) for p in data.get('paragraphs', [])])
@@ -43,6 +52,38 @@ def create_cover_letter_pdf_latex(data, output_path):
         raw_sig = raw_sig.title()
     signature_name = escape_latex(raw_sig)
 
+    # ── Anlagen (enclosures) ──────────────────────────────────────────────
+    enclosures = data.get('enclosures', [])
+    if enclosures:
+        if isinstance(enclosures, list):
+            enc_items = " \\\\".join([escape_latex(e) for e in enclosures])
+        else:
+            enc_items = escape_latex(enclosures)
+        enclosures_block = f"""
+\\vspace{{12pt}}
+
+{{\\small \\textbf{{Anlagen:}} \\\\
+{enc_items}
+}}"""
+    else:
+        enclosures_block = ""
+
+    # ── Footer (phone/email at bottom of page) ─────────────────────────────
+    footer_parts = []
+    if sender_phone:
+        footer_parts.append(sender_phone)
+    if sender_email:
+        footer_parts.append(sender_email)
+    footer_text = " \\,|\\, ".join(footer_parts)
+
+    if footer_text:
+        footer_block = f"""
+\\vspace{{10pt}}
+{{\\small \\textcolor{{gray}}{{{footer_text}}}}}
+"""
+    else:
+        footer_block = ""
+
     tex_content = f"""\\documentclass[11pt,a4paper]{{article}}
 \\usepackage[utf8]{{inputenc}}
 \\usepackage[margin=1.0in]{{geometry}}
@@ -50,6 +91,7 @@ def create_cover_letter_pdf_latex(data, output_path):
 \\usepackage{{lmodern}}
 \\usepackage{{hyperref}}
 \\usepackage{{parskip}}
+\\usepackage{{xcolor}}
 
 \\pagestyle{{empty}}
 \\setlength{{\\parindent}}{{0pt}}
@@ -58,15 +100,13 @@ def create_cover_letter_pdf_latex(data, output_path):
 
 \\begin{{document}}
 
-{{\\small
-\\textbf{{{sender_name}}} \\\\
-{sender_addr} \\\\
-{sender_phone} \\\\
-{sender_email}
-}}
+% ── Anschriftfeld (DIN 5008 Form B) ─────────────────────────────────────
+% Small sender line (single line, ~8pt)
+{{\\small {sender_name}{(" \\textbullet\\ " + sender_addr_short) if sender_addr_short else ""}}}
 
-\\vspace{{20pt}}
+\\vspace{{4pt}}
 
+% Recipient block
 \\textbf{{{rec_company}}} \\\\
 {rec_dept} \\\\
 {rec_addr}
@@ -75,23 +115,25 @@ def create_cover_letter_pdf_latex(data, output_path):
 
 \\hfill {date_val}
 
-\\vspace{{20pt}}
+\\vspace{{25pt}}
 
 \\textbf{{\\large {subject_val}}}
 
-\\vspace{{15pt}}
+\\vspace{{12pt}}
 
 {salutation_val}
 
-\\vspace{{10pt}}
+\\vspace{{8pt}}
 
 {paragraphs_tex}
 
-\\vspace{{15pt}}
+\\vspace{{12pt}}
 
 {closing_val} \\\\
 \\vspace{{30pt}} \\\\
 \\textbf{{{signature_name}}}
+{enclosures_block}
+{footer_block}
 
 \\end{{document}}
 """

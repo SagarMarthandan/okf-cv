@@ -60,20 +60,20 @@ def format_date_numeric(date_str):
 
 HEADERS = {
     'english': {
-        'summary': 'Summary',
-        'education': 'Education',
-        'technical_skills': 'Technical Skills',
-        'projects': 'Projects',
-        'professional_experience': 'Professional Experience',
-        'spoken_languages': 'Spoken Languages'
+        'summary': 'SUMMARY',
+        'education': 'EDUCATION',
+        'technical_skills': 'TECHNICAL SKILLS',
+        'projects': 'PROJECTS',
+        'professional_experience': 'PROFESSIONAL EXPERIENCE',
+        'spoken_languages': 'SPOKEN LANGUAGES'
     },
     'german': {
-        'summary': 'Zusammenfassung',
-        'education': 'Ausbildung',
-        'technical_skills': 'Technische Fähigkeiten',
-        'projects': 'Projekte',
-        'professional_experience': 'Berufserfahrung',
-        'spoken_languages': 'Sprachen'
+        'summary': 'ZUSAMMENFASSUNG',
+        'education': 'AUSBILDUNG',
+        'technical_skills': 'TECHNISCHE FÄHIGKEITEN',
+        'projects': 'PROJEKTE',
+        'professional_experience': 'BERUFSERFAHRUNG',
+        'spoken_languages': 'SPRACHEN'
     }
 }
 
