@@ -166,7 +166,7 @@ The entire process is organized into 3 primary sequential steps, executed automa
 - **Constraints & Eye-Test Audit:** Runs character-length audits:
   - Experience bullets: Must be strictly single-line and `<= 105` characters.
   - Project summaries: Must be `<= 300` characters (`<= 280` characters for German projects), counting only the summary text (project name, em-dash separators, and link markup are excluded). Must fit within `<= 3` lines.
-  - Summary: Exactly 4 lines of text, maximum 420 characters (maximum 380 characters for German Zusammenfassung).
+  - Summary: Exactly 2 lines of text, maximum 250 characters (maximum 230 characters for German Zusammenfassung). No tool-listing redundancy — tools belong in Technical Skills, not the summary.
   - Stop-Slop writing rules: Strict active voice, no `-ly` adverbs, zero em-dashes, no filler text.
 - **Self-Correction:** Resolves any line-wraps or overflows dynamically.
 - **Parse-Integrity Audit (LaTeX mode):** After LaTeX compilation, the PDF is automatically audited using `pypdf` — extracts the text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. If the audit fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification`.
@@ -177,7 +177,7 @@ The entire process is organized into 3 primary sequential steps, executed automa
 ### STEP 3: Cover Letter Generation
 - **Geschäftsbrief Layout:** Generates a metric-grounded cover letter adapted to formal German business formatting, set to the computed closest candidate location (both in the sender address and date/city header). Both renderers (LaTeX and ReportFallback) now produce a DIN 5008 Form B-style layout: Anschriftfeld (small single-line sender line above the recipient block, suitable for window envelopes), right-aligned date, bold subject (Betreff), salutation, body, closing + signature, an `Anlagen:` (enclosures) section after the signature, and a footer line with phone/email at the bottom of the page (drawn via `onFirstPage`/`onLaterPages` canvas callbacks in ReportFallback, and via a small `\vspace` block in LaTeX — `\vfill` was removed because it pushed the footer to a new page on dense letters).
 - **Gender-Tag Stripping:** German job postings commonly append gender-equality tags to role titles (e.g., `Application for Analyst (w/m/f)`, `Bewerbung als Entwickler (m/w/d)`). The `strip_gender_tags()` helper in `renderers/utils.py` strips these from the subject line at render time via a regex that matches parentheticals containing only single letters from `{w, m, f, d, x}` separated by slashes. Meaningful parentheticals (e.g., `(Tech Foundations, Finops and Tech Metrics)`) are preserved. The YAML keeps the original subject — only the PDF output is cleaned.
-- **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mentions the `weak_tie_contact` name/role in paragraph 1. Project `repo_url` links are woven into paragraph deep dives where relevant.
+- **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mentions the `weak_tie_contact` name/role in paragraph 1. GitHub is referenced in plain language (e.g., "see my GitHub for the full implementation") — raw `repo_url` links are NOT inserted into cover letter prose. A single generic reference to the GitHub portfolio is sufficient; individual repositories are not linked.
 - **Strict Limits:** Restricts cover letter content to exactly one page, 4 paragraphs, and **250–320 words** total (restricted to **180–240 words** for German cover letters to prevent A4 overflow).
 - **Enclosures (Anlagen):** The cover letter YAML schema now supports an optional `enclosures` field (list of strings). When present, an `Anlagen:` section is rendered after the signature listing the enclosed documents (e.g., `Lebenslauf`, `Zeugnisse`). Omitted when the field is absent — backward compatible with existing YAMLs.
 - **Outputs:** `Cover_Letter.yaml` and compiled `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` (along with preserved LaTeX `.tex` sources).
@@ -286,9 +286,10 @@ To execute the pipeline:
 
 To reload the skill into the current CLI/harness skill store (e.g. after pulling updates or switching branches), type: **`refresh okf-cv`**. The agent will:
 1. Identify the CLI environment (Devin, Claude Code, agy, opencode, etc.) and its skill/workflows directory.
-2. Copy `skills/okf-cv/SKILL.md` (the ground truth) to the CLI's active skill store path.
-3. Confirm the load via the CLI's skill resolution mechanism.
-4. Ingest all supporting `.md` files in `skills/okf-cv/` (the step files `01_*.md`, `02_*.md`, `03_*.md`, and any others) to load the full pipeline into context.
+2. Locate the ground truth `SKILL.md` — first check `skills/okf-cv/SKILL.md` on the local filesystem. If that file is missing, unreadable, or stale, pull the latest version directly from the canonical GitHub repo at **https://github.com/SagarMarthandan/okf-cv** (path: `skills/okf-cv/SKILL.md`) via `webfetch` or `git pull`.
+3. Copy the located `SKILL.md` to the CLI's active skill store path.
+4. Confirm the load via the CLI's skill resolution mechanism.
+5. Ingest all supporting `.md` files in `skills/okf-cv/` (the step files `01_*.md`, `02_*.md`, `03_*.md`, and any others) to load the full pipeline into context. If any supporting doc is missing locally, fetch it from **https://github.com/SagarMarthandan/okf-cv** using the same fallback as step 2.
 
 No other actions are performed. This is a metadata/context reload only — it does not run the pipeline or modify any application files.
 
@@ -352,4 +353,4 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 
 ## 📋 Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.19).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.21).

@@ -20,7 +20,7 @@ keywords:
 - orchestration
 archetypes:
 - Data Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/F1-AzureDatabricks
 ---
 
 # F1 Ingestion  Formula 1 ELT Platform

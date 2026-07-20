@@ -22,7 +22,7 @@ archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering
 - Data Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/ATS-Resume-Streamlit
 ---
 
 # ATS Resume Pipeline Streamlit App

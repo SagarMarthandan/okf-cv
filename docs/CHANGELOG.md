@@ -6,6 +6,47 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.21 — Cover Letter GitHub Link Cleanup + Self-Refresh GitHub Fallback
+
+**Files:** `03_cover_letter.md`, `SKILL.md`, `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** Two issues: (1) Generated cover letters were inserting raw `repo_url` links (full GitHub URLs) into the prose when detailing projects — this cluttered the letter, looked unprofessional, and polluted an otherwise clean Geschäftsbrief layout. A single plain-language reference to the GitHub portfolio is sufficient; recruiters do not need per-repo URLs in a cover letter. (2) The Self-Refresh procedure assumed the local `skills/okf-cv/` directory always held the ground truth `SKILL.md` and supporting step docs. If those files were missing, unreadable, or stale on a given machine, the refresh had no fallback — the agent could not recover the latest skill definition.
+
+**Changes:**
+- **Cover letter GitHub references (`03_cover_letter.md`):** Replaced the "Project Verification Links" rule (which instructed the agent to weave `repo_url` links into paragraph deep dives) with a "Project Verification References" rule: do NOT insert raw URLs into cover letter prose. Instead, refer to GitHub in plain language (e.g., "the code for this project is on my GitHub" or "see my GitHub for the full implementation"). A single generic reference to the GitHub portfolio is sufficient; individual repositories are not linked.
+- **README Step 3 description:** Updated the "Application Source Integration" bullet to reflect the new rule — GitHub is referenced in plain language, raw `repo_url` links are NOT inserted, only one generic reference is used.
+- **Self-Refresh GitHub fallback (`SKILL.md`, `README.md`):** The Self-Refresh procedure now treats the GitHub repo at **https://github.com/SagarMarthandan/okf-cv** as the canonical source of truth. Step 2 first checks the local filesystem for `skills/okf-cv/SKILL.md`; if missing, unreadable, or stale, the agent pulls the latest version from GitHub via `webfetch` or `git pull`. Step 5 applies the same fallback to supporting `.md` docs (`01_*.md`, `02_*.md`, `03_*.md`) — any missing local doc is fetched from the GitHub repo.
+
+**Verification:**
+- `03_cover_letter.md`: rule now reads "do NOT insert raw `repo_url` links" with plain-language alternative.
+- `SKILL.md` Self-Refresh: 5 steps, steps 2 and 5 reference the GitHub fallback URL explicitly.
+- `README.md` Self-Refresh: mirrors the SKILL.md procedure; Step 3 cover letter bullet updated.
+
+---
+
+## v28.20 — Portfolio Repo URL Fixes + RACEYARD Rewrite + Summary Length Reduction
+
+**Files:** 11 portfolio files (repo_url fixes), `okf/portfolio/rosyard_autonomous_driving_pipeline_optimization.md` (rewritten), `okf/portfolio/OKF-CV Resume & Cover Letter Tailoring Pipeline.md`, `02_resume_and_visual_audit.md`, `SKILL.md`, `README.md`, `docs/CHANGELOG.md`, `okf/zvec_db/` (rebuilt)
+
+**Motivation:** Three issues: (1) 11 portfolio files had bare profile URLs (`github.com/SagarMarthandan`) instead of specific repo URLs — clicking `[GitHub]` on a resume landed recruiters on a profile page, not the project code. (2) The ROSYARD portfolio file claimed credit for the entire autonomous driving system (5 ROS pipelines, SLAM, driving client) when the candidate's actual contribution was the QA/W&B/automation layer. (3) The resume summary limit (420 chars English / 340–380 German, 4 lines) was too long — industry norm is 2–3 lines, and the long summary forced tool-listing redundancy that diluted impact.
+
+**Changes:**
+- **Portfolio repo_url fixes (11 files):** Cross-referenced each portfolio file's description against the 27 repos on `github.com/SagarMarthandan` and mapped each to its actual repo: `kafka_fx_rates` → `mini-kafka-stream`, `ats_resume_pipeline` → `ATS-Resume-Streamlit`, `youtube_e2e` → `Youtube_E2E_DE`, `weather_data` → `E2E-weather-data-report`, `sql_practice` → `SQL-Practice`, `f1_ingestion` → `F1-AzureDatabricks`, `ergast_f1` → `Databricks-Mini-Project`, `comad_pca` → `PCA-using-Co-Median`, `btc_bitcoin` → `BTC`, `adventure_works` → `powerBI---Project`. ROSYARD had `repo_url` removed entirely (private university repo, now called RACEYARD).
+- **RACEYARD portfolio rewrite:** Rewrote `rosyard_autonomous_driving_pipeline_optimization.md` based on the candidate's actual project report. Now accurately documents: QA framework enablement, W&B integration (dynamic config via rospy, metric logging, matplotlib→W&B plot conversion), custom Sweeps automation wrapper (pipeline_wrapper.py, parser.py, roscore.py, simulation.py), and process flow documentation. Added explicit "What I Did Not Build" section listing the 5 ROS pipelines, Gazebo simulation, cheat-based cone detection, CARLA integration, and other team members' sub-projects. Title updated to "RACEYARD (formerly ROSYARD)". Removed CARLA from technologies (candidate didn't work on CARLA integration).
+- **Summary length reduction:** Updated summary limits across all agent-facing docs:
+  - English: 420 → **250 chars** (4 lines → 2 lines)
+  - German: 340–380 → **200–230 chars** (4 lines → 2 lines)
+  - Added "No tool-listing redundancy" rule: summary must NOT enumerate tools (Python, Airflow, dbt, etc.) — those belong in Technical Skills. Summary is a positioning statement: who + what + outcome.
+  - Updated in: `02_resume_and_visual_audit.md` (§2 Layout Constraints, §3 Self-Correction Rule, YAML schema comment), `SKILL.md` (checklist), `README.md` (Step 2 description), `OKF-CV Resume & Cover Letter Tailoring Pipeline.md` (portfolio doc).
+  - Rationale: 420-char summaries forced tool-listing redundancy (tools already in Technical Skills section), diluted impact, and consumed prime page-1 real estate. Industry norm is 2–3 lines / 50–80 words. ATS parsers weight repeated keyword mentions in experience bullets, not single mentions in a summary paragraph — so the shorter limit has minimal ATS impact.
+
+**Verification:**
+- `okf_lint.py --force`: PASSED (16 files, 0 violations).
+- Zvec ingestion: 16 files, 16 changed/re-embedding, 16 projects embedded.
+- No bare profile URLs remain in any portfolio file (`grep` confirmed).
+
+---
+
 ## v28.19 — Cover Letter DIN 5008 Layout + Gender-Tag Stripping
 
 **Files:** `renderers/cover_letter_reportfallback.py`, `renderers/cover_letter_latex.py`, `renderers/utils.py`, `renderers/cover_letter.py`, `README.md`, `docs/CHANGELOG.md`

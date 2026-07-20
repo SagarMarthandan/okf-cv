@@ -20,7 +20,7 @@ keywords:
 - driven
 archetypes:
 - Data Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/mini-kafka-stream
 ---
 
 # Kafka FX Rates: Batch vs Stream Processing Walkthrough

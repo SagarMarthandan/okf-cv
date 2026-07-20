@@ -21,7 +21,7 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/Youtube_E2E_DE
 ---
 
 # YouTube E2E: Advanced Data Engineering Pipeline

@@ -21,7 +21,7 @@ keywords:
 archetypes:
 - Data Analyst
 - Analytics Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/powerBI---Project
 ---
 
 # Adventure Works: Global Sales  Returns Dashboard

@@ -21,7 +21,7 @@ keywords:
 archetypes:
 - ML Engineering
 - Data Analyst
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/PCA-using-Co-Median
 ---
 
 # COMAD PCA - Robust Principal Component Analysis

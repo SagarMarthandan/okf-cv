@@ -65,9 +65,10 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
 - **Output Filename Language Rules:**
   - **English JDs:** Resume PDF ➔ `SAGAR_MARTHANDAN_Resume.pdf` (LaTeX source ➔ `SAGAR_MARTHANDAN_Resume.tex`).
   - **German JDs:** Resume PDF ➔ `SAGAR_MARTHANDAN_Lebenslauf.pdf` (LaTeX source ➔ `SAGAR_MARTHANDAN_Lebenslauf.tex`).
-- **Summary:** Must occupy **exactly 4 lines** of text.
-  - **English Resumes:** Max 420 characters (`<= 420`).
-  - **German Resumes (Zusammenfassung):** Max **`340–380` characters** to prevent overflow to a 5th line due to longer German words.
+- **Summary:** Must occupy **exactly 2 lines** of text — a tight positioning statement, not a paragraph.
+  - **English Resumes:** Max 250 characters (`<= 250`).
+  - **German Resumes (Zusammenfassung):** Max **`200–230` characters** to account for longer German compound words.
+  - **No tool-listing redundancy:** The summary must NOT enumerate tools (Python, Airflow, dbt, Docker, etc.) — those belong in Technical Skills. The summary is a positioning statement: who you are + what you do + what outcome you deliver. Listing tools wastes the most valuable real estate on page 1.
   - **No Fabrication — Truthful Career Framing:** The summary MUST truthfully distinguish the candidate's two experience tracks:
     1. **4 years of professional production environment experience** at IBM India (08/2014–12/2018) maintaining CICS/Db2 transaction infrastructure and IBM MQ messaging pipelines. This is the candidate's only professional production experience.
     2. **Hands-on self-taught knowledge** in data engineering, AI/ML, dbt, Airflow, RAG, LangChain, etc. — acquired through independent projects and self-learning, NOT through professional employment.
@@ -101,7 +102,7 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - **Audit check:** For each project, flag any bullet whose information content reduces to "used [tool]" with no metric, action, or result. Rewrite it to carry an outcome or cut the tool mention and keep only the outcome.
   - **Header discipline:** Keep tools lines to 5-7 JD-aligned entries; move niche libraries into a bullet only if they carry an outcome, otherwise drop them.
 - Write findings to `Layout_Audit_Report.yaml` inside the folder.
-- **Self-Correction Rule:** If the audit detects layout violations (e.g., experience bullet wraps to next line or exceeds 105 chars, summary > 4 lines), **immediately adjust the text parameters** so the primary `Resume.yaml` compiles successfully without any layout warnings.
+- **Self-Correction Rule:** If the audit detects layout violations (e.g., experience bullet wraps to next line or exceeds 105 chars, summary > 2 lines), **immediately adjust the text parameters** so the primary `Resume.yaml` compiles successfully without any layout warnings.
 - **v2 Trigger:** Generate `SAGAR_MARTHANDAN_Resume_v2.yaml` only if self-correction requires changing more than 3 bullets or restructuring an entire section. For smaller corrections, patch `Resume.yaml` in place. Set `optimized_v2_generated: true` in `Layout_Audit_Report.yaml` if a v2 file is written, otherwise leave it `false`.
 
 ### 4. LaTeX Project Format Polish (Post-Processing — Prose Refinement Only)
@@ -252,7 +253,7 @@ contact_info:
   github: "github.com/SagarMarthandan"
   visa: "Authorized to work in Germany"
   availability: "Immediately available"
-summary: "[Exactly 4 lines, <= 420 characters, no tool names]"
+summary: "[Exactly 2 lines, <= 250 characters, no tool names]"
 technical_skills:
   - category: "[Category Name]"
     skills:

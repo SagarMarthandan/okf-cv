@@ -21,7 +21,7 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
-repo_url: https://github.com/SagarMarthandan
+repo_url: https://github.com/SagarMarthandan/E2E-weather-data-report
 ---
 
 # Weather Data Analytics Pipeline

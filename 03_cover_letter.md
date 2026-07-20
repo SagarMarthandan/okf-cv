@@ -31,7 +31,7 @@ Generate a formal, high-impact cover letter in YAML (`Cover_Letter.yaml`) ground
   - Finished B1 German studies (private, planning for B2).
   - Active work with local LLMs, RAG, and LangGraph architectures.
   - Link to full GitHub project portfolio.
-- **Project Verification Links:** Weave project `repo_url` links (from `project_info.md`) into paragraph deep dives where relevant — mention the GitHub repository when detailing a project's metrics or architecture.
+- **Project Verification References:** Do NOT insert raw `repo_url` links (URLs) into the cover letter prose. Instead, refer to GitHub in plain language — e.g., "the code for this project is on my GitHub" or "see my GitHub for the full implementation." A single generic reference to your GitHub portfolio is sufficient; do not link individual repositories.
 - **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mention the `weak_tie_contact` name/role in paragraph 1 as the connection that brought the opportunity to your attention.
 
 ## Output Target & Directory Structure

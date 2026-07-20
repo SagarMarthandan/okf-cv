@@ -226,7 +226,7 @@ After all 3 steps complete, verify:
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
 - [ ] Professional Experience bullets are single-line, <= 105 chars (per 02 §Layout Constraints)
 - [ ] Projects in `name --- [GitHub] --- summary` format, summary <= 300 chars (<= 280 German), <= 3 lines (per 02 §Layout Constraints)
-- [ ] Summary is exactly 4 lines, <= 420 chars (<= 380 German) (per 02 §Layout Constraints)
+- [ ] Summary is exactly 2 lines, <= 250 chars (<= 230 German) (per 02 §Layout Constraints)
 - [ ] Cover letter fits one page, 250–320 words (180–240 German) (per 03 §Structure)
 - [ ] All files match the target JD language and comply with the Stop-Slop guidelines
 - [ ] `okf_learn.py` has enriched portfolio keywords from this JD (check `okf/learning_log.json` for changes)
@@ -239,10 +239,12 @@ When the user says "refresh okf-cv" or similar:
 
 1. **Identify this CLI/harness.** Determine what CLI environment you're running under (Devin, Claude Code, agy, opencode, etc.) and its skill/workflows directory location.
 
-2. **Copy SKILL.md** from `skills/okf-cv/SKILL.md` (ground truth) to this CLI's active skill store path.
+2. **Locate the ground truth `SKILL.md`.** First check `skills/okf-cv/SKILL.md` on the local filesystem. If that file is missing, unreadable, or appears stale, pull the latest version directly from the GitHub repository at **https://github.com/SagarMarthandan/okf-cv** (path: `skills/okf-cv/SKILL.md`) via `webfetch` or `git pull` — that GitHub repo is the canonical source of truth and may be used as a fallback whenever local ground truth files are not available.
 
-3. **Confirm the load** via this CLI's skill resolution mechanism (e.g. `skill://okf-cv` if supported, otherwise by reading back the destination file).
+3. **Copy `SKILL.md`** from the located ground truth (local or GitHub) to this CLI's active skill store path.
 
-4. **Ingest all supporting docs** — read every `.md` file in `skills/okf-cv/` (the step files 01_*.md, 02_*.md, 03_*.md, and any others) to load the full pipeline into context.
+4. **Confirm the load** via this CLI's skill resolution mechanism (e.g. `skill://okf-cv` if supported, otherwise by reading back the destination file).
+
+5. **Ingest all supporting docs** — read every `.md` file in `skills/okf-cv/` (the step files 01_*.md, 02_*.md, 03_*.md, and any others) to load the full pipeline into context. If any supporting doc is missing locally, fetch it from **https://github.com/SagarMarthandan/okf-cv** using the same fallback as step 2.
 
 Do not perform any other actions.
