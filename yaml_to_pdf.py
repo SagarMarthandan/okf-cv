@@ -21,18 +21,20 @@ where the agent will hand-edit the .tex before the final compile in Step C.
 import os
 import sys
 import yaml
+import importlib
 from typing import Dict, Any
 
 VALID_TYPES = {'resume', 'cover_letter', 'job_description', 'ats_report', 'parseability_report'}
 
-# Lazy renderer loader — only imports the renderer module actually needed,
-# avoiding loading reportlab/pdflatex/sentence-transformers for unrelated types.
-_RENDERER_IMPORTS = {
-    'resume':              'from renderers.resume import create_resume_pdf',
-    'cover_letter':        'from renderers.cover_letter import create_cover_letter_pdf',
-    'job_description':     'from renderers.job_description import create_job_description_pdf',
-    'ats_report':          'from renderers.ats_report import create_ats_report_pdf',
-    'parseability_report': 'from renderers.parseability_report import create_parseability_report_pdf',
+# Lazy renderer loader — maps doc type to (module_path, function_name).
+# Only imports the renderer module actually needed, avoiding loading
+# reportlab/pdflatex/sentence-transformers for unrelated types.
+_RENDERER_ROUTES = {
+    'resume':              ('renderers.resume', 'create_resume_pdf'),
+    'cover_letter':        ('renderers.cover_letter', 'create_cover_letter_pdf'),
+    'job_description':     ('renderers.job_description', 'create_job_description_pdf'),
+    'ats_report':          ('renderers.ats_report', 'create_ats_report_pdf'),
+    'parseability_report': ('renderers.parseability_report', 'create_parseability_report_pdf'),
 }
 
 
@@ -109,7 +111,7 @@ def main() -> None:
         # reportfallback has no .tex polish step — fall through to normal compile
         print("--tex-only ignored for reportfallback mode (no .tex file produced).", file=sys.stderr)
 
-    if doc_type not in _RENDERER_IMPORTS:
+    if doc_type not in _RENDERER_ROUTES:
         print(
             f"Error: Unknown document type '{doc_type}'. "
             f"Must be one of: {', '.join(sorted(VALID_TYPES))}",
@@ -118,9 +120,9 @@ def main() -> None:
         sys.exit(1)
 
     # Lazy import — only load the renderer module for the document type being compiled
-    ns = {}
-    exec(_RENDERER_IMPORTS[doc_type], ns)
-    render_fn = [v for k, v in ns.items() if k != '__builtins__'][0]
+    module_path, fn_name = _RENDERER_ROUTES[doc_type]
+    mod = importlib.import_module(module_path)
+    render_fn = getattr(mod, fn_name)
     render_fn(data, pdf_path)
 
 

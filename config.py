@@ -37,6 +37,14 @@ APPLICATIONS_DIR = os.getenv(
     os.path.join(PROJECT_ROOT, "Applications")
 )
 
+# ─── Candidate personal info ──────────────────────────────────────────────────
+# Used by renderers as fallback defaults and by step docs as reference values.
+# The YAML `name`/`sender` fields always take precedence over these defaults.
+CANDIDATE_NAME = os.getenv("YAML_CV_CANDIDATE_NAME", "Sagar Marthandan")
+CANDIDATE_PHONE = os.getenv("YAML_CV_CANDIDATE_PHONE", "+49 176 74138359")
+CANDIDATE_EMAIL = os.getenv("YAML_CV_CANDIDATE_EMAIL", "sagar.marthandan@yahoo.com")
+CANDIDATE_GITHUB = os.getenv("YAML_CV_CANDIDATE_GITHUB", "https://github.com/SagarMarthandan")
+
 # Diversity audit thresholds
 DIVERSITY_VENDOR_CLUSTER_THRESHOLD = int(os.getenv("YAML_CV_DIVERSITY_VENDOR_THRESHOLD", "3"))
 DIVERSITY_REFERRAL_RATE_MIN = float(os.getenv("YAML_CV_DIVERSITY_REFERRAL_MIN", "0.20"))

@@ -6,6 +6,27 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.22 — Step 0 JD Fetch (URL scraping) + Anti-Spinning Protocol + Embedding Pre-Warm + Win32 File-Lock Recovery
+
+**Files:** `00_jd_fetch.md` (new), `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `obsidian_folder_sort.py` (new — extracted from `sync_to_obsidian.py`), `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** Three issues: (1) The pipeline required manually copy-pasting the JD text — the user wanted to paste a job posting URL and have the skill scrape the JD automatically, with a manual-paste fallback for sites too confusing to scrape. (2) In agentic IDEs (Devin, Claude Code, Oh My Pi), step docs caused the agent to emit lengthy planning prose (full YAML drafts, multiple headers) before issuing tool calls — this triggered the system loop-guard interrupt, causing UI buffer clears (large blank vertical gaps) and forced tool-call retries. (3) On Windows CPU, importing PyTorch + `sentence-transformers` during Step 1 hybrid search took ~70s, causing cell/command timeouts. (4) Moving application folders to `Applications/YYYY/MM/DD/` on Windows sometimes hit `[WinError 32]` when a process held an open file handle.
+
+**Changes:**
+- **New Step 0 — JD Fetch (`00_jd_fetch.md`):** Optional pre-step that scrapes a job posting URL into clean JD text for Step 1. Hybrid strategy: known JS-SPA vendors (LinkedIn, Workday, Greenhouse, Lever, SuccessFactors, Personio) go straight to Jina Reader (`https://r.jina.ai/<url>`) — a free service that returns clean markdown of the fully rendered page (handles JS rendering, cookie/consent walls). Static / Unknown vendors try local `webfetch` first, then Jina. JD-shape validation gate: role title + company + ≥2 JD section markers + >200 chars + not a login/error page. If both strategies fail, the user is prompted to paste manually — manual paste is always available and never locked out. For JS-SPA vendors where Jina fails, the doomed `webfetch` attempt is skipped (go straight to manual). URL-hash cache at `okf/.jd_cache/<sha1(url)>.txt` (7-day TTL) so re-runs skip re-scraping. Optional `JINA_API_KEY` env var for higher rate limits. `source_url` recorded in `Job_Description.yaml` for traceability. Step 0 is skipped entirely when the user pastes raw JD text — Step 1's contract is unchanged.
+- **Tool-Call Execution Protocol (`SKILL.md` + all step docs):** New §"Agent Execution & Anti-Spinning Rules" in `SKILL.md` before the Execution section: never emit multi-paragraph planning prose, un-called YAML drafts, or consecutive Markdown headers in pure text without issuing a tool call; limit reasoning prose before a tool call to 1 concise sentence; batch independent tool calls in a single turn. Each step doc (00, 01, 02, 03) got a pointer callout after the guardrail block. Step 2 and 3 docs specifically say "write the YAML directly with a `write` call — do not draft it in prose first."
+- **Embedding daemon pre-warm (`01_ats_and_jd_archival.md` §0b):** New step 3 in the Pre-Scoring phase — calls `_ensure_daemon()` from `zvec_hybrid_search.py` (the same function hybrid search uses internally) to pre-warm the daemon before the search runs. This pings an existing daemon, starts one in the background with Windows-safe creationflags (`CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP`), and waits up to 30s for it to become responsive. Eliminates the ~70s cold start on Windows CPU. If unavailable, the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). Note: `embedding_server.py --status` was considered but rejected — it only pings and returns, it does not start the server.
+- **Windows file-lock recovery (`obsidian_folder_sort.py`):** New `_resilient_move()` helper wraps `shutil.move` in a 3-retry loop with `gc.collect()` + 0.5s delay between attempts to release lingering file handles. If all rename attempts fail with `PermissionError` / `OSError` (WinError 32), falls back to `shutil.copytree` + `shutil.rmtree` — which works even when a directory handle is held open (copytree reads file contents; rmtree removes entries individually rather than renaming). The folder-sort logic was extracted from `sync_to_obsidian.py` into a standalone `obsidian_folder_sort.py` module (imported back by `sync_to_obsidian.py` and `organize_applications.py` — both shims remain backward compatible).
+- **`source_url` in `Job_Description.yaml` schema (`01_ats_and_jd_archival.md`):** New optional top-level field, populated when the JD arrived via Step 0, omitted when the user pasted manually. Step 1's §"ATS Vendor Inference" can reuse the vendor detected by Step 0 without re-inferring.
+
+**Verification:**
+- `okf_lint.py`: PASSED (16 portfolio files clean, 16 cached).
+- `obsidian_folder_sort.py` imports OK (`_move_into_tree`, `_resilient_move`, `sort_all_folders`).
+- `organize_applications.py` shim imports OK (still works via the import chain).
+- Pre-warm command tested: `python -c "from zvec_hybrid_search import _ensure_daemon; _ensure_daemon()"` — starts daemon, returns True.
+
+---
+
 ## v28.21 — Cover Letter GitHub Link Cleanup + Self-Refresh GitHub Fallback
 
 **Files:** `03_cover_letter.md`, `SKILL.md`, `README.md`, `docs/CHANGELOG.md`

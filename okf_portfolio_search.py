@@ -23,6 +23,7 @@ import difflib
 from typing import List, Dict, Set, Tuple, Optional
 
 from config import DEFAULT_PORTFOLIO_DIR
+from okf_utils import tokenize as _tokenize_base, MINIMAL_STOPWORDS, parse_frontmatter
 
 
 def normalize_phrase(phrase: str) -> str:
@@ -34,57 +35,23 @@ def normalize_phrase(phrase: str) -> str:
 # Maps canonical terms to lists of synonyms. Both directions are used:
 #   - Portfolio keyword "kafka" matches JD text containing "message queue"
 #   - JD text containing "kafka" matches portfolio keyword "event streaming"
-SYNONYM_MAP: Dict[str, List[str]] = {
-    "kafka": ["message queue", "event streaming", "pub sub", "event-driven", "event driven"],
-    "dbt": ["data build tool", "transformation framework", "data modeling tool"],
-    "airflow": ["orchestration", "scheduler", "dag", "workflow orchestration"],
-    "dagster": ["orchestration", "data pipeline orchestrator", "asset-based"],
-    "snowflake": ["cloud data warehouse", "cloud warehouse", "data warehouse"],
-    "bigquery": ["cloud data warehouse", "google warehouse", "gcp warehouse"],
-    "databricks": ["data lakehouse", "spark platform", "lakehouse"],
-    "docker": ["containerization", "container", "containerized"],
-    "kubernetes": ["k8s", "container orchestration", "container orchestration platform"],
-    "postgresql": ["postgres", "relational database", "oltp"],
-    "mysql": ["relational database", "oltp", "sql database"],
-    "power bi": ["business intelligence", "bi dashboard", "bi tool", "data visualization"],
-    "tableau": ["business intelligence", "bi dashboard", "data visualization"],
-    "apache superset": ["bi dashboard", "data visualization", "dashboard"],
-    "looker studio": ["bi dashboard", "data visualization", "dashboard"],
-    "terraform": ["infrastructure as code", "iac", "iac tool"],
-    "rag": ["retrieval augmented generation", "retrieval-augmented generation", "vector retrieval"],
-    "llm": ["large language model", "generative ai", "language model"],
-    "faiss": ["vector database", "vector store", "similarity search"],
-    "langchain": ["llm framework", "chain of thought", "agent framework"],
-    "spark": ["distributed computing", "big data processing", "distributed processing"],
-    "delta lake": ["data lakehouse", "acid transactions", "lakehouse storage"],
-    "medallion architecture": ["bronze silver gold", "layered architecture", "multi-layer architecture"],
-    "unity catalog": ["data governance", "data catalog", "access control"],
-    "airbyte": ["data ingestion", "elt ingestion", "open source ingestion"],
-    "github actions": ["ci cd", "ci/cd", "continuous integration", "continuous deployment"],
-    "jenkins": ["ci cd", "ci/cd", "continuous integration"],
-    "redis": ["message broker", "cache", "in-memory store"],
-    "numpy": ["numerical computing", "scientific computing", "array processing"],
-    "scikit-learn": ["machine learning library", "sklearn", "ml framework"],
-    "matplotlib": ["data visualization", "plotting", "charts"],
-    "jupyter": ["notebook", "interactive computing", "data science notebook"],
-    "latex": ["tex", "typesetting", "document compilation"],
-    "streamlit": ["web app", "python web app", "data app", "interactive dashboard"],
-    "openai": ["gpt", "llm api", "chatgpt"],
-    "elt": ["extract load transform", "etl"],
-    "etl": ["extract transform load", "elt"],
-    "data warehouse": ["data warehousing", "warehouse", "olap"],
-    "data lake": ["data lakehouse", "lake storage", "raw data storage"],
-    "data quality": ["data validation", "data testing", "data integrity"],
-    "soda": ["data quality", "data testing", "data validation"],
-    "window functions": ["analytic functions", "sql window", "partition by"],
-    "star schema": ["dimensional modeling", "fact dimension", "data mart modeling"],
-    "incremental loading": ["incremental ingestion", "delta loading", "upsert"],
-    "scd type 2": ["slowly changing dimension", "dimension history", "versioned dimension"],
-    "pyspark": ["spark python", "distributed python", "spark sql"],
-    "adls gen2": ["azure data lake", "azure storage", "blob storage"],
-    "azure data factory": ["adf", "azure orchestration", "azure pipeline"],
-    "azure key vault": ["secrets management", "credential store", "secret manager"],
-}
+# Loaded from okf/synonyms.yaml at import time. Edit that file to tune matching.
+_SYNONYMS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "okf", "synonyms.yaml") \
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), "okf", "synonyms.yaml")) \
+    else os.path.join(os.path.dirname(__file__), "okf", "synonyms.yaml")
+
+def _load_synonym_map() -> Dict[str, List[str]]:
+    """Load the synonym map from okf/synonyms.yaml."""
+    try:
+        with open(_SYNONYMS_PATH, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict):
+            return {k.lower(): v for k, v in data.items()}
+    except Exception as e:
+        print(f"Warning: Could not load synonyms from {_SYNONYMS_PATH}: {e}")
+    return {}
+
+SYNONYM_MAP: Dict[str, List[str]] = _load_synonym_map()
 
 # Build reverse lookup: synonym → canonical term
 _REVERSE_SYNONYMS: Dict[str, str] = {}
@@ -156,12 +123,8 @@ def fuzzy_word_in_set(word: str, token_set: Set[str]) -> bool:
 
 
 def tokenize(text: str) -> Set[str]:
-    """Cleans and extracts alphanumeric lowercase tokens from text."""
-    if not text:
-        return set()
-    words = re.findall(r'\b\w+\b', text.lower())
-    stopwords = {'and', 'the', 'for', 'with', 'a', 'an', 'to', 'in', 'of', 'on', 'at', 'by', 'is'}
-    return {w for w in words if w not in stopwords}
+    """Cleans and extracts alphanumeric lowercase tokens from text (minimal stopwords)."""
+    return _tokenize_base(text, stopwords=MINIMAL_STOPWORDS)
 
 
 def build_jd_stemmed_tokens(jd_tokens: Set[str]) -> Set[str]:
@@ -227,19 +190,13 @@ def parse_okf_file(filepath: str) -> Dict[str, any]:
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Match YAML frontmatter between triple dashes
-    match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)', content, re.DOTALL)
-    if match:
-        yaml_block = match.group(1)
-        body = match.group(2).strip()
-        try:
-            metadata = yaml.safe_load(yaml_block)
-        except Exception as e:
-            print(f"Warning: Failed to parse YAML frontmatter in {filepath}: {e}")
-            metadata = {}
-    else:
+    metadata, body = parse_frontmatter(content)
+    if metadata is None:
         metadata = {}
-        body = content.strip()
+    if not metadata:
+        # parse_frontmatter returns {} on YAML parse failure; warn like the original
+        if content.startswith('---'):
+            print(f"Warning: Failed to parse YAML frontmatter in {filepath}")
 
     # Fallbacks if keys are missing
     metadata.setdefault("title", os.path.splitext(os.path.basename(filepath))[0])

@@ -1,344 +1,323 @@
 ---
 title: Chicago Crime & Divvy Bike-Share Data Engineering Pipeline
-description: Cloud-migrated batch/stream pipeline (Airbyte, Spark, Kafka, Airflow, BigQuery, dbt, Grafana) analyzing Chicago crime & Divvy ridership with Terraform IAC and GitHub CI/CD.
-technologies: Docker, Apache Airflow, Apache Spark, Apache Kafka, dbt, Google BigQuery, Airbyte, Terraform, GitHub Actions, Grafana, Python, SQL
+description: End-to-end data pipeline (Spark, Kafka, Airflow, BigQuery, dbt, Terraform) correlating Chicago crime patterns with bike-share ridership, developed with parallel AI agents.
+technologies: Python, Apache Spark, Apache Airflow, Apache Kafka, dbt, Google BigQuery, BigQuery ML, Terraform, GitHub Actions, Grafana, PostgreSQL, Docker, dlt, SQL
 keywords:
-- gcp bigquery
-- terraform iac
-- github actions
-- airbyte ingest
-- apache airflow
-- apache spark
-- apache kafka
-- dbt core
-- postgresql
-- grafana
-- docker compose
-- data engineering
+  - ai data engineering
+  - ai agents
+  - apache airflow
+  - apache spark
+  - apache kafka
+  - bigquery
+  - bigquery ml
+  - ci/cd
+  - data engineering
+  - machine learning
+  - analytics
+  - dbt core
+  - docker compose
+  - github actions
+  - terraform iac
 archetypes:
-- Data Engineering
-- Analytics Engineering
-- Backend/Platform Engineering
+  - Data Engineering
+  - Analytics Engineering
+  - Backend/Platform Engineering
+  - AI Engineer
 repo_url: https://github.com/SagarMarthandan/chicago-data-pipeline
 ---
 
 # Chicago Crime & Divvy Bike-Share Data Engineering Pipeline
 
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Apache Airflow](https://img.shields.io/badge/Apache_Airflow-017A9B?style=for-the-badge&logo=apache-airflow&logoColor=white)](https://airflow.apache.org/)
-[![Apache Spark](https://img.shields.io/badge/Apache_Spark-E25A1C?style=for-the-badge&logo=apache-spark&logoColor=white)](https://spark.apache.org/)
-[![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)](https://kafka.apache.org/)
-[![dbt](https://img.shields.io/badge/dbt-FF694B?style=for-the-badge&logo=dbt&logoColor=white)](https://www.getdbt.com/)
-[![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
-[![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
-[![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
+[![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Apache Spark](https://img.shields.io/badge/Apache_Spark-3.5.1-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white)](https://spark.apache.org/)
+[![Apache Airflow](https://img.shields.io/badge/Apache_Airflow-3.0.0-017CEE?style=for-the-badge&logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-7.6.0-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![dbt](https://img.shields.io/badge/dbt-1.12.0-FF694B?style=for-the-badge&logo=dbt&logoColor=white)](https://www.getdbt.com/)
+[![Google BigQuery](https://img.shields.io/badge/BigQuery-Cloud-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://cloud.google.com/bigquery)
+[![Terraform](https://img.shields.io/badge/Terraform-1.x-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Grafana](https://img.shields.io/badge/Grafana-12.4-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/features/actions)
 
-An end-to-end cloud data engineering pipeline designed to investigate the relationship between Chicago crime patterns and Divvy bike-share ridership. The architecture implements a hybrid data ingestion pattern: a **batch ETL path** loading historical crime and ridership records (8M+ crime events, 50M+ Divvy trips) using **Airbyte** and **Apache Spark**, combined with a **real-time streaming path** capturing live bike station status updates via **Apache Kafka** and **Spark Structured Streaming**. Storage is centralized in **Google BigQuery** and Google Cloud Storage (GCS) provisioned using **Terraform** Infrastructure as Code (IaC), transformed with **dbt Core**, orchestrated via **Apache Airflow**, and continuously verified through **GitHub Actions** CI/CD pipelines.
+An end-to-end, phased data engineering pipeline that investigates whether crime near a Divvy bike-share station affects ridership. The project was **built entirely through AI agents and subagents** — an AI assistant (Oh-My-Pi Harness/ Devin IDE / GLM 5.2 model as executor / Qwen 3.7 plus as advisor) acted as the primary engineer, orchestrating scoped subagents for parallel workstreams (CI/CD setup, documentation consolidation, dashboard development, data migration). The human developer provided architectural decisions, phase gates, and terminal execution, while the AI handled code generation, debugging, Docker configuration, Terraform scripting, dbt modeling, and CI/CD pipeline design.
+
+The architecture implements a hybrid ingestion pattern: a **batch ETL path** processing 8.6M crime events and 50M+ Divvy trips through **Apache Spark** and **dlt** into **Google BigQuery**, combined with a **real-time streaming path** capturing live bike station status via **Apache Kafka** and **Spark Structured Streaming** into local **PostgreSQL**. Cloud infrastructure is provisioned with **Terraform**, transformations modeled with **dbt Core** (dbt-bigquery), orchestration via **Apache Airflow 3.0**, observability through **Grafana**, and continuously verified through **GitHub Actions** CI/CD with semantic versioning and GHCR image publishing.
+
+**Key result: Overall Pearson correlation r = +0.20** (n = 1,463,049 station-days). A BigQuery ML linear regression controlling for station, day of week, and month yields a crime coefficient of **+1.45** with in-sample R² = 0.434 — confirming a weak positive relationship driven by urban activity level as a confounding variable.
 
 ---
 
-## 🏗️ Architecture Diagram
+## AI-Driven Development Methodology
 
-The system architecture flows from diverse batch and stream sources to Google Cloud Platform, using dbt for in-warehouse modeling, Airflow for orchestration, and Grafana for real-time telemetry.
+This project was engineered through a multi-agent AI workflow:
 
-```mermaid
-graph TD
-    subgraph "Ingestion Sources"
-        Socrata[Socrata Chicago Crime API]
-        S3[AWS S3: Divvy Trip History CSVs]
-        GBFS[Divvy GBFS REST API]
-    end
+| Role | Responsibility |
+|:---|:---|
+| **AI Agent (Oh-My-Pi Harness/ Devin IDE / GLM 5.2 model as executor / Qwen 3.7 plus model as advisor)** | Primary engineer: code generation, debugging, Docker/Terraform/dbt/CI-CD authoring, architecture diagrams, documentation |
+| **Subagents (parallel)** | Scoped workstreams: CI/CD workflow setup, documentation consolidation (20+ phase docs → 5), dashboard SQL migration, Spark image rebuilds |
+| **Human Developer** | Architectural decisions, phase gate enforcement, terminal execution, code review, error diagnosis direction |
 
-    subgraph "Ingestion & Sync (Airbyte)"
-        Socrata -->|Airbyte Source| AB[Airbyte Sync Engine]
-        S3 -->|Airbyte Source| AB
-        AB -->|Load Job| BQ_Raw[(BigQuery: raw_crime, raw_divvy)]
-    end
+The AI operated under a structured protocol (`AGENTS.md`): phase gates prevented skipping ahead, a changelog tracked every error and fix, and a learning protocol enforced Socratic interaction (explain causes, don't just paste fixes). Subagents were dispatched in parallel batches for independent workstreams — e.g., one consolidated Phase 1 docs while another rebuilt Spark Docker images with GCS connector JARs.
 
-    subgraph "Real-Time Streaming Path"
-        GBFS -->|divvy_producer.py| Kafka[Kafka Broker: 3 Partitions]
-        Kafka -->|Spark Structured Streaming| SparkS[Spark Streaming Job]
-        SparkS -->|foreachBatch GCS Sink| GCS[(Google Cloud Storage: raw_stream_status/)]
-        GCS -->|External Table / BQ Load| BQ_Raw
-    end
+---
 
-    subgraph "Infrastructure as Code (Terraform)"
-        TF[Terraform CLI] -.->|Provisions| GCS
-        TF -.->|Provisions| BQ_Raw
-        TF -.->|Provisions| BQ_Mart[(BigQuery: mart_crime, mart_divvy)]
-    end
+## Architecture Diagram
 
-    subgraph "Orchestration & CI/CD"
-        Airflow[Apache Airflow 3.0.0] -->|Triggers Airbyte Sync| AB
-        Airflow -->|Coordinates Execution| dbt[dbt Core]
-        GH[GitHub Actions] -->|PR Lint & Parse| dbt
-        GH -->|dev Merge| GHCR[Build & Push to GHCR]
-        GH -->|prod Merge| Release[Auto Tag & GitHub Release]
-    end
+![Architecture Diagram](https://raw.githubusercontent.com/SagarMarthandan/chicago-data-pipeline/prod/docs/images/master_architecture.png)
 
-    subgraph "Data Warehouse (Google BigQuery)"
-        BQ_Raw --> dbt
-        dbt -->|staging views| BQ_Stg[staging.stg_crime_events <br> staging.stg_station_status]
-        BQ_Stg -->|marts tables <br> Partitioned & Clustered| BQ_Mart
-        BQ_Mart --> BQML[BigQuery ML: crime_ridership_model]
-    end
+The system flows from batch and stream sources through processing into cloud storage and analytics. Three parallel paths: batch (Spark → GCS → BigQuery), streaming (Kafka → Spark Streaming → Postgres), and transformation (dlt → BigQuery → dbt → BQML). Airflow orchestrates all paths with dashed dependency arrows. Grafana and DBT Docs serve as observability and documentation layers.
 
-    subgraph "Observability & Analytics"
-        dbt -.->|record_dbt_results.py| PG_Obs[(Postgres: observability.dbt_test_results)]
-        BQ_Mart --> Grafana[Grafana Dashboards]
-        PG_Obs --> Grafana
-        Airflow -->|Metadata| Grafana
-    end
+---
 
-    classDef gcp fill:#4285F4,stroke:#333,stroke-width:1.5px,color:#fff;
-    classDef tool fill:#FF694B,stroke:#333,stroke-width:1.5px,color:#fff;
-    classDef air fill:#017A9B,stroke:#333,stroke-width:1.5px,color:#fff;
-    classDef tf fill:#7B42BC,stroke:#333,stroke-width:1.5px,color:#fff;
+## Tech Stack
 
-    class BQ_Raw,BQ_Mart,GCS gcp;
-    class dbt,BQ_Stg tool;
-    class Airflow,AB air;
-    class TF tf;
+| Component | Technology | Purpose |
+|:---|:---|:---|
+| **Language** | Python 3.13 | Pipeline scripts, Spark jobs, Kafka producers, dlt ingestion |
+| **Batch Processing** | Apache Spark 3.5.1 | DataFrame cleaning and transformation of crime data (Parquet → GCS) |
+| **Stream Processing** | Spark Structured Streaming | Real-time Kafka consumer writing micro-batches to Postgres |
+| **Message Broker** | Apache Kafka 7.6.0 | 3-partition topic for GBFS station status updates, keyed by station_id |
+| **Orchestration** | Apache Airflow 3.0.0 | DAG scheduling, SqlSensor gating, retries, failure callbacks |
+| **Cloud Warehouse** | Google BigQuery | Serverless analytics warehouse with partitioned/clustered marts |
+| **Machine Learning** | BigQuery ML | Linear regression model (`crime_ridership_model`) via SQL |
+| **Transformation** | dbt Core 1.12.0 (dbt-bigquery) | Modular SQL transforms, dimensional modeling, 84 tests |
+| **Cloud Ingestion** | dlt (data load tool) | S3 → BigQuery incremental append for 50M+ Divvy trips |
+| **Local Warehouse** | PostgreSQL 16 | Streaming sink + observability metadata store |
+| **IaC Provisioning** | Terraform | GCS buckets + BigQuery datasets provisioning |
+| **Observability** | Grafana 12.4 | Pipeline health + crime/Divvy analysis dashboards (Postgres datasource) |
+| **CI/CD** | GitHub Actions | 3-workflow pipeline: CI checks, GHCR builds, semantic releases |
+| **Containerization** | Docker Compose | 12-service local stack: Postgres, Spark, Airflow, Kafka, Grafana |
+| **Package Manager** | uv | Reproducible Python dependency management |
+
+---
+
+## Data Sources
+
+| Source | Format | Volume | Access Method |
+|:---|:---|:---|:---|
+| **Chicago Crime** | BigQuery public dataset | 8.6M rows (2001–present) | `bigquery-public-data.chicago_crime.crime` — referenced directly in dbt source() |
+| **Divvy Trip History** | AWS S3 CSV ZIPs | ~50M+ trips (2020–present), 75 monthly files | dlt incremental append into BigQuery `raw.divvy_trips` |
+| **Divvy GBFS Live** | REST JSON API | ~60s refresh, station status | Python producer → Kafka → Spark Streaming → Postgres |
+
+---
+
+## Pipeline Architecture
+
+### Batch Path (Cloud — BigQuery)
+1. **Crime Data**: Chicago crime data is referenced directly from `bigquery-public-data` via dbt `source()` — no ingestion needed. Filtered to 2018+ for overlap with Divvy data.
+2. **Divvy Trips**: `load_divvy_trips.py` uses dlt to stream 75 monthly CSV ZIPs from `divvy-tripdata.s3.amazonaws.com` into BigQuery `raw.divvy_trips` (50M+ rows, append mode).
+3. **Spark Batch**: `crime_batch.py` reads local Parquet, cleans/transforms via Spark DataFrames, writes to GCS as Parquet for BigQuery external table access.
+
+### Streaming Path (Local — Postgres)
+1. **Kafka Producer**: `divvy_producer.py` polls the GBFS API every 60 seconds, publishes station status JSON to a 3-partition Kafka topic keyed by `station_id`.
+2. **Spark Structured Streaming**: `divvy_stream.py` consumes the Kafka stream, parses JSON, and writes micro-batches to Postgres `raw.station_status` with exactly-once semantics via checkpointing.
+
+### Transformation Path (dbt → BigQuery)
+1. **Staging Models**: Type casting, field renaming, deduplication on primary keys.
+2. **Dimension Models**:
+   - `dim_date` — unified calendar covering crime + streaming date ranges
+   - `dim_community_area` — seed-backed lookup for Chicago's 77 community areas
+   - `dim_crime_type` — normalized crime classification taxonomy
+   - `dim_stations` — station dimension with most common coordinate per station via `ROW_NUMBER()`
+3. **Fact Models**:
+   - `fact_crime_events` — 8.6M geolocation-enriched crime events (partitioned by date, clustered by community_area)
+   - `fact_divvy_trips` — 50M+ trip records (partitioned by started_at)
+   - `fact_station_day` — 1.46M station-day aggregates: trip_count + crime_count_within_quarter_mile (ST_DISTANCE ≤ 402m)
+   - `fact_station_reads` — real-time station capacity reads from streaming path
+4. **Analytics Models**:
+   - `crime_ridership_correlation` — `CORR()` at overall, per_station, and per_month scope (3,197 rows)
+   - `crime_ridership_model` — BigQuery ML linear regression predicting ridership from crime count + temporal features
+
+### Geospatial Join
+The driving question is answered by matching station coordinates with crimes committed within a quarter-mile radius on the same day:
+```sql
+ST_DISTANCE(
+  ST_GEOGPOINT(station_lon, station_lat),
+  ST_GEOGPOINT(crime_lon, crime_lat)
+) <= 402  -- quarter mile in meters
 ```
 
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology | Shield / Logo | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Cloud Infrastructure** | Google Cloud Platform | ![GCP](https://img.shields.io/badge/Google_Cloud-4285F4?style=flat-square&logo=google-cloud&logoColor=white) | Primary cloud hosting for serverless data warehousing and storage. |
-| **IaC Provisioning** | Terraform | ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white) | Declarative cloud resource deployment (BigQuery datasets, GCS landing zones). |
-| **Ingestion Engine** | Airbyte | ![Airbyte](https://img.shields.io/badge/Airbyte-FF6633?style=flat-square&logo=airbyte&logoColor=white) | Managed replication connectors extracting from Socrata and S3 into BigQuery. |
-| **Batch Ingestion** | Socrata API | ![Socrata](https://img.shields.io/badge/Socrata_API-008CBA?style=flat-square&logo=internet-explorer&logoColor=white) | Ingestion endpoint returning historical Chicago Crime JSON records. |
-| **Stream Ingestion**| GBFS REST API | ![GBFS](https://img.shields.io/badge/GBFS_API-4CAF50?style=flat-square&logo=json&logoColor=white) | Ingestion source for live bike-share station status JSON feeds. |
-| **Message Broker** | Apache Kafka | ![Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?style=flat-square&logo=apache-kafka&logoColor=white) | Distributed event streaming broker managing station updates via partitions. |
-| **Batch Processing**| Apache Spark | ![Spark](https://img.shields.io/badge/Apache_Spark-E25A1C?style=flat-square&logo=apache-spark&logoColor=white) | High-speed processing of Parquet staging files into raw schemas. |
-| **Stream Processing**| Spark Structured Streaming | ![Spark Streaming](https://img.shields.io/badge/Structured_Streaming-E25A1C?style=flat-square&logo=apache-spark&logoColor=white) | Real-time streaming consumer sinking Kafka event streams into GCS. |
-| **Orchestration** | Apache Airflow | ![Airflow](https://img.shields.io/badge/Apache_Airflow-017A9B?style=flat-square&logo=apache-airflow&logoColor=white) | DAG scheduling, backfills, execution-timeout tracking, and callbacks. |
-| **Warehouse** | Google BigQuery | ![BigQuery](https://img.shields.io/badge/Google_BigQuery-669DF2?style=flat-square&logo=google-cloud&logoColor=white) | Serverless cloud data warehouse with partitioned/clustered analytics marts. |
-| **Machine Learning**| BigQuery ML | ![BQML](https://img.shields.io/badge/BigQuery_ML-669DF2?style=flat-square&logo=google-cloud&logoColor=white) | Serverless SQL-based regression model building and feature weight checks. |
-| **Transformation**| dbt (data build tool) | ![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat-square&logo=dbt&logoColor=white) | Modular SQL transformation, dimensional modeling, and schema test automation. |
-| **CI/CD** | GitHub Actions | ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white) | Automated workflows for code quality, Docker registry pushes, and releases. |
-| **Observability** | Grafana | ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white) | Interactive dashboard displaying pipeline metrics and correlation scatter plots. |
-| **Containerization**| Docker & Compose | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) | Local runtime isolation for Airflow, Kafka, Spark, and Postgres metadata. |
+### Performance Optimization
+- **Partitioning**: `fact_crime_events` partitioned by `date_key`, `fact_divvy_trips` by `started_at`, `fact_station_day` by `date_key` — enables partition pruning (97.8% bytes saved on filtered queries)
+- **Clustering**: Tables clustered by `community_area_id` and `station_id` for geospatial filter optimization
 
 ---
 
-## 🔄 Pipeline Overview
-
-The modern ELT pipeline handles massive analytical scale by separating extraction, storage, and transformation:
-
-1. **Infrastructure Provisioning (Terraform)**:
-   - Declarative scripts configure Google Cloud resources. Terraform provisions GCS data lakes, separates BigQuery datasets (`raw`, `staging`, `mart`), sets permissions, and manages state securely in a cloud backend.
-2. **Ingestion & Storage (Airbyte & Spark)**:
-   - **Batch Crime Ingestion**: Airbyte's Socrata connector pulls 8M+ historical records from the Chicago Data Portal directly into BigQuery raw tables.
-   - **Batch Ridership Ingestion**: Airbyte extracts monthly historical Divvy trip CSV files (~50M rows) from an AWS S3 bucket (`divvy-tripdata.s3.amazonaws.com`) and loads them incrementally into BigQuery.
-   - **Live Ingestion**: A Python producer polls GBFS status feeds every 60 seconds, publishing messages to a 3-partition Kafka topic (keyed by `station_id` to guarantee ordering). A Spark Structured Streaming consumer reads the stream and writes micro-batches to a GCS bucket, which BigQuery exposes as an external staging table.
-3. **Data Warehouse Transformations (dbt)**:
-   - Staging models cast types, rename fields, and deduplicate on primary keys.
-   - Mart models construct a highly-optimized star schema in BigQuery:
-     - `dim_date`: Unified dimension covering both historical crime and streaming ranges.
-     - `dim_community_area`: Seed-backed lookup for Chicago's 77 community areas.
-     - `dim_crime_type`: Casing-normalized taxonomy of crime classifications.
-     - `fact_crime_events`: Geolocation-enriched fact representing crime events.
-     - `fact_station_reads`: Granular logs capturing real-time bike capacities.
-     - `fact_station_day`: Daily rolls aggregating rides and nearby crimes.
-4. **Performance Optimization (BigQuery Tuning)**:
-   - **Partitioning**: The `fact_crime_events` and ridership tables are partitioned by date (`date` / `started_at`), enabling partition pruning to minimize scanned bytes.
-   - **Clustering**: Tables are clustered by `community_area` and `start_station_id`, optimizing query performance and reducing scan costs for geospatial filters.
-5. **Analytics & BigQuery ML**:
-   - The driving question is answered using a geospatial join on BigQuery, matching station coordinates with crimes committed within a quarter-mile radius on the same day:
-     ```sql
-     ST_DISTANCE(ST_GEOGPOINT(station_lon, station_lat), ST_GEOGPOINT(crime_lon, crime_lat)) <= 402
-     ```
-   - BigQuery ML trains a linear regression model (`mart.crime_ridership_model`) directly in the warehouse using SQL, evaluating weights (`ML.WEIGHTS`) to measure the impact of local crime metrics on bike-share ridership.
-
----
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 chicago-data-pipeline/
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml              # PR validation check workflow (Ruff, dbt, Compose)
-│       ├── build.yml           # dev branch build workflow pushing images to GHCR
-│       └── release.yml         # prod branch tagging & GitHub Release workflow
-├── docker-compose.yml          # Container definitions for local development
-├── .env.example                # Config environment variables template
-├── Makefile                    # Developer execution shortcuts
-├── pyproject.toml              # uv virtual environment config
-├── uv.lock                     # Locked host dependencies
-├── init.sql                    # Local Postgres database schema setup script
+│   ├── workflows/
+│   │   ├── ci.yml              # PR checks: ruff, dbt parse, compose validate, build
+│   │   ├── build.yml           # dev merge → build + push images to GHCR
+│   │   └── release.yml         # prod merge → semantic version tag + GitHub Release
+│   └── ci/profiles.yml         # CI-safe dbt profiles (dummy keyfile for dbt parse)
+├── docker-compose.yml          # 12 services: Postgres, Spark, Airflow, Kafka, Grafana
+├── pyproject.toml              # uv project mode + ruff config
+├── init.sql                    # Postgres init: 3 schemas + airflow DB
 │
-├── ingestion/                  # Hand-rolled local ingestion scripts
-│   └── download_crime.py       # Chicago Crime API -> Parquet downloader (local dev)
+├── ingestion/
+│   ├── download_crime.py       # Socrata API → Parquet (legacy)
+│   └── load_divvy_trips.py     # dlt S3→BigQuery (--month/--from/--to/--all/--dry-run)
 │
 ├── spark/
-│   ├── Dockerfile              # Spark base image baked with JDBC & Kafka JARs
-│   ├── entrypoint.sh           # Named volume permissions fix script
+│   ├── Dockerfile              # Spark 3.5.1 + JDBC + Kafka + GCS connector JARs
 │   └── jobs/
-│       ├── crime_batch.py      # Spark batch job (Parquet -> Postgres Raw / GCS)
-│       └── divvy_stream.py     # Spark streaming job (Kafka -> Postgres Raw / GCS)
+│       ├── crime_batch.py      # Spark batch: Parquet → clean → GCS Parquet
+│       └── divvy_stream.py     # Spark Structured Streaming: Kafka → Postgres
 │
-├── kafka/
-│   └── producers/
-│       └── divvy_producer.py   # GBFS API -> Kafka broker publisher
+├── kafka/producers/
+│   └── divvy_producer.py       # GBFS API → Kafka (60s polling, 3 partitions)
 │
 ├── airflow/
-│   ├── Dockerfile              # Airflow base image baked with Docker CLI
-│   ├── requirements.txt        # Container python provider dependencies
-│   ├── passwords.json          # Airflow 3.0 SimpleAuthManager passwords
+│   ├── Dockerfile              # Airflow 3.0 + Docker CLI + gcloud SDK
 │   ├── dags/
-│   │   ├── crime_batch_dag.py  # Historical crime batch run DAG
-│   │   ├── divvy_stream_dag.py # Real-time streaming control loop DAG
-│   │   └── callbacks.py        # Failure logging alert hook
+│   │   ├── crime_batch_dag.py       # dbt_build → record_results
+│   │   ├── divvy_stream_dag.py      # streaming lifecycle (7 tasks)
+│   │   ├── divvy_trip_history_dag.py # load_divvy_trips → dbt_build → record_results
+│   │   └── callbacks.py             # on_failure_callback
 │   └── scripts/
-│       └── record_dbt_results.py # Parses dbt test outcomes into Postgres
+│       └── record_dbt_results.py    # dbt run_results.json → observability.dbt_test_results
 │
 ├── dbt/
-│   ├── dbt_project.yml         # Global dbt configuration
-│   ├── profiles.yml            # Postgres and BigQuery warehouse profiles
-│   ├── seeds/
-│   │   └── community_areas.csv # Static Chicago community area mappings seed
-│   ├── macros/
-│   │   ├── generate_schema_name.sql # Custom schema name dispatcher
-│   │   └── try_cast.sql        # Portability safe cast macro (Postgres/BigQuery)
+│   ├── Dockerfile              # dbt-bigquery==1.12.0
 │   ├── models/
-│   │   ├── staging/
-│   │   │   ├── stg_crime_events.sql   # Crime events staging SQL (BigQuery-ready)
-│   │   │   ├── stg_station_status.sql # Divvy station status staging SQL (BigQuery-ready)
-│   │   │   └── schema.yml             # Staging constraints and null checks
-│   │   └── marts/
-│   │       ├── dim_date.sql           # Shared date dimension UNIONing ranges
-│   │       ├── dim_community_area.sql # Seed-backed community area dimension
-│   │       ├── dim_crime_type.sql     # Categorized crime mapping dimension
-│   │       ├── fact_crime_events.sql  # Mart fact table for Chicago crime events
-│   │       ├── fact_station_reads.sql # Mart fact table for bike station availability reads
-│   │       ├── fact_station_day.sql   # Aggregate daily ridership & nearby crime count table
-│   │       ├── crime_ridership_correlation.sql # Geospatial join calculating CORR coefficient
-│   │       └── schema.yml             # Data quality validations and relationship rules
-│   └── tests/
-│       └── assert_crime_in_chicago_bounds.sql # Singular coordinate validation test
+│   │   ├── staging/            # stg_crime_events, stg_divvy_trips, stg_station_status
+│   │   └── marts/              # dim_date, dim_community_area, dim_crime_type, dim_stations,
+│   │                           # fact_crime_events, fact_divvy_trips, fact_station_day,
+│   │                           # fact_station_reads, crime_ridership_correlation,
+│   │                           # crime_ridership_model_* (BQML)
+│   ├── tests/                  # assert_crime_in_chicago_bounds.sql
+│   └── seeds/                  # community_areas.csv
 │
-├── terraform/                  # Cloud infrastructure IaC
-│   ├── main.tf                 # Declares GCS buckets and BigQuery dataset resources
-│   ├── variables.tf            # Configures GCP project and region variables
-│   ├── outputs.tf              # Exposes resource URIs and dataset IDs
-│   └── providers.tf            # Locks Terraform core and Google Provider versions
+├── terraform/                  # GCP infra as code
+│   ├── main.tf                 # 2 BigQuery datasets + 1 GCS bucket
+│   ├── variables.tf            # project_id, region, location, credentials_path
+│   └── providers.tf            # Google provider v7.40.0
 │
-└── grafana/
-    ├── provisioning/
-    │   ├── datasources/
-    │   │   └── postgres.yml    # Analytics and Airflow metadata datasources
-    │   └── dashboards/
-    │       └── dashboards.yml  # Autoloading dashboard configs
-    └── dashboards/
-        ├── pipeline_health.json # 11-panel pipeline health dashboard
-        └── crime_divvy_analysis.json # 6-panel analysis dashboard
+├── grafana/
+│   ├── provisioning/datasources/  # 2 Postgres datasources
+│   └── dashboards/
+│       ├── pipeline_health.json       # 11-panel pipeline health dashboard
+│       └── crime_divvy_analysis.json  # 8-panel crime + Divvy analysis dashboard
+│
+└── docs/
+    ├── phase/                  # Consolidated phase docs (1–5)
+    ├── wiki/                   # Technology reference + conventions
+    └── chat-history/           # Conversation logs + handoff doc
 ```
 
 ---
 
-## 🚀 How to Run & Deploy
+## CI/CD Pipeline
 
-### 1. Local Development (Docker Compose)
-Spin up the local containerized cluster to verify orchestration, streaming, and dbt models on a Postgres database:
+A 3-workflow GitHub Actions pipeline with branch protection on both `prod` (default) and `dev` branches:
+
+### Workflow 1: CI Checks (PRs to `dev` / `prod`)
+- **Ruff linting** on all Python files
+- **dbt parse** with CI-safe profiles (dummy keyfile — parse never connects to DB)
+- **Docker Compose config validation**
+- **Multi-stage image build** checks
+
+### Workflow 2: Build & Push (Merge to `dev`)
+- Builds and tags development images (`airflow:dev`, `spark:dev`, `dbt:dev`)
+- Pushes to GitHub Container Registry (GHCR) with lowercase repository path
+
+### Workflow 3: Release (Merge to `prod`)
+- Semantic version bumping (`v{MAJOR}.{MINOR}.{PATCH}`) from commit logs
+- Auto-generated GitHub Release with release notes
+- Versioned production images pushed to GHCR
+
+---
+
+## Data Quality & Fault Tolerance
+
+### In-Warehouse Data Quality (dbt)
+- **84 tests**: unique constraints, non-null properties, relationship integrity, accepted values
+- **Singular test**: `assert_crime_in_chicago_bounds.sql` — rejects coordinates outside Chicago city limits
+- **dbt-expectations**: Additional generic tests from dbt-utils package
+
+### Airflow Pipeline Resilience
+- **SqlSensor gating**: Checks for raw table existence before transformation tasks — prevents race conditions between batch and streaming
+- **Retries**: 3 retries with 5-minute intervals
+- **Execution timeouts**: 30-minute cap per task
+- **Failure callbacks**: Structured JSON context logging via `on_failure_callback`
+
+### Observability
+- **dbt test results** parsed from `run_results.json` → Postgres `observability.dbt_test_results` (64 rows tracked)
+- **Grafana dashboards**: 11-panel pipeline health (row counts, trip rate, freshness, DAG status) + 8-panel crime/Divvy analysis (crime heatmaps, trip charts, correlation scatter, Pearson r gauge)
+
+---
+
+## Key Findings
+
+| Metric | Value | Interpretation |
+|:---|:---|:---|
+| **Pearson correlation (r)** | +0.20 | Weak positive — stations with more nearby crime also have more trips |
+| **BQML crime coefficient** | +1.45 | Positive even after controlling for station, day of week, month |
+| **BQML R²** | 0.434 | Model explains 43.4% of variance in daily trip count |
+| **Station-days analyzed** | 1,463,049 | Each station-day pairs trip count with crime count within 402m |
+| **Crime rows** | 8,600,000 | Full Chicago crime dataset (2001–present) |
+| **Divvy trips** | 50,000,000+ | 75 monthly files, 2020–present |
+| **dbt tests passing** | 84/84 | Schema assertions + singular bounds check + expectations |
+
+**Conclusion**: The weak positive correlation does NOT mean crime causes ridership. Both are higher in busy, densely populated areas — the confounding variable is urban activity level. Per-month correlations trend upward from 0.08 (April 2020, COVID lockdown) to ~0.25–0.30 (2024–2025), suggesting the relationship strengthens as the city normalizes post-pandemic.
+
+---
+
+## Phase Completion Status
+
+| Phase | Feature | Status | Details |
+|:---|:---|:---|:---|
+| **1** | Spark Batch + dbt + Airflow | 🟢 Complete | Crime Parquet → Spark → GCS, dbt staging/marts, Airflow DAG |
+| **2** | Kafka + Spark Streaming | 🟢 Complete | GBFS → Kafka (3 partitions) → Spark Structured Streaming → Postgres |
+| **3** | Grafana + dbt Test Logging | 🟢 Complete | 2 dashboards (19 panels), dbt results → Postgres, SqlSensor gating |
+| **4** | Terraform + dlt + BigQuery + BQML | 🟢 Complete | GCP infra, 50M+ trips via dlt, partitioned marts, BQML regression |
+| **5** | CI/CD + GHCR + Semantic Releases | 🟢 Complete | 3 GitHub Actions workflows, branch protection, versioned GHCR images |
+
+---
+
+## How to Run
+
+### Prerequisites
+- Docker Desktop with WSL2 backend
+- GCP account with service account key (for BigQuery + GCS)
+
+### First Run
 ```bash
-# Build custom Airflow, Spark, and dbt images
-docker compose build
-
-# Start database and run schema migrations
-docker compose up -d postgres airflow-init
-
-# Start orchestration, brokers, and streaming jobs
-docker compose up -d
+git clone https://github.com/SagarMarthandan/chicago-data-pipeline && cd chicago-data-pipeline
+cp .env.example .env                    # Fill in values
+chmod 666 airflow/passwords.json        # Airflow SimpleAuthManager
+docker compose build                    # Build Airflow + Spark + dbt images
+docker compose up -d                    # Start 12 services
+docker compose ps -a                    # Verify all healthy
 ```
-Access the local monitoring interfaces:
-- **Airflow Webserver**: [http://localhost:8080](http://localhost:8080) (Credentials: `admin` / `admin`)
-- **Spark Master UI**: [http://localhost:8180](http://localhost:8180)
-- **Grafana UI**: [http://localhost:3000](http://localhost:3000)
 
-### 2. Cloud Provisioning (GCP & Terraform)
-Authenticate with your Google Cloud project and apply Terraform scripts to provision resources:
+### Accessing Services
+| Service | URL | Login |
+|:---|:---|:---|
+| Airflow UI | http://localhost:8080 | admin / admin |
+| Spark Master UI | http://localhost:8180 | — |
+| Grafana UI | http://localhost:3000 | admin / admin |
+| Postgres | localhost:5432 | chicago / (from .env) |
+
+### Triggering the Pipeline
 ```bash
-cd terraform
-terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
+# Batch DAGs
+docker exec chicago-data-pipeline-airflow-scheduler-1 airflow dags trigger crime_batch
+docker exec chicago-data-pipeline-airflow-scheduler-1 airflow dags trigger divvy_trip_history
+
+# Streaming DAG
+docker exec chicago-data-pipeline-airflow-scheduler-1 airflow dags trigger divvy_stream
+
+# Query correlation results
+bq query --use_legacy_sql=false "SELECT * FROM \`chicago-divvy-pipeline.mart.crime_ridership_correlation\` WHERE scope='overall'"
 ```
-*This deploys GCS buckets (acting as landing zone data lakes) and BigQuery datasets (`raw_crime`, `raw_divvy`, `staging`, `mart`).*
-
-### 3. Managed Ingestion & Transformation (Airbyte & dbt)
-1. **Sync Data**: Configure the Airbyte connection to sync the Socrata Crime API and S3 Divvy Trip CSVs directly into BigQuery.
-2. **Execute dbt Models**: Run and test the BigQuery profile models:
-   ```bash
-   cd dbt
-   dbt deps
-   dbt build --target prod
-   ```
 
 ---
 
-## 🧪 Data Quality, Robustness & CI/CD Gates
+## Author
 
-### A. Automated CI/CD Workflows (GitHub Actions)
-Our DevOps architecture implements a 3-stage automation pipeline:
-- **Workflow 1: CI Checks (PRs to `dev` / `prod`)**:
-  - Code linting via `ruff check` on all Python files.
-  - dbt SQL compilation and model validation via `dbt parse`.
-  - Docker Compose validation via `docker compose config -q`.
-  - Multi-stage image build checks to catch compilation issues.
-- **Workflow 2: Build & Push (Merge to `dev`)**:
-  - Builds and tags development images (e.g. `airflow:dev`, `spark:dev`, `dbt:dev`).
-  - Pushes images to the GitHub Container Registry (GHCR) for deployment.
-- **Workflow 3: Release (Merge to `prod`)**:
-  - Automates semantic version bumping (`v{MAJOR}.{MINOR}.{PATCH}`) based on commit logs.
-  - Tags the merge commit and publishes a GitHub Release with auto-generated release notes.
-  - Compiles, tags, and pushes production-grade versioned images to GHCR.
-
-### B. In-Warehouse Data Quality
-- **Schema Assertions**: Unique constraints, non-null properties, and relationship integrity validations.
-- **Singular Tests**: Geolocation bounds check (`assert_crime_in_chicago_bounds.sql`) isolating coordinates outside the city limits.
-
-### C. Airflow Pipeline Fault-Tolerance
-- **SqlSensor Gating**: A sensor checks for the existence of raw tables before transformation tasks run, resolving race conditions between batch and streaming models.
-- **Resilience**: Task retries (`retries=3`), 5-minute retry intervals, execution timeouts (`execution_timeout=30m`), and failure callbacks logging structured context JSON.
-
----
-
-## 📈 Modules Status
-
-Our complete pipeline status:
-
-| Phase | Feature/Module | Status | Details |
-| :--- | :--- | :--- | :--- |
-| **Phase 1** | **Parquet Ingestion (Crime)** | 🟢 Complete | Batch ingestion of Chicago Crime Socrata API to local Parquet. |
-| **Phase 1** | **Spark Batch Job** | 🟢 Complete | PySpark batch cleaning and JDBC insertion to PostgreSQL. |
-| **Phase 1** | **dbt Staging & Mart Models** | 🟢 Complete | Staging, dimension, and fact tables running locally. |
-| **Phase 1** | **Airflow Batch DAG** | 🟢 Complete | Scheduled DAG executing downloader, Spark, and dbt. |
-| **Phase 2** | **Kafka Message Broker** | 🟢 Complete | Zookeeper and Confluent Kafka services configured via Compose. |
-| **Phase 2** | **Kafka Divvy Producer** | 🟢 Complete | Polled GBFS updates published to keyed Kafka partitions. |
-| **Phase 2** | **Spark Structured Streaming** | 🟢 Complete | Spark Structured Streaming processing Kafka to Postgres. |
-| **Phase 2** | **Airflow Streaming DAG**| 🟢 Complete | Scheduled stream start, producer, and cleanup DAG task flows. |
-| **Phase 3** | **Grafana Provisioning** | 🟢 Complete | Automatic setup of 2 dashboards and PostgreSQL datasources. |
-| **Phase 3** | **dbt Test Logging** | 🟢 Complete | Hook script loading dbt run results into Postgres. |
-| **Phase 3** | **Pipeline Robustness** | 🟢 Complete | Implemented SqlSensors, execution timeouts, retries, and callback logs. |
-| **Phase 4** | **Terraform IaC** | 🟢 Complete | Provisioned datasets, GCS buckets, and cloud state backend. |
-| **Phase 4** | **Airbyte Ingestion** | 🟢 Complete | Crime API and S3 trip CSVs synced to BigQuery. |
-| **Phase 4** | **BigQuery Performance Tuning**| 🟢 Complete | Partitioning and clustering dbt models for scan-cost reduction. |
-| **Phase 4** | **Analytics & BigQuery ML** | 🟢 Complete | Geospatial queries, CORR metrics, and BQML linear regression. |
-| **Phase 5** | **CI Checks & Checks** | 🟢 Complete | Ruff linting, dbt parsing, and YAML validations on PR. |
-| **Phase 5** | **GHCR Image Registry** | 🟢 Complete | Pushing development and production Docker images to GHCR. |
-| **Phase 5** | **Semantic Release & Versioning**| 🟢 Complete | Automated version tagging and GitHub Release generation. |
-
-*Legend: 🟢 Complete | 🚧 In Progress | 🔲 Planned*
-
----
-
-## 👤 Author
-
-* **Sagar Marthandan**
-* **GitHub**: [github.com/SagarMarthandan](https://github.com/SagarMarthandan)
-* **Email**: sagar@example.com
+- **Sagar Marthandan**
+- **GitHub**: [github.com/SagarMarthandan](https://github.com/SagarMarthandan)

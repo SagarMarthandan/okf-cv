@@ -138,11 +138,23 @@ The portfolio search runs **100% locally and offline** using a hybrid approach t
 
 ## 🛠️ Step-by-Step Execution Guide
 
-The entire process is organized into 3 primary sequential steps, executed automatically by the agent when you supply a Job Description, followed by three post-pipeline steps (self-learning enrichment, Obsidian vault sync, and folder sorting):
+The entire process is organized into 3 primary sequential steps, executed automatically by the agent when you supply a Job Description, followed by three post-pipeline steps (self-learning enrichment, Obsidian vault sync, and folder sorting). An optional Step 0 runs first when you supply a URL instead of pasted JD text:
+
+### STEP 0 (optional): JD Fetch — URL → Job Description Text
+
+Runs only when you paste a job posting URL (or say "scrape this posting" / "fetch this job link") instead of pasting raw JD text. If you paste raw JD text directly, Step 0 is skipped and the pipeline goes straight to Step 1.
+
+- **Hybrid scraping strategy:** Known JS-SPA vendors (LinkedIn, Workday, Greenhouse, Lever, SuccessFactors, Personio) go straight to **Jina Reader** (`https://r.jina.ai/<url>`) — a free service that returns clean markdown of the fully rendered page (handles JS rendering, cookie/consent walls). Static / Unknown vendors (a company's own careers page, a blog post) try the agent's local `webfetch` first, then Jina as a fallback. Optional `JINA_API_KEY` env var enables higher rate limits; the keyless public endpoint works but is rate-limited.
+- **JD-shape validation:** Scraped text must pass a heuristic gate — role title + company signal + ≥2 JD section markers (`requirements`, `responsibilities`, `qualifications`, `experience`, `we are looking for`, `about the role`, `your profile`, `your tasks`, plus German equivalents `anforderungen`, `profil`, `aufgaben`, `wir suchen`, `ihr profil`) + >200 chars + not a login/error page. If validation fails, the next strategy is tried.
+- **Manual-paste fallback:** If both scrape strategies fail (rate limit, login wall, failed validation), the user is prompted to paste the JD manually. Manual paste is always available as the final fallback and is never locked out. For JS-SPA vendors where Jina fails, the doomed `webfetch` attempt is skipped — the user is prompted to paste immediately.
+- **URL-hash cache:** Scraped JDs are cached at `okf/.jd_cache/<sha1(url)>.txt` with a 7-day TTL, so re-runs of the same URL skip re-scraping. Manually-pasted JDs are not cached (only the `source_url` is recorded).
+- **Traceability:** The original `source_url` is stored in `Job_Description.yaml` (Step 1) so you can revisit the original posting later.
+- **Outputs:** Clean JD text (handed to Step 1 as the "pasted JD text" input — Step 1's contract is unchanged), plus `source_url` and detected ATS vendor passed forward to Step 1.
 
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 - **Name the Session (First Action):** Before any pipeline work, extract the Company Name and Job Role from the JD and rename the agent session/conversation to `[Company Name] — [Job Role]` in the UI sidebar. This makes it easy to identify which agent is handling which application when running multiple agents in parallel.
-- **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run.
+- **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run. Cached for 24 hours via `okf/.dep_check.json`.
+- **Embedding Daemon Pre-Warm:** Immediately after the dependency check, the pipeline calls `_ensure_daemon()` from `zvec_hybrid_search.py` to pre-warm the embedding daemon — the SentenceTransformer model is loaded into memory in a background process (with Windows-safe `CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` creationflags) before the hybrid search runs. This eliminates the ~70s cold start on Windows CPU that previously caused cell/command timeouts during Step 1. If the daemon is unavailable, the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). The daemon auto-shuts down after 30 min of inactivity.
 - **Language Detection & Archetype Selection:** Identifies whether the JD is in English or German, detects the primary role archetype (Data Engineer, Data Analyst, Analytics Engineer, AI Data Engineer), and loads the matching archetype-specific base resume. Falls back to the generic `resume.md` for unmatched archetypes.
 - **ATS Pre-Scoring:** Grades the archetype-matched base resume against a calibrated 4-category German-market matrix (max 100 points).
   - **Score Gate:** If the ATS score is `< 85`, the pipeline triggers a `HOLD` verdict, presenting specific remedy suggestions (e.g., missing keywords, project mismatches). If `>= 85`, it sets `PROCEED`.
@@ -278,9 +290,9 @@ YAML-CV/
 Since all the pipeline steps are natively codified into the agent's custom skills directory, you do not need to copy-paste any external prompts.
 
 To execute the pipeline:
-1. Paste the target **Job Description** (JD) into the chat.
-2. Type: **`execute okf-cv`** (or keywords like *"tailor resume"* / *"optimize resume"*).
-3. The agent will automatically run the end-to-end flow: installing dependencies, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `Applications/YYYY/MM/DD/` date tree.
+1. Paste the target **Job Description** (JD) into the chat — **or** paste a job posting URL and the pipeline will scrape it for you (see Step 0 below).
+2. Type: **`execute okf-cv`** (or keywords like *"tailor resume"* / *"optimize resume"* / *"job link"* / *"scrape this posting"*).
+3. The agent will automatically run the end-to-end flow: (optionally scraping the JD from a URL), installing dependencies, pre-warming the embedding daemon, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `Applications/YYYY/MM/DD/` date tree.
 
 ### Self-Refresh
 
@@ -289,7 +301,7 @@ To reload the skill into the current CLI/harness skill store (e.g. after pulling
 2. Locate the ground truth `SKILL.md` — first check `skills/okf-cv/SKILL.md` on the local filesystem. If that file is missing, unreadable, or stale, pull the latest version directly from the canonical GitHub repo at **https://github.com/SagarMarthandan/okf-cv** (path: `skills/okf-cv/SKILL.md`) via `webfetch` or `git pull`.
 3. Copy the located `SKILL.md` to the CLI's active skill store path.
 4. Confirm the load via the CLI's skill resolution mechanism.
-5. Ingest all supporting `.md` files in `skills/okf-cv/` (the step files `01_*.md`, `02_*.md`, `03_*.md`, and any others) to load the full pipeline into context. If any supporting doc is missing locally, fetch it from **https://github.com/SagarMarthandan/okf-cv** using the same fallback as step 2.
+5. Ingest all supporting `.md` files in `skills/okf-cv/` (the step files `00_*.md`, `01_*.md`, `02_*.md`, `03_*.md`, and any others) to load the full pipeline into context. If any supporting doc is missing locally, fetch it from **https://github.com/SagarMarthandan/okf-cv** using the same fallback as step 2.
 
 No other actions are performed. This is a metadata/context reload only — it does not run the pipeline or modify any application files.
 
@@ -300,7 +312,7 @@ No other actions are performed. This is a metadata/context reload only — it do
 Run the automated test suite to verify search relevance:
 ```powershell
 cd "[skill directory]"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\tests\test_okf_search.py"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\tests\test_okf_search.py"
 ```
 
 The suite includes 3 test cases:
@@ -310,47 +322,47 @@ The suite includes 3 test cases:
 
 Run the hybrid search standalone (OKF + Zvec score fusion):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 ```
 
 Run the frontmatter linter standalone (use `--force` to ignore the cache and lint all files):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py" --force
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py" --force
 ```
 
 ### Weekly Review: Diversity Audit
 
 Run the diversity audit weekly to review your monoculture exposure (vendor clustering and referral rate). This is no longer run automatically per application:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
 ```
 
 Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 The script reads the compiled PDF (the document submitted to companies) and uses the YAML as the expected-values reference. It checks: unicode integrity (no replacement glyphs), keyword recovery (all tools/skills/summary words recoverable from the PDF text), section header detection (style-aware: US style checks 6 headers, German style checks 5 — no Projects header since projects fold into experience), contact info extraction (5/5), and text structure stats. Outputs `Parseability_Report.yaml` + `Parseability_Report.pdf`. Exit code 0 = pass, 1 = fail, 2 = error.
 
 Run the self-learning loop standalone:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 
 Run the resume-JD similarity computation standalone (P1):
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
 ```
 
 Sync applications to Obsidian vault:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
 ```
 
 ---
 
 ## 📋 Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.21).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.22).

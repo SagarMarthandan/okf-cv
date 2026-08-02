@@ -24,217 +24,50 @@ from datetime import datetime
 from typing import List, Dict, Set, Tuple, Optional
 
 from config import DEFAULT_PORTFOLIO_DIR, SKILL_DIR
+from okf_utils import tokenize as _tokenize_base, EXTENDED_STOPWORDS, parse_frontmatter
 
 MAX_NEW_KEYWORDS_PER_RUN = 3
 MAX_KEYWORDS_PER_FILE = 15
 LEARNING_LOG_PATH = os.path.join(SKILL_DIR, "okf", "learning_log.json")
 
-# Generic words that should never be added as keywords
-NOISE_WORDS = {
-    'like', 'using', 'tools', 'time', 'real', 'patterns', 'requirements',
-    'practices', 'pipelines', 'building', 'engineer', 'senior', 'strong',
-    'experience', 'knowledge', 'familiarity', 'understanding', 'work',
-    'working', 'solutions', 'scalable', 'expertise', 'proficiency',
-    'looking', 'team', 'role', 'position', 'company', 'candidate',
-    'years', 'year', 'month', 'months', 'good', 'great', 'excellent',
-    'must', 'should', 'will', 'able', 'plus', 'nice', 'have', 'has',
-    'including', 'etc', 'within', 'across', 'multiple', 'various',
-    'related', 'relevant', 'similar', 'other', 'new', 'existing',
-    'current', 'previous', 'future', 'past', 'present', 'general',
-    'specific', 'particular', 'certain', 'basic', 'advanced', 'intermediate',
-    'fundamental', 'essential', 'important', 'key', 'main', 'primary',
-    'secondary', 'core', 'focus', 'focused', 'responsible', 'responsibilities',
-    'duties', 'tasks', 'projects', 'project', 'status', 'complete',
-    'completed', 'incomplete', 'pending', 'ongoing', 'active', 'inactive',
-    'hands', 'on', 'field', 'fields', 'area', 'areas', 'domain', 'domains',
-    'industry', 'industries', 'sector', 'sectors', 'market', 'markets',
-    'business', 'businesses', 'enterprise', 'enterprises', 'organization',
-    'organisations', 'organisations', 'user', 'users', 'customer', 'customers',
-    'client', 'clients', 'stakeholder', 'stakeholders', 'partner', 'partners',
-    'management', 'manager', 'managers', 'lead', 'leader', 'leaders',
-    'member', 'members', 'join', 'joining', 'apply', 'applying', 'application',
-    'applications', 'opportunity', 'opportunities', 'career', 'careers',
-    'job', 'jobs', 'hire', 'hiring', 'recruit', 'recruiting', 'recruitment',
-    'offer', 'offers', 'benefit', 'benefits', 'salary', 'compensation',
-    'remote', 'hybrid', 'onsite', 'office', 'location', 'locations',
-    'relocate', 'relocation', 'travel', 'visa', 'permit', 'permitting',
-    'language', 'languages', 'english', 'german', 'fluent', 'fluency',
-    'proficient', 'proficiency', 'native', 'bilingual', 'multilingual',
-    'written', 'verbal', 'communication', 'communications', 'presentation',
-    'presentations', 'documentation', 'documenting', 'documented',
-    'report', 'reports', 'reporting', 'dashboard', 'dashboards',
-    'metric', 'metrics', 'kpi', 'kpis', 'goal', 'goals', 'objective', 'objectives',
-    'target', 'targets', 'result', 'results', 'outcome', 'outcomes',
-    'impact', 'impacts', 'value', 'values', 'benefit', 'benefits',
-    'success', 'successful', 'successfully', 'fail', 'failure', 'failures',
-    'challenge', 'challenges', 'problem', 'problems', 'solution', 'solutions',
-    'approach', 'approaches', 'method', 'methods', 'methodology', 'methodologies',
-    'process', 'processes', 'processing', 'processed', 'procedure', 'procedures',
-    'standard', 'standards', 'best', 'practices', 'practice', 'practiced',
-    'principle', 'principles', 'concept', 'concepts', 'conceptual',
-    'theory', 'theoretical', 'practical', 'pragmatic', 'hands-on',
-    'end', 'end-to-end', 'e2e', 'full', 'full-stack', 'fullstack',
-    'stack', 'stacks', 'layer', 'layers', 'tier', 'tiers', 'level', 'levels',
-    'stage', 'stages', 'phase', 'phases', 'step', 'steps',
-    'source', 'sources', 'target', 'targets', 'destination', 'destinations',
-    'input', 'inputs', 'output', 'outputs', 'format', 'formats', 'formatted',
-    'structured', 'unstructured', 'semi-structured', 'raw', 'clean', 'cleaned',
-    'transform', 'transformed', 'transformation', 'transformations',
-    'load', 'loaded', 'loading', 'extract', 'extracted', 'extraction',
-    'ingest', 'ingested', 'ingestion', 'consume', 'consumed', 'consumption',
-    'produce', 'produced', 'production', 'generate', 'generated', 'generation',
-    'create', 'created', 'creation', 'build', 'built', 'building',
-    'develop', 'developed', 'development', 'developing',
-    'design', 'designed', 'designing', 'architecture', 'architectures',
-    'architect', 'architecting', 'architected',
-    'implement', 'implemented', 'implementation', 'implementing',
-    'deploy', 'deployed', 'deployment', 'deploying',
-    'maintain', 'maintained', 'maintenance', 'maintaining',
-    'support', 'supported', 'supporting', 'supported',
-    'monitor', 'monitored', 'monitoring',
-    'test', 'tested', 'testing', 'tested',
-    'validate', 'validated', 'validation', 'validating',
-    'optimize', 'optimized', 'optimization', 'optimizing',
-    'analyze', 'analyzed', 'analysis', 'analyzing',
-    'explore', 'explored', 'exploration', 'exploring',
-    'investigate', 'investigated', 'investigation', 'investigating',
-    'research', 'researched', 'researching',
-    'learn', 'learned', 'learning',
-    'understand', 'understood', 'understanding',
-    'identify', 'identified', 'identifying',
-    'define', 'defined', 'defining',
-    'plan', 'planned', 'planning',
-    'prepare', 'prepared', 'preparing',
-    'establish', 'established', 'establishing',
-    'ensure', 'ensured', 'ensuring',
-    'provide', 'provided', 'providing',
-    'deliver', 'delivered', 'delivering',
-    'enable', 'enabled', 'enabling',
-    'leverage', 'leveraged', 'leveraging',
-    'utilize', 'utilized', 'utilizing',
-    'adopt', 'adopted', 'adopting',
-    'integrate', 'integrated', 'integrating',
-    'migrate', 'migrated', 'migrating',
-    'upgrade', 'upgraded', 'upgrading',
-    'automate', 'automated', 'automating',
-    'orchestrate', 'orchestrated', 'orchestrating',
-    'schedule', 'scheduled', 'scheduling',
-    'trigger', 'triggered', 'triggering',
-    'execute', 'executed', 'executing',
-    'run', 'running', 'runs',
-    'store', 'stored', 'storing',
-    'query', 'queried', 'querying',
-    'fetch', 'fetched', 'fetching',
-    'retrieve', 'retrieved', 'retrieving',
-    'update', 'updated', 'updating',
-    'delete', 'deleted', 'deleting',
-    'insert', 'inserted', 'inserting',
-    'merge', 'merged', 'merging',
-    'join', 'joined', 'joining',
-    'filter', 'filtered', 'filtering',
-    'sort', 'sorted', 'sorting',
-    'group', 'grouped', 'grouping',
-    'aggregate', 'aggregated', 'aggregating',
-    'calculate', 'calculated', 'calculating',
-    'compute', 'computed', 'computing',
-    'process', 'processed', 'processing',
-}
+# Generic words that should never be added as keywords.
+# Loaded from okf/noise_words.yaml at import time. Edit that file to tune filtering.
+_NOISE_WORDS_PATH = os.path.join(SKILL_DIR, "okf", "noise_words.yaml")
 
-# Domain-relevant bigrams/trigrams to look for in JD text
-PHRASE_PATTERNS = [
-    r'\bdata\s+warehouse\b', r'\bdata\s+lake\b', r'\bdata\s+lakehouse\b',
-    r'\bdata\s+engineering\b', r'\bdata\s+pipeline\b', r'\bdata\s+quality\b',
-    r'\bdata\s+modeling\b', r'\bdata\s+mart\b', r'\bdata\s+governance\b',
-    r'\bdata\s+catalog\b', r'\bdata\s+ingestion\b', r'\bdata\s+transformation\b',
-    r'\belt\s+pipeline\b', r'\betl\s+pipeline\b', r'\bextract\s+load\s+transform\b',
-    r'\bextract\s+transform\s+load\b',
-    r'\bstar\s+schema\b', r'\bdimensional\s+modeling\b', r'\bslowly\s+changing\s+dimension\b',
-    r'\bscd\s+type\s+2\b',
-    r'\bmedallion\s+architecture\b', r'\bbronze\s+silver\s+gold\b',
-    r'\bmulti-layer\s+architecture\b',
-    r'\bincremental\s+loading\b', r'\bincremental\s+ingestion\b',
-    r'\bci/cd\b', r'\bci\s+cd\b', r'\bcontinuous\s+integration\b',
-    r'\binfrastructure\s+as\s+code\b',
-    r'\bmessage\s+queue\b', r'\bevent\s+streaming\b', r'\bevent-driven\b',
-    r'\bevent\s+driven\b', r'\bpub\s+sub\b',
-    r'\bstream\s+processing\b', r'\bbatch\s+processing\b',
-    r'\breal-time\s+analytics\b', r'\breal\s+time\s+analytics\b',
-    r'\bvector\s+database\b', r'\bvector\s+store\b', r'\bsimilarity\s+search\b',
-    r'\bretrieval\s+augmented\s+generation\b', r'\bretrieval-augmented\s+generation\b',
-    r'\blarge\s+language\s+model\b', r'\bgenerative\s+ai\b',
-    r'\bmachine\s+learning\b', r'\bdeep\s+learning\b',
-    r'\bnatural\s+language\s+processing\b',
-    r'\borchestration\s+pipeline\b', r'\bworkflow\s+orchestration\b',
-    r'\bcloud\s+data\s+warehouse\b', r'\bcloud\s+warehouse\b',
-    r'\bdistributed\s+computing\b', r'\bbig\s+data\s+processing\b',
-    r'\bcontainer\s+orchestration\b',
-    r'\bbusiness\s+intelligence\b', r'\bdata\s+visualization\b',
-    r'\bwindow\s+functions\b', r'\banalytic\s+functions\b',
-    r'\bquery\s+optimization\b',
-    r'\bdata\s+testing\b', r'\bdata\s+validation\b', r'\bdata\s+integrity\b',
-    r'\baccess\s+control\b', r'\bsecrets\s+management\b',
-    r'\bdocument\s+compilation\b', r'\bresume\s+tailoring\b',
-    r'\bats\s+optimization\b', r'\bcover\s+letter\b',
-    r'\bpipeline\s+automation\b', r'\bjob\s+application\b',
-    r'\bpdf\s+generation\b',
-    r'\borchestration\b', r'\bscheduler\b',
-    r'\bdimensionality\s+reduction\b', r'\boutlier\s+detection\b',
-    r'\brobust\s+statistics\b', r'\bcovariance\s+matrix\b',
-    r'\bclassification\b', r'\bclustering\b',
-    r'\bblockchain\s+analytics\b', r'\bwhale\s+detection\b',
-    r'\bversion\s+control\b',
-    r'\bdata\s+orchestration\b', r'\bdata\s+pipeline\b',
-    r'\bazure\s+data\s+lake\b', r'\bazure\s+storage\b',
-    r'\bazure\s+orchestration\b', r'\bazure\s+pipeline\b',
-    r'\bgcp\s+warehouse\b', r'\bgoogle\s+warehouse\b',
-    r'\bopen\s+source\s+ingestion\b', r'\belt\s+ingestion\b',
-    r'\blakehouse\s+storage\b', r'\bacid\s+transactions\b',
-    r'\bdata\s+science\s+notebook\b', r'\binteractive\s+computing\b',
-    r'\bnumerical\s+computing\b', r'\bscientific\s+computing\b',
-    r'\barray\s+processing\b', r'\bml\s+framework\b',
-    r'\bllm\s+api\b', r'\bchain\s+of\s+thought\b', r'\bagent\s+framework\b',
-    r'\bllm\s+framework\b',
-    r'\bin-memory\s+store\b', r'\brelational\s+database\b',
-    r'\bsql\s+database\b', r'\bsql\s+window\b', r'\bpartition\s+by\b',
-    r'\bfact\s+dimension\b', r'\bdata\s+mart\s+modeling\b',
-    r'\bdelta\s+loading\b', r'\bupsert\b',
-    r'\bdimension\s+history\b', r'\bversioned\s+dimension\b',
-    r'\bspark\s+python\b', r'\bdistributed\s+python\b', r'\bspark\s+sql\b',
-    r'\bblob\s+storage\b', r'\bcredential\s+store\b', r'\bsecret\s+manager\b',
-    r'\bdata\s+app\b', r'\binteractive\s+dashboard\b',
-    r'\bpython\s+web\s+app\b', r'\bweb\s+app\b',
-    r'\btypesetting\b', r'\btex\b',
-    r'\bplotting\b', r'\bcharts\b',
-    r'\bnotebook\b',
-    r'\bdashboard\b', r'\bbi\s+dashboard\b', r'\bbi\s+tool\b',
-    r'\biac\b', r'\biac\s+tool\b',
-    r'\bk8s\b',
-    r'\bpostgres\b', r'\boltp\b', r'\bolap\b',
-    r'\bsklearn\b',
-    r'\bgpt\b', r'\bchatgpt\b',
-    r'\betl\b', r'\belt\b',
-    r'\bwarehouse\b', r'\bdata\s+warehousing\b',
-    r'\blakehouse\b',
-    r'\bdag\b',
-    r'\badf\b',
-]
+def _load_noise_words() -> frozenset:
+    """Load noise words from okf/noise_words.yaml."""
+    try:
+        with open(_NOISE_WORDS_PATH, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict) and 'words' in data:
+            return frozenset(data['words'])
+    except Exception as e:
+        print(f"Warning: Could not load noise words from {_NOISE_WORDS_PATH}: {e}")
+    return frozenset()
+
+NOISE_WORDS = _load_noise_words()
+
+# Domain-relevant bigrams/trigrams to look for in JD text.
+# Loaded from okf/phrase_patterns.yaml at import time. Edit that file to tune extraction.
+_PHRASE_PATTERNS_PATH = os.path.join(SKILL_DIR, "okf", "phrase_patterns.yaml")
+
+def _load_phrase_patterns() -> list:
+    """Load phrase patterns from okf/phrase_patterns.yaml."""
+    try:
+        with open(_PHRASE_PATTERNS_PATH, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict) and 'patterns' in data:
+            return data['patterns']
+    except Exception as e:
+        print(f"Warning: Could not load phrase patterns from {_PHRASE_PATTERNS_PATH}: {e}")
+    return []
+
+PHRASE_PATTERNS = _load_phrase_patterns()
 
 
 def tokenize(text: str) -> Set[str]:
-    """Extract lowercase alphanumeric tokens, minus stopwords."""
-    if not text:
-        return set()
-    words = re.findall(r'\b\w+\b', text.lower())
-    stopwords = {
-        'and', 'the', 'for', 'with', 'a', 'an', 'to', 'in', 'of', 'on',
-        'at', 'by', 'is', 'or', 'as', 'we', 'you', 'our', 'your', 'this',
-        'that', 'will', 'be', 'are', 'have', 'has', 'was', 'were', 'it',
-        'from', 'their', 'they', 'but', 'not', 'can', 'all', 'any', 'if',
-        'so', 'do', 'does', 'did', 'about', 'into', 'than', 'then', 'also',
-        'more', 'most', 'some', 'such', 'only', 'very', 'over', 'under',
-        'up', 'down', 'out', 'off', 'above', 'below', 'between', 'through',
-    }
-    return {w for w in words if w not in stopwords and len(w) > 2}
+    """Extract lowercase alphanumeric tokens, minus extended stopwords (min length > 2)."""
+    return _tokenize_base(text, stopwords=EXTENDED_STOPWORDS, min_length=2)
 
 
 def extract_jd_phrases(jd_text: str) -> List[str]:
@@ -444,6 +277,11 @@ def find_untagged_terms(
 def add_keywords_to_file(filepath: str, new_keywords: List[str]) -> bool:
     """Append new keywords to a portfolio file's YAML frontmatter.
 
+    Uses yaml.safe_load / yaml.safe_dump to modify the frontmatter dict in
+    memory, then re-serializes. This replaces the previous fragile line-by-line
+    string manipulation that broke on quoted values, multi-line entries, or
+    comments in the frontmatter.
+
     Returns True if the file was modified, False if no change.
     """
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -454,8 +292,14 @@ def add_keywords_to_file(filepath: str, new_keywords: List[str]) -> bool:
         return False
 
     yaml_block = match.group(2)
+    body = match.group(4)
     meta = yaml.safe_load(yaml_block) or {}
+    if not isinstance(meta, dict):
+        return False
+
     existing_keywords = meta.get("keywords", [])
+    if not isinstance(existing_keywords, list):
+        existing_keywords = []
     existing_lower = {k.lower() for k in existing_keywords}
 
     # Filter out duplicates
@@ -470,51 +314,20 @@ def add_keywords_to_file(filepath: str, new_keywords: List[str]) -> bool:
             return False
         to_add = to_add[:space]
 
-    # Append to the keywords list in the YAML block
-    # Find the keywords section and append
-    lines = yaml_block.split('\n')
-    new_lines = []
-    in_keywords = False
-    keywords_added = False
+    # Update the keywords list in the parsed dict
+    meta["keywords"] = existing_keywords + to_add
 
-    for line in lines:
-    # Detect keywords list start
-        if re.match(r'^keywords:\s*$', line):
-            in_keywords = True
-            new_lines.append(line)
-            continue
+    # Re-serialize the frontmatter. Use allow_unicode=True to preserve non-ASCII
+    # keywords, default_flow_style=False for block format (readable), and
+    # sort_keys=False to preserve the original key order.
+    new_yaml_block = yaml.safe_dump(
+        meta,
+        allow_unicode=True,
+        default_flow_style=False,
+        sort_keys=False,
+    ).rstrip('\n')
 
-        if in_keywords:
-            # If we hit a non-list-item line, keywords section ended
-            if not line.strip().startswith('- ') and not line.strip() == '':
-                in_keywords = False
-                if not keywords_added:
-                    for kw in to_add:
-                        new_lines.append(f"- {kw}")
-                    keywords_added = True
-                new_lines.append(line)
-            elif line.strip() == '':
-                # Could be end of keywords or blank line within
-                new_lines.append(line)
-            else:
-                new_lines.append(line)
-        else:
-            new_lines.append(line)
-
-    # If we're still in keywords at the end, append there
-    if in_keywords and not keywords_added:
-        for kw in to_add:
-            new_lines.append(f"- {kw}")
-        keywords_added = True
-
-    if not keywords_added:
-        # keywords section wasn't found as a list, add it
-        new_lines.append("keywords:")
-        for kw in to_add:
-            new_lines.append(f"- {kw}")
-
-    new_yaml_block = '\n'.join(new_lines)
-    new_content = match.group(1) + new_yaml_block + match.group(3) + match.group(4)
+    new_content = f"---\n{new_yaml_block}\n---\n{body}"
 
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(new_content)

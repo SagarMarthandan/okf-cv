@@ -17,6 +17,7 @@ keywords:
 - algorithmic monoculture
 - cross-process locking
 - embedding daemon
+- orchestration
 archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering

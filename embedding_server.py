@@ -43,6 +43,7 @@ _model = None
 _model_ready = threading.Event()
 _model_lock = threading.Lock()  # Serialize model.encode() calls
 _last_request_time = time.time()
+_server = None  # Set by _start_server() so the idle watchdog can shut it down gracefully
 
 
 def _log(msg):
@@ -65,7 +66,8 @@ def _load_model():
         _log(f"FATAL: Failed to load model: {e}")
         import traceback
         traceback.print_exc()
-        os._exit(1)
+        _model_ready.set()  # Unblock any waiting request handlers so they error cleanly
+        sys.exit(1)
 
 
 # ─── Request handler ──────────────────────────────────────────────────────────
@@ -144,7 +146,11 @@ def _idle_watchdog():
         time.sleep(30)
         if time.time() - _last_request_time > IDLE_TIMEOUT:
             _log(f"Idle for {IDLE_TIMEOUT // 60} min. Shutting down.")
-            os._exit(0)
+            if _server is not None:
+                _server.shutdown()  # Causes serve_forever() to return, hitting the finally block
+            else:
+                os._exit(0)  # Fallback if server was never set
+            return
 
 
 # ─── State file ───────────────────────────────────────────────────────────────
@@ -204,6 +210,9 @@ def _start_server():
     if server is None:
         _log(f"FATAL: No available port in range {PORT_RANGE[0]}-{PORT_RANGE[-1]}")
         sys.exit(1)
+
+    global _server
+    _server = server
 
     _log(f"Listening on 127.0.0.1:{chosen_port}")
     _write_state(chosen_port)

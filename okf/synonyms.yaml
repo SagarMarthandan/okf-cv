@@ -1,0 +1,209 @@
+# Synonym / alias map for OKF portfolio search.
+#
+# Maps canonical terms to lists of synonyms. Both directions are used:
+#   - Portfolio keyword "kafka" matches JD text containing "message queue"
+#   - JD text containing "kafka" matches portfolio keyword "event streaming"
+#
+# To add a new synonym group, add a new key with its synonym list.
+# The reverse lookup (synonym -> canonical) is built automatically at load time.
+
+kafka:
+  - message queue
+  - event streaming
+  - pub sub
+  - event-driven
+  - event driven
+dbt:
+  - data build tool
+  - transformation framework
+  - data modeling tool
+airflow:
+  - orchestration
+  - scheduler
+  - dag
+  - workflow orchestration
+dagster:
+  - orchestration
+  - data pipeline orchestrator
+  - asset-based
+snowflake:
+  - cloud data warehouse
+  - cloud warehouse
+  - data warehouse
+bigquery:
+  - cloud data warehouse
+  - google warehouse
+  - gcp warehouse
+databricks:
+  - data lakehouse
+  - spark platform
+  - lakehouse
+docker:
+  - containerization
+  - container
+  - containerized
+kubernetes:
+  - k8s
+  - container orchestration
+  - container orchestration platform
+postgresql:
+  - postgres
+  - relational database
+  - oltp
+mysql:
+  - relational database
+  - oltp
+  - sql database
+power bi:
+  - business intelligence
+  - bi dashboard
+  - bi tool
+  - data visualization
+tableau:
+  - business intelligence
+  - bi dashboard
+  - data visualization
+apache superset:
+  - bi dashboard
+  - data visualization
+  - dashboard
+looker studio:
+  - bi dashboard
+  - data visualization
+  - dashboard
+terraform:
+  - infrastructure as code
+  - iac
+  - iac tool
+rag:
+  - retrieval augmented generation
+  - retrieval-augmented generation
+  - vector retrieval
+llm:
+  - large language model
+  - generative ai
+  - language model
+faiss:
+  - vector database
+  - vector store
+  - similarity search
+langchain:
+  - llm framework
+  - chain of thought
+  - agent framework
+spark:
+  - distributed computing
+  - big data processing
+  - distributed processing
+delta lake:
+  - data lakehouse
+  - acid transactions
+  - lakehouse storage
+medallion architecture:
+  - bronze silver gold
+  - layered architecture
+  - multi-layer architecture
+unity catalog:
+  - data governance
+  - data catalog
+  - access control
+airbyte:
+  - data ingestion
+  - elt ingestion
+  - open source ingestion
+github actions:
+  - ci cd
+  - ci/cd
+  - continuous integration
+  - continuous deployment
+jenkins:
+  - ci cd
+  - ci/cd
+  - continuous integration
+redis:
+  - message broker
+  - cache
+  - in-memory store
+numpy:
+  - numerical computing
+  - scientific computing
+  - array processing
+scikit-learn:
+  - machine learning library
+  - sklearn
+  - ml framework
+matplotlib:
+  - data visualization
+  - plotting
+  - charts
+jupyter:
+  - notebook
+  - interactive computing
+  - data science notebook
+latex:
+  - tex
+  - typesetting
+  - document compilation
+streamlit:
+  - web app
+  - python web app
+  - data app
+  - interactive dashboard
+openai:
+  - gpt
+  - llm api
+  - chatgpt
+elt:
+  - extract load transform
+  - etl
+etl:
+  - extract transform load
+  - elt
+data warehouse:
+  - data warehousing
+  - warehouse
+  - olap
+data lake:
+  - data lakehouse
+  - lake storage
+  - raw data storage
+data quality:
+  - data validation
+  - data testing
+  - data integrity
+soda:
+  - data quality
+  - data testing
+  - data validation
+window functions:
+  - analytic functions
+  - sql window
+  - partition by
+star schema:
+  - dimensional modeling
+  - fact dimension
+  - data mart modeling
+incremental loading:
+  - incremental ingestion
+  - delta loading
+  - upsert
+scd type 2:
+  - slowly changing dimension
+  - dimension history
+  - versioned dimension
+pyspark:
+  - spark python
+  - distributed python
+  - spark sql
+adls gen2:
+  - azure data lake
+  - azure storage
+  - blob storage
+azure data factory:
+  - adf
+  - azure orchestration
+  - azure pipeline
+azure key vault:
+  - secrets management
+  - credential store
+  - secret manager

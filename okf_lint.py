@@ -16,11 +16,11 @@ import os
 import re
 import sys
 import json
-import hashlib
 import yaml
 from typing import List, Tuple
 
 from config import DEFAULT_PORTFOLIO_DIR
+from okf_utils import tokenize, file_hash
 
 CANONICAL_ARCHETYPES = {
     "Data Engineering",
@@ -55,14 +55,6 @@ def _cache_path(portfolio_dir: str) -> str:
     return os.path.join(os.path.dirname(portfolio_dir), _LINT_CACHE_FILENAME)
 
 
-def _file_hash(filepath: str) -> str:
-    """SHA256 of the file content for change detection."""
-    h = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        h.update(f.read())
-    return h.hexdigest()
-
-
 def _load_cache(portfolio_dir: str) -> dict:
     path = _cache_path(portfolio_dir)
     if os.path.exists(path):
@@ -93,12 +85,6 @@ def invalidate_cache(portfolio_dir: str, filenames: list) -> None:
             changed = True
     if changed:
         _save_cache(portfolio_dir, cache)
-
-
-def tokenize(text: str) -> set:
-    if not text:
-        return set()
-    return set(re.findall(r'\b\w+\b', text.lower()))
 
 
 def lint_file(filepath: str) -> List[str]:
@@ -212,7 +198,7 @@ def main():
 
     for filename in md_files:
         filepath = os.path.join(portfolio_dir, filename)
-        current_hash = _file_hash(filepath)
+        current_hash = file_hash(filepath)
         if not force and filename in cache and cache[filename] == current_hash:
             skipped += 1
             continue
