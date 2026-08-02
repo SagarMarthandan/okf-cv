@@ -22,7 +22,7 @@ archetypes:
 - Data Engineering
 - Analytics Engineering
 - Backend/Platform Engineering
-repo_url: https://github.com/SagarMarthandan/ny-taxi-pipeline-2025
+repo_url: https://github.com/SagarMarthandan/NYC-Bigquery
 ---
 
 # NYC Taxi Analytics Pipeline (2025)
@@ -176,7 +176,7 @@ Get the entire environment up and running in a few simple commands:
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/SagarMarthandan/ny-taxi-pipeline-2025.git
+git clone https://github.com/SagarMarthandan/NYC-Bigquery.git
 cd ny-taxi-pipeline-2025
 ```
 
