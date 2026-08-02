@@ -1,41 +1,71 @@
 [//]: # (DEVELOPER DOCUMENTATION ONLY — not part of agent runtime context. Do not read this file during pipeline execution.)
-# 📄 OKF-CV Resume & Cover Letter Tailoring Pipeline
+# OKF-CV Resume & Cover Letter Tailoring Pipeline
 
-An end-to-end, high-scannability, and ATS-optimized application materials generation pipeline. It uses structured YAML files for configuration, compiles them to PDF/LaTeX, and leverages Google OKF (Open Knowledge Format) matching to dynamically rank and inject relevant engineering projects from a master portfolio directory based on a target Job Description (JD).
+An end-to-end, ATS-optimized application materials generation pipeline. Paste a job description — or just paste a job posting URL and let the pipeline scrape it for you — and get a tailored resume + cover letter as compiled PDFs, plus an archived JD reference and an ATS score report.
 
-The pipeline also counters **algorithmic monoculture** — the Stanford-studied phenomenon where repetitive ATS algorithmic filtration narrows opportunity. It tracks applicant-firm clustering by ATS vendor, prompts for application source diversification (referrals vs cold applies), highlights project verification links (clickable GitHub URLs on the resume), offers resume layout variations, lets the user choose between LaTeX and ReportLab (LM Roman 10) rendering modes, and runs an automated PDF parse-integrity audit (`resume_parseability.py`) that verifies the compiled PDF's text layer is ATS-parseable — checking unicode integrity, keyword recovery, section header detection, and contact info extraction.
+The pipeline also counters **algorithmic monoculture** — the Stanford-studied phenomenon where repetitive ATS algorithmic filtration narrows opportunity. It tracks applicant-firm clustering by ATS vendor, prompts for application source diversification (referrals vs cold applies), highlights project verification links (clickable GitHub URLs on the resume), offers resume layout variations, and runs an automated PDF parse-integrity audit that verifies the compiled PDF's text layer is ATS-parseable.
 
 ---
 
-## 🗺️ Architectural Workflow
+## Tech Stack
 
-The following diagram illustrates the data flow, offline semantic search, and the three-stage generation lifecycle:
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![PyYAML](https://img.shields.io/badge/PyYAML-config-6c71c4?logo=yaml&logoColor=white)
+![ReportLab](https://img.shields.io/badge/ReportLab-PDF-8b5cf6?logo=reportlab&logoColor=white)
+![pypdf](https://img.shields.io/badge/pypdf-parse%20audit-e17055?logo=pypdf&logoColor=white)
+![LaTeX](https://img.shields.io/badge/LaTeX-pdflatex-008080?logo=latex&logoColor=white)
+![Sentence Transformers](https://img.shields.io/badge/SentenceTransformers-MiniLM--L6--v2-76b900?logo=huggingface&logoColor=white)
+![Zvec](https://img.shields.io/badge/Zvec-semantic%20search-06b6d4)
+![Obsidian](https://img.shields.io/badge/Obsidian-vault%20sync-7c3aed?logo=obsidian&logoColor=white)
+![Jina Reader](https://img.shields.io/badge/Jina%20Reader-URL%20scrape-3b82f6)
+
+</div>
+
+| Component | Role |
+|---|---|
+| **Python 3.10+** | Pipeline runtime |
+| **PyYAML** | Structured config + application output format |
+| **ReportLab** (LM Roman 10) | ReportFallback PDF renderer (no LaTeX install needed) |
+| **LaTeX** (pdflatex) | High-fidelity PDF renderer (`.tex` source preserved) |
+| **pypdf** | PDF text-layer extraction for parse-integrity audit |
+| **Sentence Transformers** (`all-MiniLM-L6-v2`) | 384-dim semantic embeddings for Zvec search |
+| **Zvec** | Local vector DB for semantic portfolio search |
+| **Obsidian** | Vault sync for graph-view application tracking |
+| **Jina Reader** | URL → clean markdown scraping (Step 0, JS-SPA sites) |
+
+---
+
+## Architectural Workflow
 
 ```mermaid
 graph TD
-    %% Base Styling — vibrant palette
     classDef input fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fffbeb;
     classDef processing fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#eff6ff;
     classDef output fill:#10b981,stroke:#059669,stroke-width:2px,color:#ecfdf5;
     classDef system fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#f5f3ff;
     classDef learn fill:#ec4899,stroke:#be185d,stroke-width:2px,color:#fdf2f8;
     classDef sync fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#ecfeff;
-    classDef sort fill:#f97316,stroke:#c2410c,stroke-width:2px,color:#fff7ed;
 
-    %% Subgraph styles
+    style Step0 fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#78350f
     style Step1 fill:#e0e7ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
     style Step2 fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#059669
     style Step3 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#7c3aed
     style Post1 fill:#fce7f3,stroke:#ec4899,stroke-width:2px,color:#be185d
     style Post2 fill:#cffafe,stroke:#06b6d4,stroke-width:2px,color:#0891b2
 
-    %% Elements
-    JD["📋 Raw Job Description"]:::input
+    URL["🔗 Job Posting URL (optional)"]:::input
+    JD["📋 Job Description (pasted or scraped)"]:::input
     BaseFiles["📄 Base Files: archetype-specific resumes"]:::input
     RepoInfo["🗂 Master Portfolio: portfolio/"]:::input
 
+    subgraph Step0 ["Step 0 (optional): JD Fetch"]
+        Scrape["🔍 Jina Reader / webfetch / manual paste"]:::processing
+    end
+
     subgraph Step1 ["Step 1: ATS Analysis and JD Archival"]
-        Deps["📦 pip install -r requirements.txt"]:::system
+        Deps["📦 Dependency check + embedding daemon pre-warm"]:::system
         ATS["🎯 ATS Score Gate — 4-Category scoring matrix"]:::processing
         Lint["✅ okf_lint.py — Frontmatter validation"]:::processing
         Vendor["🏷️ ATS Vendor Inference + Application Source"]:::processing
@@ -62,7 +92,6 @@ graph TD
         Sync["🔗 sync_to_obsidian.py — Targeted sync + folder sort"]:::sync
     end
 
-    %% Pipeline Outputs
     OutJD["📄 Job_Description.yaml / .pdf"]:::output
     OutATS["📊 ATS_Report.yaml / .pdf"]:::output
     OutProj["📝 project_info.md — Tailored Project List"]:::output
@@ -73,7 +102,8 @@ graph TD
     OutVault["🔮 Obsidian Vault — Job Search notes"]:::output
     OutTree["📁 Applications/YYYY/MM/DD/[Company] — [Role]/"]:::output
 
-    %% Flow Connections
+    URL --> Scrape
+    Scrape --> JD
     JD --> Deps
     Deps --> ATS
     BaseFiles --> ATS
@@ -112,185 +142,27 @@ graph TD
 
 ---
 
-## 💾 Hybrid Search Architecture (OKF + Zvec)
+## Pipeline at a Glance
 
-The portfolio search runs **100% locally and offline** using a hybrid approach that combines Google's **Open Knowledge Format (OKF)** phrase matching with **Zvec semantic embeddings** for score fusion:
+| Step | What it does | Key outputs |
+|---|---|---|
+| **Step 0** (optional) | Scrape a job posting URL into clean JD text. Jina Reader for JS-SPA sites (LinkedIn, Workday, Greenhouse), local webfetch for static sites, manual paste as final fallback. | Clean JD text + `source_url` |
+| **Step 1** | ATS analysis, archetype detection, hybrid portfolio search (OKF + Zvec), JD archival. Embedding daemon pre-warmed to eliminate ~70s cold start. | `ATS_Report.yaml/.pdf`, `Job_Description.yaml/.pdf`, `project_info.md` |
+| **Step 2** | Resume rewrite, LaTeX/ReportLab compilation, visual layout audit, parse-integrity audit, post-rewrite ATS rescoring. | `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf`, `Layout_Audit_Report.yaml`, `Parseability_Report.yaml/.pdf` |
+| **Step 3** | Cover letter generation (DIN 5008 Form B layout for German, business letter for English), gender-tag stripping, application source integration. | `Cover_Letter.yaml`, `SAGAR_MARTHANDAN_Cover_Letter.pdf` |
+| **Post 1** | Self-learning keyword enrichment from JD terms found in matched projects. | `okf/learning_log.json` |
+| **Post 2** | Obsidian vault sync (graph-view navigation) + folder sort into `Applications/YYYY/MM/DD/` tree with Windows file-lock recovery. | Obsidian notes + sorted application folder |
 
-- **Hybrid Search Engine:** [zvec_hybrid_search.py](zvec_hybrid_search.py) runs both OKF and Zvec search, then fuses scores: `final = (okf_score * 0.6) + (zvec_sim * 0.4)`. OKF provides precision for exact/synonym/stem/fuzzy matches. Zvec provides semantic recall for conceptual matches OKF can't see (e.g., "event streaming platform" → Kafka project).
-- **OKF Bundle Structure:** The master portfolio is structured as a directory of modular Markdown files under `okf/portfolio/`, each carrying metadata in its YAML frontmatter block (e.g., `title`, `description`, `technologies`, `keywords`, `archetypes`, and `repo_url`).
-- **OKF Matching Algorithm (4-layer):** The OKF component ([okf_portfolio_search.py](okf_portfolio_search.py)) uses a 4-layer matching strategy:
-  1. **Exact phrase matching** — multi-word phrases as substrings, single words with word boundaries (no false positives from token splitting)
-  2. **Synonym/alias expansion** — bidirectional map of 50+ domain terms (e.g., `kafka` ↔ `message queue`, `dbt` ↔ `transformation framework`, `terraform` ↔ `infrastructure as code`, `rag` ↔ `retrieval augmented generation`)
-  3. **Light stemming** — strips common English suffixes (`-tion`, `-ing`, `-er`, `-ed`, `-es`, `-s`) for morphological variant matching (`orchestration` ↔ `orchestrator`, `pipeline` ↔ `pipelines`)
-  4. **Fuzzy token matching** — `difflib.SequenceMatcher` with 0.85 ratio threshold for typo tolerance (`Databrick` → `Databricks`, `kuberntes` → `kubernetes`)
-- **OKF Scoring:** Jaccard-style normalization prevents JD-length bias. Archetype boosts (+10 primary, +5 secondary) are applied when `ATS_Report.yaml` is provided. Tiebreaker: archetype match count, then tech match count, then alphabetical. Configurable `top_k` via CLI argument (default 4).
-- **Zvec Semantic Layer:** All 15 portfolio files are embedded using `all-MiniLM-L6-v2` (384-dim vectors) and stored in a local Zvec database under `okf/zvec_db/`. Incremental re-embedding via content hash detection — only changed files are re-embedded. When `okf_learn.py` adds new keywords, modified files are automatically re-embedded into the Zvec database.
-- **Score Fusion:** Zvec cosine similarity (0-1) is scaled to the OKF score range, then weighted: `final = (okf_score * 0.6) + (zvec_scaled * 0.4)`. Weights are configurable in `config.py` (`HYBRID_OKF_WEIGHT`, `HYBRID_ZVEC_WEIGHT`).
-- **Cross-Process Safety:** All Zvec DB operations (ingestion, query, re-embed) are protected by a cross-process file lock (`zvec_db_lock()`). Uses OS-level locking (`msvcrt` on Windows, `fcntl` on Unix) with infinite wait (no timeout) and 0.5s retry interval. Agents wait indefinitely until the lock is released — no chance of concurrent access errors. CPU-bound work (embedding computation, hash detection) runs outside the lock to minimize hold time.
-- **Embedding Daemon:** [embedding_server.py](embedding_server.py) is a local TCP daemon (127.0.0.1, ports 54321-54325) that holds the `all-MiniLM-L6-v2` model in memory. The pipeline invokes `zvec_hybrid_search.py` 3 times per run (pre-rewrite similarity, hybrid portfolio search, post-rewrite similarity) — without the daemon, each invocation loads the model fresh (~21s on CPU, ~63s total wasted). The daemon is auto-started by `zvec_hybrid_search.py` on first use and auto-shuts down after 30 min of inactivity. Falls back to direct model loading if the daemon is unavailable (pipeline still works, just slower). Manual control: `python embedding_server.py --status` / `--stop`. State: `okf/.embedding_server.json`, log: `okf/.embedding_server.log`.
-- **Frontmatter Linter:** [okf_lint.py](okf_lint.py) validates all portfolio files before scoring: checks for non-empty fields, canonical archetypes, denylisted tech tokens, description length, keyword count, title-token overlap, and `repo_url` URL format. Fails loud with the offending file + field.
-- **Self-Learning Loop:** [okf_learn.py](okf_learn.py) runs post-application to enrich portfolio keywords from real JDs. Extracts domain-relevant terms, finds them in matched projects' bodies, and appends as new keywords. Max 3 per project per run, 15 per file cap, linter-validated with rollback, full audit trail in `okf/learning_log.json`.
-- **Obsidian Vault Sync:** [sync_to_obsidian.py](sync_to_obsidian.py) syncs all applications to the Obsidian vault as linked notes (applications, companies, roles, skills, projects, ATS vendors, application sources) for graph-view navigation and knowledge management. Vendor and source backlink notes visualize clustering in Obsidian's Graph View.
-- **Distilled Output:** The top matched projects are written to `project_info.md` as compact summaries (title + description + tech + archetypes + repo URL + body summary + match diagnostics comment) for use in Step 2.
-- **Diversity Audit:** [okf_diversity_audit.py](okf_diversity_audit.py) scans the `Applications/` tree and reports ATS vendor clustering (warns at ≥3 applications to the same vendor in 14 days) and referral rate (warns at <20%). Advisory only — does not block the pipeline. **Standalone tool** — run weekly to review monoculture exposure, not per-application. See "Weekly Review" section below.
+For the full step-by-step execution guide with deep technical details (hybrid search architecture, OKF 4-layer matching algorithm, Zvec score fusion, cross-process file locking, embedding daemon, parse-integrity audit, DIN 5008 layout, gender-tag stripping, etc.), see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
-## 🛠️ Step-by-Step Execution Guide
-
-The entire process is organized into 3 primary sequential steps, executed automatically by the agent when you supply a Job Description, followed by three post-pipeline steps (self-learning enrichment, Obsidian vault sync, and folder sorting). An optional Step 0 runs first when you supply a URL instead of pasted JD text:
-
-### STEP 0 (optional): JD Fetch — URL → Job Description Text
-
-Runs only when you paste a job posting URL (or say "scrape this posting" / "fetch this job link") instead of pasting raw JD text. If you paste raw JD text directly, Step 0 is skipped and the pipeline goes straight to Step 1.
-
-- **Hybrid scraping strategy:** Known JS-SPA vendors (LinkedIn, Workday, Greenhouse, Lever, SuccessFactors, Personio) go straight to **Jina Reader** (`https://r.jina.ai/<url>`) — a free service that returns clean markdown of the fully rendered page (handles JS rendering, cookie/consent walls). Static / Unknown vendors (a company's own careers page, a blog post) try the agent's local `webfetch` first, then Jina as a fallback. Optional `JINA_API_KEY` env var enables higher rate limits; the keyless public endpoint works but is rate-limited.
-- **JD-shape validation:** Scraped text must pass a heuristic gate — role title + company signal + ≥2 JD section markers (`requirements`, `responsibilities`, `qualifications`, `experience`, `we are looking for`, `about the role`, `your profile`, `your tasks`, plus German equivalents `anforderungen`, `profil`, `aufgaben`, `wir suchen`, `ihr profil`) + >200 chars + not a login/error page. If validation fails, the next strategy is tried.
-- **Manual-paste fallback:** If both scrape strategies fail (rate limit, login wall, failed validation), the user is prompted to paste the JD manually. Manual paste is always available as the final fallback and is never locked out. For JS-SPA vendors where Jina fails, the doomed `webfetch` attempt is skipped — the user is prompted to paste immediately.
-- **URL-hash cache:** Scraped JDs are cached at `okf/.jd_cache/<sha1(url)>.txt` with a 7-day TTL, so re-runs of the same URL skip re-scraping. Manually-pasted JDs are not cached (only the `source_url` is recorded).
-- **Traceability:** The original `source_url` is stored in `Job_Description.yaml` (Step 1) so you can revisit the original posting later.
-- **Outputs:** Clean JD text (handed to Step 1 as the "pasted JD text" input — Step 1's contract is unchanged), plus `source_url` and detected ATS vendor passed forward to Step 1.
-
-### STEP 1: Setup, ATS Analysis & Job Description Archival
-- **Name the Session (First Action):** Before any pipeline work, extract the Company Name and Job Role from the JD and rename the agent session/conversation to `[Company Name] — [Job Role]` in the UI sidebar. This makes it easy to identify which agent is handling which application when running multiple agents in parallel.
-- **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run. Cached for 24 hours via `okf/.dep_check.json`.
-- **Embedding Daemon Pre-Warm:** Immediately after the dependency check, the pipeline calls `_ensure_daemon()` from `zvec_hybrid_search.py` to pre-warm the embedding daemon — the SentenceTransformer model is loaded into memory in a background process (with Windows-safe `CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` creationflags) before the hybrid search runs. This eliminates the ~70s cold start on Windows CPU that previously caused cell/command timeouts during Step 1. If the daemon is unavailable, the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). The daemon auto-shuts down after 30 min of inactivity.
-- **Language Detection & Archetype Selection:** Identifies whether the JD is in English or German, detects the primary role archetype (Data Engineer, Data Analyst, Analytics Engineer, AI Data Engineer), and loads the matching archetype-specific base resume. Falls back to the generic `resume.md` for unmatched archetypes.
-- **ATS Pre-Scoring:** Grades the archetype-matched base resume against a calibrated 4-category German-market matrix (max 100 points).
-  - **Score Gate:** If the ATS score is `< 85`, the pipeline triggers a `HOLD` verdict, presenting specific remedy suggestions (e.g., missing keywords, project mismatches). If `>= 85`, it sets `PROCEED`.
-- **Frontmatter Lint:** Runs `okf_lint.py` to validate all portfolio files have clean YAML frontmatter (non-empty fields, canonical archetypes, no denylisted tech tokens, keyword quality checks, `repo_url` URL format). Uses a content-hash cache to skip unchanged files — only lints files that have changed since the last successful lint. Fails before scoring if any violation is found. Use `--force` to ignore the cache.
-- **ATS Vendor Inference & Application Source:** Scans the JD text and application URL for common ATS system footprints (Workday, Personio, SAP SuccessFactors, Greenhouse, Lever, Taleo). Prompts the user for the application source (Cold Apply, Referral, LinkedIn Connection, Direct). If Cold Apply + known vendor, warns the user to check their network for weak ties. Saves `ats_vendor`, `application_source`, and `weak_tie_contact` to `ATS_Report.yaml`.
-- **Hybrid Project Selector:** Programmatically searches the local portfolio using a hybrid search engine ([zvec_hybrid_search.py](zvec_hybrid_search.py)) that combines OKF 4-layer phrase matching (exact, synonym, stemming, fuzzy) with Zvec semantic embeddings (all-MiniLM-L6-v2), archetype-boosted scoring (+10 primary, +5 secondary from `ATS_Report.yaml`), and Jaccard-style normalization. Score fusion: `final = (okf * 0.6) + (zvec * 0.4)`. Writes the top matching projects to a tailored `project_info.md` file with full hybrid diagnostics (OKF score, Zvec cosine, fused score).
-- **Location Tailoring:** Extracts the job location from the job description and resolves the closest candidate location among Kiel (home), Frankfurt, Berlin, and Köln using a static geocode table in `config.py`. Falls back to a persistent location cache (`okf/.location_cache.json`) for locations previously resolved via web search. New locations are cached after web search so future applications skip the search. Remote/unspecified locations default to Kiel.
-- **Skill Gap Analysis (P2):** Extracts required skills from the JD and cross-references against the base resume and matched projects. Stores gaps as a `skill_gaps` list in `ATS_Report.yaml` for targeted closure in Step 2.
-- **Contextual Placement Weighting (P4):** Checks which resume sections (skills, projects, experience) contain each critical JD keyword. Applies placement multipliers (1.0x skills, 1.2x projects, 1.3x experience, 1.5x multiple). Stored as `placement_breakdown` in `ATS_Report.yaml`.
-- **Pre-Rewrite Semantic Similarity (P1):** Computes cosine similarity between the base resume and JD using `resume_jd_similarity.py` (all-MiniLM-L6-v2 embeddings). Stored as `resume_jd_semantic_similarity.pre_rewrite_similarity` for before/after tracking.
-- **Outputs:** `ATS_Report.yaml` & `Job_Description.yaml` (plus their compiled `.pdf` documents) and the tailored `project_info.md`.
-- **Naming Convention (Critical):** The application folder and session name MUST be `[Company Name] — [Job Role]` extracted directly from the JD content. No arbitrary names, timestamps, or placeholders. This makes it easy to identify which session is running which application when multiple agents run in parallel.
-
-### STEP 2: Resume Rewrite & Visual Layout Audit
-- **Render Mode & Resume Style Selection:** Before compilation, the user chooses between `LaTeX` (pdflatex, `.tex` source preserved, optional prose refinement) and `ReportFallback` (ReportLab with LM Roman 10 font, no `.tex` file, single-paragraph projects rendered automatically). The user also chooses between `US Style` (US-convention section order) and `German Style` (Lebenslauf convention section order). Both choices are stored as `render_mode` and `resume_style` keys in `Resume.yaml`.
-- **Tuned Resume Generation:** Writes `Resume.yaml` by tailoring descriptions, skills, and summary to align with the target role archetype and the retrieved local projects, and sets the contact location to the computed closest candidate city. Supports three `resume_variation` modes: `Balanced` (default — 3 projects, 4 experience bullets), `Project-Heavy` (4 verbose projects, simplified skills), and `Skills-Heavy` (3 projects, expanded skills block).
-- **Dynamic Section Ordering:** Resume section order is data-driven and depends on the `resume_style` key. US style uses `DEFAULT_SECTION_ORDER` in `renderers/resume_common.py` (Summary → Technical Skills → Projects → Professional Experience → Education → Spoken Languages). German style uses `GERMAN_STYLE_SECTION_ORDER` in `renderers/resume_latex_german.py` / `renderers/resume_reportfallback_german.py` (Summary → Professional Experience → Education → Technical Skills → Spoken Languages). German style has no separate Projects section — the 3 JD-aligned projects are folded into Professional Experience as `project_bullets` under an "Independent Data Engineering & Professional Development" entry (rendered in `name --- [GitHub] --- summary` format with quantified metrics), plus a 4th plain-text bullet for other skills/tools. The entry date ends at April 2025 (candidate is now studying economics). The title uses a concrete role (e.g., `Data Engineer`, `Analytics Engineer`) — never `Architect`/`Lead`/`Manager`. A resume YAML may override the order per-application by supplying a top-level `section_order` key; unknown keys are ignored, omitted sections are skipped.
-- **Project Verification Links:** Reads `Repo:` lines from `project_info.md` and copies them into each project block in `Resume.yaml` as `repo_url:`. These are compiled as clickable `[GitHub]` links in the PDF — both in the LaTeX output (`\href{repo_url}{\color{darkblue}\small[GitHub]}`) and the ReportLab fallback (`<a href='...'>[GitHub]</a>`).
-- **LaTeX Compilation & Project Format:** Generates a professional LaTeX resume (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex` for German). Projects are rendered in the `name --- [GitHub] --- summary` single-paragraph format directly by the renderer (YAML `bullets` joined into prose). The project name, em-dash separators (`---`), and link markup (`[GitHub]`) are excluded from the character count — only the summary text counts toward the `<= 300` char (English) / `<= 280` char (German) limit. Tools are not displayed in the project header — they remain in the YAML for the parseability audit. The LaTeX preamble includes `glyphtounicode` and `hyphenat` safeguards to prevent font ligature corruption and auto-hyphenation in ATS PDF-to-text parsers. (The ReportFallback renderer produces the same `name --- [GitHub] --- summary` format automatically.)
-- **Uniform Spacing:** All project and experience entries are separated by a consistent `\vspace{6pt}` — no double-spacing, no variable gaps.
-- **Constraints & Eye-Test Audit:** Runs character-length audits:
-  - Experience bullets: Must be strictly single-line and `<= 105` characters.
-  - Project summaries: Must be `<= 300` characters (`<= 280` characters for German projects), counting only the summary text (project name, em-dash separators, and link markup are excluded). Must fit within `<= 3` lines.
-  - Summary: Exactly 2 lines of text, maximum 250 characters (maximum 230 characters for German Zusammenfassung). No tool-listing redundancy — tools belong in Technical Skills, not the summary.
-  - Stop-Slop writing rules: Strict active voice, no `-ly` adverbs, zero em-dashes, no filler text.
-- **Self-Correction:** Resolves any line-wraps or overflows dynamically.
-- **Parse-Integrity Audit (LaTeX mode):** After LaTeX compilation, the PDF is automatically audited using `pypdf` — extracts the text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. If the audit fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification`.
-- **Resume Parseability Audit (both modes):** After the final resume PDF is compiled (either via LaTeX or ReportFallback), [resume_parseability.py](resume_parseability.py) runs a standalone parse-integrity audit on the PDF — the actual document submitted to companies. It extracts the PDF text layer via `pypdf` and checks: (1) Unicode integrity (no replacement glyphs), (2) keyword recovery (every tool, skill, and significant summary word from `Resume.yaml` is recoverable from the PDF text, with line-break splitting handled via whitespace normalization), (3) section header detection (all 6 standard sections present), (4) contact info extraction (name, phone, email, GitHub, LinkedIn), and (5) text structure stats. Outputs `Parseability_Report.yaml` (structured) and `Parseability_Report.pdf` (human-readable, LM Roman 10). Pass criteria: 100% keyword recovery, 6/6 sections, 5/5 contact fields, zero unicode corruptions.
-- **Post-Rewrite ATS Rescoring:** Updates `post_rewrite_ats_score` in `ATS_Report.yaml` and recompiles `ATS_Report.pdf`. Also computes post-rewrite cosine similarity between the optimized resume and JD via `resume_jd_similarity.py`, storing it as `post_rewrite_similarity` for before/after alignment tracking.
-- **Outputs:** `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` (along with preserved LaTeX `.tex` sources when applicable), `Layout_Audit_Report.yaml` (including `parse_integrity_verification`), `Parseability_Report.yaml` & `Parseability_Report.pdf`, and the post-rewrite ATS rescoring results updated inside `ATS_Report.yaml`.
-
-### STEP 3: Cover Letter Generation
-- **Geschäftsbrief Layout:** Generates a metric-grounded cover letter adapted to formal German business formatting, set to the computed closest candidate location (both in the sender address and date/city header). Both renderers (LaTeX and ReportFallback) now produce a DIN 5008 Form B-style layout: Anschriftfeld (small single-line sender line above the recipient block, suitable for window envelopes), right-aligned date, bold subject (Betreff), salutation, body, closing + signature, an `Anlagen:` (enclosures) section after the signature, and a footer line with phone/email at the bottom of the page (drawn via `onFirstPage`/`onLaterPages` canvas callbacks in ReportFallback, and via a small `\vspace` block in LaTeX — `\vfill` was removed because it pushed the footer to a new page on dense letters).
-- **Gender-Tag Stripping:** German job postings commonly append gender-equality tags to role titles (e.g., `Application for Analyst (w/m/f)`, `Bewerbung als Entwickler (m/w/d)`). The `strip_gender_tags()` helper in `renderers/utils.py` strips these from the subject line at render time via a regex that matches parentheticals containing only single letters from `{w, m, f, d, x}` separated by slashes. Meaningful parentheticals (e.g., `(Tech Foundations, Finops and Tech Metrics)`) are preserved. The YAML keeps the original subject — only the PDF output is cleaned.
-- **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mentions the `weak_tie_contact` name/role in paragraph 1. GitHub is referenced in plain language (e.g., "see my GitHub for the full implementation") — raw `repo_url` links are NOT inserted into cover letter prose. A single generic reference to the GitHub portfolio is sufficient; individual repositories are not linked.
-- **Strict Limits:** Restricts cover letter content to exactly one page, 4 paragraphs, and **250–320 words** total (restricted to **180–240 words** for German cover letters to prevent A4 overflow).
-- **Enclosures (Anlagen):** The cover letter YAML schema now supports an optional `enclosures` field (list of strings). When present, an `Anlagen:` section is rendered after the signature listing the enclosed documents (e.g., `Lebenslauf`, `Zeugnisse`). Omitted when the field is absent — backward compatible with existing YAMLs.
-- **Outputs:** `Cover_Letter.yaml` and compiled `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` (along with preserved LaTeX `.tex` sources).
-
-### Post-Pipeline Step 1: Self-Learning Keyword Enrichment
-- **Keyword Learning:** After the cover letter compiles, [okf_learn.py](okf_learn.py) extracts domain-relevant terms from the processed Job Description, finds terms that appear in matched projects' bodies but are missing from their keyword lists, and appends them.
-- **ATS Score Delta Tracking (P3):** Each learning log entry now includes `pre_rewrite_ats_score` and `post_rewrite_ats_score` extracted from `ATS_Report.yaml`, creating a longitudinal dataset of which keyword enrichments and project selections correlate with the biggest ATS score improvements.
-- **Safeguards:** Max 3 new keywords per project per run, 15 keywords per file max (linter enforced with rollback), every change logged to `okf/learning_log.json` with timestamp, JD source, and ATS scores.
-- **Idempotent:** Re-running on the same application folder is a no-op (no duplicate keywords added).
-
-### Post-Pipeline Step 2: Obsidian Vault Sync + Folder Sort
-- **Graph-View Navigation:** After the learning loop, [sync_to_obsidian.py](sync_to_obsidian.py) syncs the application to the Obsidian vault as linked notes under `<vault>/Job Search/`.
-- **Targeted Sync:** The pipeline passes the application folder as a positional argument for incremental sync — only this application's notes are written, and the relevant entity/index notes are patched (append with dedup). Much faster than a full rebuild. Use `--full` to force a complete rebuild.
-- **Note Types:** One note per application, company, role archetype, skill, project, ATS vendor, and application source. Wikilinks connect applications to companies, roles, skills, projects, vendors, and sources for graph-view navigation. Vendor and source backlink notes visualize clustering immediately in Obsidian's Graph View.
-- **Format Support:** Handles both YAML and MD application formats automatically. Parses `ats_vendor`, `application_source`, and `weak_tie_contact` from both formats.
-- **Folder Sort (--sort flag):** After syncing, the `--sort` flag moves the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`, bucketed by the folder's creation time. This replaces the separate Post-Pipeline Step 3.
-- **Standalone Use:** Run `python sync_to_obsidian.py` (no args) for a full vault rebuild, or `python sync_to_obsidian.py "Applications/[Company] — [Role]" --sort` for a single application. Use `--dry-run` to preview without writing.
-- **Manual Folder Sort:** Use [organize_applications.py](organize_applications.py) standalone to sort older unsorted folders: `python organize_applications.py` (all) or `python organize_applications.py "Applications/[Company] — [Role]"` (single). Use `--dry-run` to preview.
-
----
-
-## 📂 Project Directory Structure
-
-```
-YAML-CV/
-├── skills\
-│   └── okf-cv\
-│       ├── SKILL.md                      # Agent-facing skill metadata
-│       ├── README.md                     # This file (developer documentation)
-│       ├── (planning docs removed — IMPLEMENTATION_PLAN.md and OKF_IMPROVEMENT_PLAN.md were completed/stale and deleted in v28.5)
-│       ├── 01_ats_and_jd_archival.md     # Step 1 detailed agent rules
-│       ├── 02_resume_and_visual_audit.md # Step 2 detailed agent rules
-│       ├── 03_cover_letter.md            # Step 3 detailed agent rules
-│       ├── requirements.txt              # Pipeline dependencies (pyyaml, reportlab, pypdf, zvec, sentence-transformers)
-│       ├── config.py                     # Centralized paths and constants
-│       ├── yaml_to_pdf.py                # Main YAML compilation router (supports resume, cover_letter, job_description, ats_report, parseability_report)
-│       ├── resume_parseability.py        # ATS parse-integrity audit script (checks PDF text layer: unicode, keywords, sections, contact info)
-│       ├── resume_jd_similarity.py       # Cosine similarity between resume and JD (pre/post-rewrite alignment metric)
-│       ├── zvec_hybrid_search.py       # Hybrid search (OKF phrase matching + Zvec semantic embeddings, score fusion)
-│       ├── embedding_server.py         # Local TCP daemon holding SentenceTransformer model in memory (auto-started, 30-min idle shutdown)
-│       ├── okf_portfolio_search.py       # OKF search engine (4-layer matching, archetype boost, Jaccard normalization) — fallback if Zvec unavailable
-│       ├── okf_lint.py                   # Frontmatter linter for portfolio files
-│       ├── okf_learn.py                  # Self-learning keyword enrichment (post-application)
-│       ├── okf_diversity_audit.py        # Clustering audit utility (vendor clustering + referral rate warnings)
-│       ├── sync_to_obsidian.py           # Syncs applications to Obsidian vault as linked notes
-│       ├── organize_applications.py      # Sorts application folders into YYYY/MM/DD tree (post-pipeline)
-│       ├── okf/                          # Self-contained OKF Knowledge Base
-│       │   ├── portfolio/                # 15 individual OKF project markdown files
-│       │   ├── zvec_db/                  # Zvec vector database (auto-generated, hash-indexed for incremental re-embedding)
-│       │   ├── base_files/
-│       │   │   ├── english/              # Archetype-specific base resumes
-│       │   │   │   ├── resume_data_engineer.md
-│       │   │   │   ├── resume_data_analyst.md
-│       │   │   │   ├── resume_analytics_engineer.md
-│       │   │   │   ├── resume_ai_data_engineer.md
-│       │   │   │   └── resume.md          # Generic fallback
-│       │   │   └── german/               # Same with _de suffix
-│       │   ├── learning_log.json         # Self-learning enrichment audit trail
-│       │   ├── .dep_check.json           # 24hr dependency check cache
-│       │   ├── .lint_cache.json          # Linter hash cache (skip unchanged files)
-│       │   ├── .location_cache.json      # Web-search-resolved location cache
-│       │   ├── .font_cache.json          # Font path resolution cache
-│       ├── renderers\                    # LaTeX/ReportLab rendering handlers
-│       │   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex, register_lm_roman_10)
-│       │   ├── resume_common.py          # Shared resume helpers (HEADERS, get_resume_language)
-│       │   ├── resume.py                 # Resume renderer dispatcher (reads render_mode + resume_style, routes to 4 renderers)
-│       │   ├── resume_latex_us.py        # Resume LaTeX renderer (US style) + parse-integrity audit
-│       │   ├── resume_reportfallback_us.py # Resume ReportLab renderer (US style, LM Roman 10)
-│       │   ├── resume_latex_german.py    # Resume LaTeX renderer (German style: Lebenslauf section order)
-│       │   ├── resume_reportfallback_german.py  # Resume ReportLab renderer (German style, LM Roman 10)
-│       │   ├── cover_letter.py           # Cover Letter renderer dispatcher (reads render_mode)
-│       │   ├── cover_letter_latex.py     # Cover Letter LaTeX renderer
-│       │   ├── cover_letter_reportfallback.py  # Cover Letter ReportLab renderer (LM Roman 10)
-│       │   ├── job_description.py        # Job Description renderer (ReportLab only)
-│       │   ├── ats_report.py             # ATS Report renderer (ReportLab only)
-│       │   └── parseability_report.py    # Parseability Report renderer (ReportLab only, LM Roman 10)
-│       └── tests/
-│           ├── test_utils.py             # Unit tests for LaTeX escaping and formatting
-│           └── test_okf_search.py        # Automated test suite for OKF search
-└── Applications\
-    └── YYYY\
-        └── MM\
-            └── DD\
-                └── [Company Name] — [Job Role]\      # Application folder (sorted by creation date)
-                    ├── Job_Description.yaml / .pdf
-                    ├── ATS_Report.yaml / .pdf
-                    ├── project_info.md               # Tailored & distilled project list
-                    ├── Resume.yaml / Layout_Audit_Report.yaml / Cover_Letter.yaml
-                    ├── Parseability_Report.yaml / .pdf  # ATS parse-integrity audit results
-                    ├── SAGAR_MARTHANDAN_Resume.pdf / .tex  (or Lebenslauf.pdf / .tex for German)
-                    └── SAGAR_MARTHANDAN_Cover_Letter.pdf / .tex  (or Anschreiben.pdf / .tex for German)
-```
-
----
-
-## 🚀 How to Run the Pipeline
+## How to Run the Pipeline
 
 Since all the pipeline steps are natively codified into the agent's custom skills directory, you do not need to copy-paste any external prompts.
 
 To execute the pipeline:
-1. Paste the target **Job Description** (JD) into the chat — **or** paste a job posting URL and the pipeline will scrape it for you (see Step 0 below).
+1. Paste the target **Job Description** (JD) into the chat — **or** paste a job posting URL and the pipeline will scrape it for you (see Step 0 above).
 2. Type: **`execute okf-cv`** (or keywords like *"tailor resume"* / *"optimize resume"* / *"job link"* / *"scrape this posting"*).
 3. The agent will automatically run the end-to-end flow: (optionally scraping the JD from a URL), installing dependencies, pre-warming the embedding daemon, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `Applications/YYYY/MM/DD/` date tree.
 
@@ -307,62 +179,20 @@ No other actions are performed. This is a metadata/context reload only — it do
 
 ---
 
-## 🧪 Testing
+## Documentation
 
-Run the automated test suite to verify search relevance:
-```powershell
-cd "[skill directory]"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\tests\test_okf_search.py"
-```
-
-The suite includes 3 test cases:
-1. **Data Engineering search** with archetype boost — verifies DE projects rank in top-3
-2. **AI/RAG Developer search** with dual archetype — verifies RAG project ranks #1
-3. **Smoke test** with generic DE JD — verifies at least 2 expected DE projects appear in top-3
-
-Run the hybrid search standalone (OKF + Zvec score fusion):
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
-```
-
-Run the frontmatter linter standalone (use `--force` to ignore the cache and lint all files):
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py" --force
-```
-
-### Weekly Review: Diversity Audit
-
-Run the diversity audit weekly to review your monoculture exposure (vendor clustering and referral rate). This is no longer run automatically per application:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
-```
-
-Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
-```powershell
-cd "Applications/[Company Name] — [Job Role]/"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
-```
-The script reads the compiled PDF (the document submitted to companies) and uses the YAML as the expected-values reference. It checks: unicode integrity (no replacement glyphs), keyword recovery (all tools/skills/summary words recoverable from the PDF text), section header detection (style-aware: US style checks 6 headers, German style checks 5 — no Projects header since projects fold into experience), contact info extraction (5/5), and text structure stats. Outputs `Parseability_Report.yaml` + `Parseability_Report.pdf`. Exit code 0 = pass, 1 = fail, 2 = error.
-
-Run the self-learning loop standalone:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
-```
-
-Run the resume-JD similarity computation standalone (P1):
-```powershell
-cd "Applications/[Company Name] — [Job Role]/"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
-```
-
-Sync applications to Obsidian vault:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
-```
+| Document | Description |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Deep technical reference: hybrid search architecture, OKF 4-layer matching, Zvec score fusion, step-by-step execution guide, project directory structure, testing commands |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Full version history (v1–v28.22) |
+| [SKILL.md](SKILL.md) | Agent-facing skill metadata and pipeline execution rules |
+| [00_jd_fetch.md](00_jd_fetch.md) | Step 0 detailed agent rules (URL → JD text) |
+| [01_ats_and_jd_archival.md](01_ats_and_jd_archival.md) | Step 1 detailed agent rules |
+| [02_resume_and_visual_audit.md](02_resume_and_visual_audit.md) | Step 2 detailed agent rules |
+| [03_cover_letter.md](03_cover_letter.md) | Step 3 detailed agent rules |
 
 ---
 
-## 📋 Changelog
+## Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.22).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.23).

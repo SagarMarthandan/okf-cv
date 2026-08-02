@@ -6,6 +6,25 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.23 — README Simplification + Tech Stack Icons + Architecture Doc Split
+
+**Files:** `README.md` (rewritten), `docs/ARCHITECTURE.md` (new), `docs/CHANGELOG.md`
+
+**Motivation:** The README had grown to 368 lines mixing high-level overview with deep technical details (hybrid search architecture, OKF 4-layer matching algorithm, Zvec score fusion, step-by-step execution guide, project directory structure, testing commands). This made it hard to scan for new users who just wanted to know what the pipeline does and how to run it. The user also wanted tech stack icons for visual scannability.
+
+**Changes:**
+- **New `docs/ARCHITECTURE.md`:** Moved all deep technical content out of the README into a dedicated architecture reference doc — Hybrid Search Architecture (OKF + Zvec), full Step-by-Step Execution Guide (Steps 0-3 + post-pipeline), Project Directory Structure, and Testing commands. All internal links updated to use `../` relative paths.
+- **Simplified `README.md` (368 → 198 lines):** Now contains only: intro, tech stack icons (shields.io badges for Python, PyYAML, ReportLab, pypdf, LaTeX, Sentence Transformers, Zvec, Obsidian, Jina Reader) + component table, architectural workflow Mermaid diagram (updated to include Step 0), pipeline-at-a-glance summary table, how-to-run instructions, self-refresh procedure, documentation index table linking to the new architecture doc + changelog + step docs, and changelog pointer.
+- **Mermaid diagram updated:** Added Step 0 (JD Fetch) subgraph with URL input node and scrape node, wired into the existing flow (URL → scrape → JD → Step 1).
+- **Documentation index table:** New section in README listing all docs (ARCHITECTURE.md, CHANGELOG.md, SKILL.md, 00-03 step docs) with one-line descriptions — replaces the inline deep technical content.
+
+**Verification:**
+- All internal links in `docs/ARCHITECTURE.md` use `../` relative paths to reference parent-directory scripts.
+- README shields.io badge URLs tested (all resolve to valid SVGs).
+- Mermaid diagram syntax valid (Step 0 subgraph + connections render correctly).
+
+---
+
 ## v28.22 — Step 0 JD Fetch (URL scraping) + Anti-Spinning Protocol + Embedding Pre-Warm + Win32 File-Lock Recovery
 
 **Files:** `00_jd_fetch.md` (new), `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `obsidian_folder_sort.py` (new — extracted from `sync_to_obsidian.py`), `README.md`, `docs/CHANGELOG.md`
