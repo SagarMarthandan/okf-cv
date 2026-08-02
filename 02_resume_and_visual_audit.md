@@ -2,6 +2,21 @@
 
 > **READ-ONLY SKILL FILES — HARD GUARDRAIL:** The `renderers/` directory, all top-level pipeline scripts (`yaml_to_pdf.py`, `config.py`, `resume_parseability.py`, etc.), `okf/base_files/`, `okf/portfolio/`, and all pipeline step docs (`SKILL.md`, `01_*.md`, `03_*.md`) are **PERMANENTLY READ-ONLY** during this step. The model MUST NOT edit, patch, or modify any of these files — not during the initial rewrite, not during self-correction, not during the visual audit, not during LaTeX polish. **The model's writable workspace is the application folder only:** `Resume.yaml` (edit freely for content, bullets, summary, wording), `Resume.tex` / `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` (edit freely for prose refinement, tightening, keyword preservation), plus `Layout_Audit_Report.yaml`, `Parseability_Report.yaml`, and optionally `SAGAR_MARTHANDAN_Resume_v2.yaml`. If a layout issue would require changing a renderer or skill file to fix, **do not touch the skill file** — fix it by adjusting the `Resume.yaml` or `.tex` content (shorter bullets, different wording, etc.) instead. This rule has no exceptions.
 
+> **AGENT EXECUTION RULES:** Follow the Tool-Call Execution Protocol in `SKILL.md` §"Agent Execution & Anti-Spinning Rules". Do not emit multi-paragraph planning prose, un-called YAML drafts, or full bullet lists in text before writing them. Write `Resume.yaml` directly with a `write` call — do not draft it in prose first. Keep commentary to 1 sentence per action. Batch independent tool calls.
+
+> **YAML SAFETY RULES (NON-NEGOTIABLE):**
+>
+> Resume bullets, project summaries, and skill descriptions frequently contain characters that break YAML parsing (`: ` followed by space, leading `-`, `#`, unbalanced quotes). To prevent parse failures:
+>
+> 1. **Quote all string values** that could contain `:`, `-`, `#`, `>`, `|`, `{`, `}`, `[`, `]`, or quotes. Use double quotes: `bullet: "Built pipeline: ingested 37M records"`.
+> 2. **Use block scalars (`|`)** for multi-line values or values containing colons:
+>    ```yaml
+>    summary: |
+>      Data engineer with 3 years building ELT pipelines...
+>    ```
+> 3. **Never paste project descriptions or bullet text directly into a YAML value without quoting or block-scaling it.** Project summaries from `project_info.md` often contain colons or dashes.
+> 4. **After writing `Resume.yaml`**, validate it by running `python -c "import yaml; yaml.safe_load(open('Resume.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
+
 ## Objective
 Generate a tailored, high-scannability resume (`Resume.yaml`) directly in structured YAML format based on the Step 1 `ATS_Report.yaml`, audit its layout parameters, self-correct any formatting issues, and re-evaluate the final ATS score.
 
@@ -149,7 +164,7 @@ When no `repo_url` is present:
 - **Post-Rewrite Semantic Similarity (P1):** Compute cosine similarity between the optimized `Resume.yaml` and `Job_Description.yaml`:
   ```powershell
   cd "Applications/[Company Name] — [Job Role]/"
-  C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
+  python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
   ```
   Store the returned float value as `post_rewrite_similarity` inside the `post_rewrite_ats_score` block in `ATS_Report.yaml`. Also update `resume_jd_semantic_similarity.post_rewrite_similarity` at the top level.
 - Update the `post_rewrite_ats_score` block in the existing `ATS_Report.yaml` file (do not overwrite the pre-rewrite section) with the final optimized score.
@@ -170,7 +185,7 @@ After the final resume PDF is compiled (either via LaTeX or ReportFallback), run
 #### Command
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 For German resumes, substitute `SAGAR_MARTHANDAN_Lebenslauf.pdf` as the first argument.
 
@@ -195,7 +210,7 @@ When the user asks to add an additional project to the resume (e.g., "add a 4th 
 - Pick the next-ranked project that is NOT already in the resume. If `project_info.md` doesn't have a spare, re-run the hybrid search with a higher `top_k`:
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
 ```
 - If the user names a specific project, use that one.
 
@@ -211,11 +226,11 @@ C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\saga
 ### 4. Recompile & Re-audit
 ```powershell
 cd "Applications/[Company Name] — [Job Role]/"
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 ```
 Then re-run the parse-integrity audit to verify the new project's keywords are recoverable:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 - If the resume now spills to 2 pages, trim the summary or remove a weaker project to stay on 1 page.
 
@@ -307,23 +322,23 @@ Generate the `.tex` source file from YAML **without running pdflatex** (the PDF 
 cd "Applications/[Company Name] — [Job Role]/"
 
 # For English JDs (LaTeX mode):
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only
 
 # For German JDs (LaTeX mode):
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf" --tex-only
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf" --tex-only
 ```
 This writes `SAGAR_MARTHANDAN_Resume.tex` (or `SAGAR_MARTHANDAN_Lebenslauf.tex`) into the company folder. No PDF is produced yet.
 
 **ReportFallback mode:** Skip this step and Step B/C entirely — the ReportFallback renderer produces the final PDF in a single compile. Run the normal compile (without `--tex-only`):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 ```
 Then jump to Step D (parseability audit).
 
 ### Step B: Prose Refinement & Character Count Checks
 The renderer already produces the `name --- [GitHub] --- summary` single-paragraph format in the `.tex` file. Optionally edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) to tighten prose, ensure quantification, and verify keyword preservation (see Section 4). Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 280 characters for German). **The limit applies only to the project summary text — the project name, em-dash separators (`---`), and link markup are excluded from the count.**
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.tex"
 ```
 If any project exceeds the limit, trim the prose in the `.tex` file directly.
@@ -340,10 +355,10 @@ pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 
 # Compile the updated ATS Report with post-rewrite scores
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
 
 # Step D: Run the parseability audit on the final resume PDF
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.pdf" as the first argument
 ```
 

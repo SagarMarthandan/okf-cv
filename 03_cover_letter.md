@@ -2,6 +2,22 @@
 
 > **READ-ONLY SKILL FILES — HARD GUARDRAIL:** The `renderers/` directory, all top-level pipeline scripts, `okf/base_files/`, `okf/portfolio/`, and all pipeline step docs are **PERMANENTLY READ-ONLY** during this step. The model MUST NOT edit, patch, or modify any of these files. **The model's writable workspace is the application folder only:** `Cover_Letter.yaml` (edit freely for content, prose, structure) and `Cover_Letter.tex` / `SAGAR_MARTHANDAN_Cover_Letter.tex` (edit freely for prose refinement). If a layout issue would require changing a renderer or skill file to fix, **do not touch the skill file** — fix it by adjusting the `Cover_Letter.yaml` or `.tex` content instead. This rule has no exceptions.
 
+> **AGENT EXECUTION RULES:** Follow the Tool-Call Execution Protocol in `SKILL.md` §"Agent Execution & Anti-Spinning Rules". Do not emit multi-paragraph planning prose or un-called YAML drafts before tool calls. Write `Cover_Letter.yaml` directly with a `write` call — do not draft it in prose first. Keep commentary to 1 sentence per action. Batch independent tool calls.
+
+> **YAML SAFETY RULES (NON-NEGOTIABLE):**
+>
+> Cover letter paragraphs and company address fields frequently contain characters that break YAML parsing (`: ` followed by space, leading `-`, `#`, unbalanced quotes). To prevent parse failures:
+>
+> 1. **Quote all string values** that could contain `:`, `-`, `#`, `>`, `|`, `{`, `}`, `[`, `]`, or quotes. Use double quotes: `subject: "Bewerbung als Data Engineer"`.
+> 2. **Use block scalars (`|`)** for multi-line paragraph content:
+>    ```yaml
+>    paragraphs:
+>      - |
+>        Dear Hiring Team, I am writing to apply for...
+>    ```
+> 3. **Never paste prose directly into a YAML value without quoting or block-scaling it.** Cover letter paragraphs often contain colons or dashes.
+> 4. **After writing `Cover_Letter.yaml`**, validate it by running `python -c "import yaml; yaml.safe_load(open('Cover_Letter.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
+
 ## Objective
 Generate a formal, high-impact cover letter in YAML (`Cover_Letter.yaml`) grounded in project metrics, aligning with German business letter standards (*Geschäftsbrief*), and compile it to PDF.
 
@@ -44,8 +60,8 @@ render_mode: "latex"  # latex | reportfallback — set during pipeline "Select R
 sender:
   name: SAGAR MARTHANDAN
   address: "[Closest candidate location — read from closest_candidate_location in ATS_Report.yaml]"
-  phone: "+49 176 74138359"
-  email: "sagar.marthandan@yahoo.com"
+  phone: "[Read from config.py CANDIDATE_PHONE]"
+  email: "[Read from config.py CANDIDATE_EMAIL]"
 recipient:
   company: "[Company Name]"
   department: "Hiring Team"
@@ -68,10 +84,10 @@ Compile the cover letter immediately:
 cd "Applications/[Company Name] — [Job Role]/"
 
 # Compile Cover Letter (English JD)
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
 
 # Compile Cover Letter (German JD)
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
 ```
 
 The renderer reads the `render_mode` key per SKILL.md §"Select Render Mode" — `latex` (default) or `reportfallback`. Both produce the same Geschäftsbrief layout.
@@ -79,14 +95,14 @@ The renderer reads the `render_mode` key per SKILL.md §"Select Render Mode" —
 ## Post-Pipeline Step 1: Self-Learning Keyword Enrichment
 After the cover letter compiles, run the learning loop to enrich portfolio keywords from this JD:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 The script extracts terms from the processed JD, finds terms that appear in matched projects' bodies but are missing from their keyword lists, and appends them. Max 3 keywords per project per run, 15 per file max. All changes are logged to `okf/learning_log.json`. The linter runs after enrichment and rolls back any change that violates frontmatter rules. Modified files are automatically re-embedded into the Zvec vector database for hybrid search.
 
 ## Post-Pipeline Step 2: Sync to Obsidian Vault
 After the learning loop completes, sync the application to your Obsidian vault for graph-view navigation. Use the targeted mode (syncs only this application + patches indexes, much faster than a full rebuild):
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py" "Applications/[Company Name] — [Job Role]" --sort
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py" "Applications/[Company Name] — [Job Role]" --sort
 ```
 The `--sort` flag moves the folder into the YYYY/MM/DD tree after syncing, replacing the separate Post-Pipeline Step 3. Use `--verbose` for per-note progress. Use `--full` to force a complete vault rebuild (run periodically for reconciliation).
 
@@ -96,7 +112,7 @@ The folder sort is now automatic — the `--sort` flag on `sync_to_obsidian.py` 
 
 If you need to sort folders manually (e.g., older unsorted applications), use the standalone sorter:
 ```powershell
-C:\Users\sagar\AppData\Local\Programs\Python\Python312\python.exe "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\organize_applications.py" "Applications/[Company Name] — [Job Role]"
+python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\organize_applications.py" "Applications/[Company Name] — [Job Role]"
 ```
 
 ---

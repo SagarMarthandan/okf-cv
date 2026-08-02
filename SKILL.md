@@ -1,18 +1,18 @@
 ---
 name: okf-cv
 description: >-
-  Use when the user wants to generate an ATS-optimized resume and cover letter from a job description using the hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger on keywords like "job description", "resume", "cover letter", "ATS", "apply", "job application", "tailor resume", "optimize resume", "OKF", "Open Knowledge Format", "hybrid search", "Zvec", "refresh".
+  Use when the user wants to generate an ATS-optimized resume and cover letter from a job description using the hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger on keywords like "job description", "resume", "cover letter", "ATS", "apply", "job application", "tailor resume", "optimize resume", "OKF", "Open Knowledge Format", "hybrid search", "Zvec", "refresh", "job link", "job URL", "scrape this posting", "apply via link". When the user provides a URL instead of pasted JD text, an optional Step 0 (JD Fetch) scrapes the posting and hands the clean JD text to Step 1.
 dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-transformers
 ---
 
 # OKF-CV Pipeline
 
-> **Scope note:** During pipeline execution, only read `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, and the Python scripts they reference. Do NOT read `README.md`, `CHANGELOG.md`, or `docs/` — they are human documentation and consume context tokens without contributing to pipeline execution.
+> **Scope note:** During pipeline execution, only read `SKILL.md`, `00_jd_fetch.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, and the Python scripts they reference. Do NOT read `README.md`, `CHANGELOG.md`, or `docs/` — they are human documentation and consume context tokens without contributing to pipeline execution.
 
 > **READ-ONLY SKILL FILES — HARD GUARDRAIL (NON-NEGOTIABLE):**
 >
 > The following files and directories are **PERMANENTLY READ-ONLY** during any pipeline run, resume generation, cover letter generation, or any user-requested modification to a resume, application, or generated output:
-> - `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md` — pipeline step docs
+> - `SKILL.md`, `00_jd_fetch.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md` — pipeline step docs
 > - `config.py`, `yaml_to_pdf.py`, `resume_parseability.py`, `resume_jd_similarity.py`, `organize_applications.py` — top-level scripts
 > - `renderers/` — the ENTIRE renderers directory (every `.py` file inside it, including `utils.py`, `resume_common.py`, `resume.py`, `resume_latex_us.py`, `resume_reportfallback_us.py`, `resume_latex_german.py`, `resume_reportfallback_german.py`, `cover_letter.py`, `cover_letter_latex.py`, `cover_letter_reportfallback.py`, `job_description.py`, `ats_report.py`, `parseability_report.py`)
 > - `zvec_hybrid_search.py`, `embedding_server.py`, `okf_portfolio_search.py`, `okf_lint.py`, `okf_learn.py`, `okf_diversity_audit.py`, `sync_to_obsidian.py` — pipeline engine scripts
@@ -160,7 +160,29 @@ Before executing any pipeline step, extract the **Company Name** and **Job Role/
 - `Google Cloud — AI/ML Engineer`
 - `Deutsche Bank — Analytics Engineer`
 
+## Agent Execution & Anti-Spinning Rules (Mandatory)
+
+In agentic IDEs (Devin, Claude Code, Oh My Pi, etc.), emitting lengthy planning prose before a tool call triggers the system loop-guard interrupt — causing UI buffer clears (large blank vertical gaps) and forced tool-call retries. To prevent this:
+
+1. **Tool-Call Priority:** NEVER output multi-paragraph planning prose, un-called YAML drafts, or consecutive Markdown headers in pure text without issuing a tool call. Every turn must perform concrete tool actions (`write`, `edit`, `exec`). Do not draft full YAML files or bullet lists in prose before writing them — write them directly with a `write` or `edit` call.
+2. **Terse Action Commentary:** Limit reasoning prose before a tool call to 1 concise sentence describing the immediate action. Do not narrate the full plan, the full YAML structure, or the full bullet list before acting.
+3. **Batch Tool Calls:** When multiple independent file writes or edits are needed, issue them in a single turn (parallel tool calls) rather than one-per-turn with prose between each.
+
+These rules apply to ALL pipeline steps (0, 1, 2, 3) and all post-pipeline actions.
+
 ## Execution — Run All 3 Steps Sequentially
+
+### STEP 0 (optional): JD Fetch — URL → Job Description Text
+
+Run Step 0 **only** when the user provides a job posting URL (or asks to "scrape this posting" / "fetch this job link") instead of pasting raw JD text. If the user pastes raw JD text directly, **skip Step 0** and go straight to Step 1.
+
+Read and execute the full instructions in [00_jd_fetch.md](file:///c:/Users/sagar/Documents/YAML-CV/skills/okf-cv/00_jd_fetch.md).
+
+Fetches the rendered job posting from the URL, extracts the clean JD text, validates it against a JD-shape heuristic (role title + company + ≥2 JD section markers + >200 chars + not a login/error page), and hands the text to Step 1. Strategy routing: known JS-SPA vendors (LinkedIn, Workday, Greenhouse, Lever, SuccessFactors, Personio) go straight to Jina Reader (`https://r.jina.ai/<url>`) and skip the doomed local `webfetch` attempt; static / Unknown vendors try `webfetch` first then Jina. If both strategies fail (rate limit, login wall, failed validation), the user is prompted to paste the JD manually — manual paste is always available as the final fallback and is never locked out.
+
+**Output:** Clean JD text (handed to Step 1 as the "pasted JD text" input — Step 1's contract is unchanged), plus `source_url` and detected ATS vendor passed forward to Step 1. Cache entries are written to `okf/.jd_cache/<sha1(url)>.txt` (7-day TTL) for re-runs of the same URL.
+
+---
 
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 
