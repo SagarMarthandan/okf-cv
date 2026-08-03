@@ -16,7 +16,7 @@
 >        Dear Hiring Team, I am writing to apply for...
 >    ```
 > 3. **Never paste prose directly into a YAML value without quoting or block-scaling it.** Cover letter paragraphs often contain colons or dashes.
-> 4. **After writing `Cover_Letter.yaml`**, validate it by running `python -c "import yaml; yaml.safe_load(open('Cover_Letter.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
+> 4. **After writing `Cover_Letter.yaml`**, validate it by running `.venv/bin/python -c "import yaml; yaml.safe_load(open('Cover_Letter.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
 
 ## Objective
 Generate a formal, high-impact cover letter in YAML (`Cover_Letter.yaml`) grounded in project metrics, aligning with German business letter standards (*Geschäftsbrief*), and compile it to PDF.
@@ -80,29 +80,29 @@ signature_name: "Sagar Marthandan"
 
 ## Compilation Commands
 Compile the cover letter immediately:
-```powershell
+```bash
 cd "Applications/[Company Name] — [Job Role]/"
 
 # Compile Cover Letter (English JD)
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Cover_Letter.pdf"
 
 # Compile Cover Letter (German JD)
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Cover_Letter.yaml" "SAGAR_MARTHANDAN_Anschreiben.pdf"
 ```
 
 The renderer reads the `render_mode` key per SKILL.md §"Select Render Mode" — `latex` (default) or `reportfallback`. Both produce the same Geschäftsbrief layout.
 
 ## Post-Pipeline Step 1: Self-Learning Keyword Enrichment
 After the cover letter compiles, run the learning loop to enrich portfolio keywords from this JD:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 The script extracts terms from the processed JD, finds terms that appear in matched projects' bodies but are missing from their keyword lists, and appends them. Max 3 keywords per project per run, 15 per file max. All changes are logged to `okf/learning_log.json`. The linter runs after enrichment and rolls back any change that violates frontmatter rules. Modified files are automatically re-embedded into the Zvec vector database for hybrid search.
 
 ## Post-Pipeline Step 2: Sync to Obsidian Vault
 After the learning loop completes, sync the application to your Obsidian vault for graph-view navigation. Use the targeted mode (syncs only this application + patches indexes, much faster than a full rebuild):
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py" "Applications/[Company Name] — [Job Role]" --sort
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/sync_to_obsidian.py" "Applications/[Company Name] — [Job Role]" --sort
 ```
 The `--sort` flag moves the folder into the YYYY/MM/DD tree after syncing, replacing the separate Post-Pipeline Step 3. Use `--verbose` for per-note progress. Use `--full` to force a complete vault rebuild (run periodically for reconciliation).
 
@@ -111,8 +111,8 @@ The `--sort` flag moves the folder into the YYYY/MM/DD tree after syncing, repla
 The folder sort is now automatic — the `--sort` flag on `sync_to_obsidian.py` moves the application folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/` after the sync completes. No separate command is needed.
 
 If you need to sort folders manually (e.g., older unsorted applications), use the standalone sorter:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\organize_applications.py" "Applications/[Company Name] — [Job Role]"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/organize_applications.py" "Applications/[Company Name] — [Job Role]"
 ```
 
 ---

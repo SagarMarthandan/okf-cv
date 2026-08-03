@@ -47,7 +47,7 @@ Runs only when you paste a job posting URL (or say "scrape this posting" / "fetc
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 - **Name the Session (First Action):** Before any pipeline work, extract the Company Name and Job Role from the JD and rename the agent session/conversation to `[Company Name] — [Job Role]` in the UI sidebar. This makes it easy to identify which agent is handling which application when multiple agents run in parallel.
 - **Dependency Check:** Verifies that pip dependencies (`pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers`) are importable. Only runs `pip install` if an import fails — avoids redundant installs on every run. Cached for 24 hours via `okf/.dep_check.json`.
-- **Embedding Daemon Pre-Warm:** Immediately after the dependency check, the pipeline calls `_ensure_daemon()` from `zvec_hybrid_search.py` to pre-warm the embedding daemon — the SentenceTransformer model is loaded into memory in a background process (with Windows-safe `CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` creationflags) before the hybrid search runs. This eliminates the ~70s cold start on Windows CPU that previously caused cell/command timeouts during Step 1. If the daemon is unavailable, the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). The daemon auto-shuts down after 30 min of inactivity.
+- **Embedding Daemon Pre-Warm:** Immediately after the dependency check, the pipeline calls `_ensure_daemon()` from `zvec_hybrid_search.py` to pre-warm the embedding daemon — the SentenceTransformer model is loaded into memory in a background process (using `start_new_session=True` on Linux, or Windows-safe `CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` creationflags on Windows) before the hybrid search runs. This eliminates the ~70s cold start on CPU that previously caused cell/command timeouts during Step 1. If the daemon is unavailable, the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). The daemon auto-shuts down after 30 min of inactivity.
 - **Language Detection & Archetype Selection:** Identifies whether the JD is in English or German, detects the primary role archetype (Data Engineer, Data Analyst, Analytics Engineer, AI Data Engineer), and loads the matching archetype-specific base resume. Falls back to the generic `resume.md` for unmatched archetypes.
 - **ATS Pre-Scoring:** Grades the archetype-matched base resume against a calibrated 4-category German-market matrix (max 100 points).
   - **Score Gate:** If the ATS score is `< 85`, the pipeline triggers a `HOLD` verdict, presenting specific remedy suggestions (e.g., missing keywords, project mismatches). If `>= 85`, it sets `PROCEED`.
@@ -184,9 +184,9 @@ YAML-CV/
 ## Testing
 
 Run the automated test suite to verify search relevance:
-```powershell
+```bash
 cd "[skill directory]"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\tests\test_okf_search.py"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/tests/test_okf_search.py"
 ```
 
 The suite includes 3 test cases:
@@ -195,42 +195,42 @@ The suite includes 3 test cases:
 3. **Smoke test** with generic DE JD — verifies at least 2 expected DE projects appear in top-3
 
 Run the hybrid search standalone (OKF + Zvec score fusion):
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 ```
 
 Run the frontmatter linter standalone (use `--force` to ignore the cache and lint all files):
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py" --force
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_lint.py"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_lint.py" --force
 ```
 
 ### Weekly Review: Diversity Audit
 
 Run the diversity audit weekly to review your monoculture exposure (vendor clustering and referral rate). This is no longer run automatically per application:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_diversity_audit.py"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_diversity_audit.py"
 ```
 
 Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
-```powershell
+```bash
 cd "Applications/[Company Name] — [Job Role]/"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 The script reads the compiled PDF (the document submitted to companies) and uses the YAML as the expected-values reference. It checks: unicode integrity (no replacement glyphs), keyword recovery (all tools/skills/summary words recoverable from the PDF text), section header detection (style-aware: US style checks 6 headers, German style checks 5 — no Projects header since projects fold into experience), contact info extraction (5/5), and text structure stats. Outputs `Parseability_Report.yaml` + `Parseability_Report.pdf`. Exit code 0 = pass, 1 = fail, 2 = error.
 
 Run the self-learning loop standalone:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_learn.py" "Applications/[Company Name] — [Job Role]"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 
 Run the resume-JD similarity computation standalone (P1):
-```powershell
+```bash
 cd "Applications/[Company Name] — [Job Role]/"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
 ```
 
 Sync applications to Obsidian vault:
-```powershell
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\sync_to_obsidian.py"
+```bash
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/sync_to_obsidian.py"
 ```

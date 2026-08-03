@@ -23,6 +23,109 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 
+# ── ReportLab maxp version patch ──────────────────────────────────────────────
+# ReportLab's TTFontFile parser rejects fonts with maxp table version 0.5
+# (valid per OpenType spec, used by Latin Modern and CMU Concrete TTFs).
+# This monkey-patch relaxes the check to accept version 0.5 alongside 1.0.
+# Must run before any TTFont registration.
+try:
+    from reportlab.pdfbase import ttfonts as _rl_ttfonts
+    _orig_extract_info = _rl_ttfonts.TTFontFile.extractInfo if hasattr(_rl_ttfonts.TTFontFile, 'extractInfo') else None
+
+    # Patch the read_maxp method by wrapping the class's _read_maxp or equivalent
+    # ReportLab 5.x: the check is in the __init__ / data extraction flow
+    import reportlab.pdfbase.ttfonts as _ttf_mod
+    _orig_TTFontFile_init = _ttf_mod.TTFontFile.__init__
+
+    def _patched_ttfontfile_init(self, *args, **kwargs):
+        try:
+            return _orig_TTFontFile_init(self, *args, **kwargs)
+        except Exception:
+            # If the error is about maxp version, retry with a patched approach
+            import traceback
+            err = traceback.format_exc()
+            if 'maxp table version' in err:
+                # Temporarily patch the read_ushort to force maxp version to 1.0
+                # We'll re-read the maxp table and override the version bytes
+                raise
+            raise
+
+    # More robust: patch at the source by modifying the check in the class
+    # The check is: if ver_maj != 1: raise TTFError(...)
+    # We patch TTFError to not raise for maxp version errors
+    _orig_TTFError = _ttf_mod.TTFError
+
+    class _MaxpTolerantTTFError(_orig_TTFError):
+        """TTFError subclass that we can use to intercept maxp version errors."""
+        pass
+
+    # Instead of complex monkey-patching, we patch the seek_table/read flow
+    # by wrapping __init__ to pre-process the font data
+    _patch_applied = False
+
+    if not _patch_applied:
+        # Patch the TTFontFile class to handle maxp version 0.5
+        _orig_init = _ttf_mod.TTFontFile.__init__
+
+        def _new_init(self, file, *args, **kwargs):
+            # Read the raw font data, patch maxp version to 1.0 if it's 0.5,
+            # then pass the patched data to the original __init__
+            if isinstance(file, str):
+                with open(file, 'rb') as f:
+                    raw = bytearray(f.read())
+            elif hasattr(file, 'read'):
+                raw = bytearray(file.read())
+                file.seek(0)
+            else:
+                raw = bytearray(file)
+
+            # Find and patch the maxp table version if it's 0.5
+            import struct as _struct
+            try:
+                sfver, num_tables = _struct.unpack('>IH', raw[:6])
+                if sfver in (0x00010000, 0x74727565):  # TrueType
+                    offset = 12
+                    for i in range(num_tables):
+                        tag = raw[offset:offset+4]
+                        if tag == b'maxp':
+                            toffset = _struct.unpack('>I', raw[offset+8:offset+12])[0]
+                            ver_maj, ver_min = _struct.unpack('>HH', raw[toffset:toffset+4])
+                            if ver_maj == 0 and ver_min == 0x5000:
+                                # Patch version to 1.0 — the extra v1.0 fields
+                                # (maxPoints, maxContours, etc.) will be read as
+                                # whatever bytes follow, but ReportLab only uses
+                                # numGlyphs from the maxp table, so this is safe.
+                                raw[toffset:toffset+2] = _struct.pack('>H', 1)
+                                raw[toffset+2:toffset+4] = _struct.pack('>H', 0)
+                            break
+                        offset += 16
+            except Exception:
+                pass  # If patching fails, let the original error propagate
+
+            # Call original __init__ with patched data
+            import io as _io
+            patched_file = _io.BytesIO(bytes(raw))
+            if isinstance(file, str):
+                # Original was a filename — write patched data to a temp file
+                import tempfile as _tf
+                fd, tmp_path = _tf.mkstemp(suffix='.ttf')
+                try:
+                    with os.fdopen(fd, 'wb') as f:
+                        f.write(bytes(raw))
+                    return _orig_init(self, tmp_path, *args, **kwargs)
+                finally:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+            else:
+                return _orig_init(self, patched_file, *args, **kwargs)
+
+        _ttf_mod.TTFontFile.__init__ = _new_init
+        _patch_applied = True
+except Exception:
+    pass  # If patching fails, ReportLab will use original behavior with fallbacks
+
 # ── Color palette ─────────────────────────────────────────────────────────────
 TEXT_DARK  = colors.HexColor("#222222")
 TEXT_MUTED = colors.HexColor("#444444")
@@ -169,25 +272,94 @@ def _save_font_cache(cache: dict) -> None:
         pass
 
 
+def _get_font_dirs() -> list:
+    """Build a cross-platform list of font directories to search.
+
+    Searches (in order):
+      1. YAML_CV_FONT_DIRS env var (colon-separated on Unix, semicolon on Windows)
+      2. Local project font dirs: <skill>/fonts, <skill>/okf/fonts
+      3. Linux user fonts: ~/.local/share/fonts, ~/.fonts
+      4. Linux system fonts: /usr/share/fonts, /usr/local/share/fonts
+      5. Windows system fonts: %WINDIR%\\Fonts, %LOCALAPPDATA%\\Microsoft\\Windows\\Fonts
+    """
+    font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
+    if font_dirs_env:
+        return font_dirs_env.split(os.pathsep)
+
+    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dirs = [
+        os.path.join(script_dir, "fonts"),
+        os.path.join(script_dir, "okf", "fonts"),
+    ]
+
+    # Linux user & system font directories
+    home = os.path.expanduser("~")
+    linux_dirs = [
+        os.path.join(home, ".local", "share", "fonts"),
+        os.path.join(home, ".fonts"),
+        "/usr/share/fonts",
+        "/usr/local/share/fonts",
+    ]
+    for d in linux_dirs:
+        if d and os.path.isdir(d):
+            dirs.append(d)
+
+    # Windows system fonts (skipped on Linux — os.path.exists returns False)
+    win_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+    if win_fonts and os.path.exists(win_fonts):
+        dirs.append(win_fonts)
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    if local_appdata:
+        user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts")
+        if os.path.exists(user_fonts):
+            dirs.append(user_fonts)
+
+    return dirs
+
+
+def _find_font_recursive(dirs: list, filename: str) -> str | None:
+    """Search for a font file by name, recursively walking subdirectories.
+
+    Linux font directories commonly organize fonts into subdirectories
+    (e.g. ~/.local/share/fonts/Google_Sans_Code/GoogleSansCode-Regular.ttf),
+    so a flat os.path.join(d, filename) is insufficient.
+    """
+    for d in dirs:
+        if not d or not os.path.isdir(d):
+            continue
+        # Fast path: flat match (common on Windows)
+        flat = os.path.join(d, filename)
+        if os.path.exists(flat):
+            return flat
+        # Recursive walk for subdirectories
+        for root, _, files in os.walk(d):
+            if filename in files:
+                return os.path.join(root, filename)
+    return None
+
+
 def _find_and_register_font_family(
     family_name: str,
     font_names: Tuple[str, str, str, str],
     fallback_names: Tuple[str, str, str, str],
-    cache_var: list
+    cache_var: list,
+    alt_font_names: Tuple[str, str, str, str] | None = None
 ) -> Tuple[str, str, str, str]:
     """
     Helper function to find font files in system directories and register them with ReportLab.
-    
+
     Uses a disk cache (okf/.font_cache.json) to skip directory scanning on subsequent
     process invocations. The cache stores resolved font file paths and their modification
     times — if a font file is updated, the cache entry is invalidated automatically.
-    
+
     Args:
         family_name: Name of the font family to register
         font_names: Tuple of (regular, bold, italic, bold_italic) font filenames
         fallback_names: Tuple of fallback font names if fonts not found
         cache_var: List containing the cached registration result (mutable for closure)
-    
+        alt_font_names: Optional alternative filenames to try if primary not found
+                        (e.g. Carlito filenames as alternative for Calibri on Linux)
+
     Returns:
         Tuple of (regular, bold, italic, bold_italic) registered font names
     """
@@ -229,39 +401,23 @@ def _find_and_register_font_family(
 
         # ── Fall back to directory scan if cache miss ──────────────────────
         if not regular_path or not bold_path:
-            # Search in local font directories only (not system-wide)
-            # Can be overridden via YAML_CV_FONT_DIRS environment variable (colon-separated)
-            font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
-            if font_dirs_env:
-                dirs = font_dirs_env.split(os.pathsep)
-            else:
-                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                local_appdata = os.environ.get("LOCALAPPDATA", "")
-                win_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
-                user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts") if local_appdata else ""
-                dirs = [
-                    os.path.join(script_dir, "fonts"),
-                    os.path.join(script_dir, "okf", "fonts"),
-                ]
-                if win_fonts and os.path.exists(win_fonts):
-                    dirs.append(win_fonts)
-                if user_fonts and os.path.exists(user_fonts):
-                    dirs.append(user_fonts)
+            dirs = _get_font_dirs()
 
-            for d in dirs:
-                if not d or not os.path.exists(d):
+            # Try primary filenames first, then alternatives (e.g. Carlito for Calibri)
+            for names in [font_names, alt_font_names]:
+                if names is None:
                     continue
-                r_p = os.path.join(d, regular_file)
-                b_p = os.path.join(d, bold_file)
-                i_p = os.path.join(d, italic_file)
-                bi_p = os.path.join(d, bold_italic_file)
-                
-                if os.path.exists(r_p) and os.path.exists(b_p):
+                r_file, b_file, i_file, bi_file = names
+                r_p = _find_font_recursive(dirs, r_file)
+                b_p = _find_font_recursive(dirs, b_file)
+                if r_p and b_p:
                     regular_path = r_p
                     bold_path = b_p
-                    if os.path.exists(i_p):
+                    i_p = _find_font_recursive(dirs, i_file)
+                    bi_p = _find_font_recursive(dirs, bi_file)
+                    if i_p:
                         italic_path = i_p
-                    if os.path.exists(bi_p):
+                    if bi_p:
                         bold_italic_path = bi_p
                     break
 
@@ -269,20 +425,49 @@ def _find_and_register_font_family(
                 cache_var[0] = fallback_names
                 return fallback_names
 
-            # Save resolved paths to disk cache for next time
-            disk_cache[family_name] = {
-                "regular_path": regular_path,
-                "bold_path": bold_path,
-                "italic_path": italic_path,
-                "bold_italic_path": bold_italic_path,
-            }
-            _save_font_cache(disk_cache)
-
         # ── Register fonts with ReportLab (must run in every process) ──────
-        pdfmetrics.registerFont(TTFont(f"{family_name}", regular_path))
-        pdfmetrics.registerFont(TTFont(f"{family_name}-Bold", bold_path))
-        pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", italic_path if italic_path else regular_path))
-        pdfmetrics.registerFont(TTFont(f"{family_name}-BoldItalic", bold_italic_path if bold_italic_path else bold_path))
+        # If TTFont registration fails (e.g. Microsoft Calibri TTFs have
+        # PostScript name encoding issues on Linux), try alternative filenames.
+        registered_ok = False
+        for names in [font_names, alt_font_names]:
+            if names is None:
+                continue
+            # If we already have resolved paths from cache/scan, check if they
+            # match this name set. If not, re-resolve.
+            r_file, b_file, i_file, bi_file = names
+            if not regular_path or os.path.basename(regular_path).lower() != r_file.lower():
+                dirs = dirs if 'dirs' in dir() else _get_font_dirs()
+                r_p = _find_font_recursive(dirs, r_file)
+                b_p = _find_font_recursive(dirs, b_file)
+                if not r_p or not b_p:
+                    continue
+                regular_path = r_p
+                bold_path = b_p
+                italic_path = _find_font_recursive(dirs, i_file)
+                bold_italic_path = _find_font_recursive(dirs, bi_file)
+            try:
+                pdfmetrics.registerFont(TTFont(f"{family_name}", regular_path))
+                pdfmetrics.registerFont(TTFont(f"{family_name}-Bold", bold_path))
+                pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", italic_path if italic_path else regular_path))
+                pdfmetrics.registerFont(TTFont(f"{family_name}-BoldItalic", bold_italic_path if bold_italic_path else bold_path))
+                registered_ok = True
+                break
+            except Exception:
+                # This font set failed to register — try the next alternative
+                continue
+
+        if not registered_ok:
+            cache_var[0] = fallback_names
+            return fallback_names
+
+        # Save resolved paths to disk cache for next time
+        disk_cache[family_name] = {
+            "regular_path": regular_path,
+            "bold_path": bold_path,
+            "italic_path": italic_path,
+            "bold_italic_path": bold_italic_path,
+        }
+        _save_font_cache(disk_cache)
         
         pdfmetrics.registerFontFamily(
             family_name,
@@ -355,14 +540,17 @@ _CALIBRI_REGISTERED = [None]
 def register_calibri() -> Tuple[str, str, str, str]:
     """
     Registers Calibri TTF fonts with ReportLab (standard Windows system font).
-    Returns (F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC) or falls back to
-    ('Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique') if not found.
+    On Linux, falls back to Carlito (metric-compatible Calibri replacement) if
+    Calibri is not found. Returns (F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC) or
+    falls back to ('Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique',
+    'Helvetica-BoldOblique') if neither is found.
     """
     return _find_and_register_font_family(
         family_name="Calibri",
         font_names=("calibri.ttf", "calibrib.ttf", "calibrii.ttf", "calibriz.ttf"),
         fallback_names=("Helvetica", "Helvetica-Bold", "Helvetica-Oblique", "Helvetica-BoldOblique"),
-        cache_var=_CALIBRI_REGISTERED
+        cache_var=_CALIBRI_REGISTERED,
+        alt_font_names=("Carlito-Regular.ttf", "Carlito-Bold.ttf", "Carlito-Italic.ttf", "Carlito-BoldItalic.ttf")
     )
 
 
@@ -405,7 +593,9 @@ def register_cambria() -> Tuple[str, str, str, str]:
         from reportlab.pdfbase.ttfonts import TTFont
 
         family_name = "Cambria"
-        regular_file = "cambria.ttc"
+        # On Windows, the regular face is cambria.ttc (TrueType Collection);
+        # on Linux, it's typically cambria.ttf (plain TTF). Try both.
+        regular_files = ["cambria.ttc", "cambria.ttf"]
         bold_file = "cambriab.ttf"
         italic_file = "cambriai.ttf"
         bold_italic_file = "cambriaz.ttf"
@@ -433,57 +623,42 @@ def register_cambria() -> Tuple[str, str, str, str]:
 
         # ── Fall back to directory scan if cache miss ────────────────────
         if not regular_path or not bold_path:
-            font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
-            if font_dirs_env:
-                dirs = font_dirs_env.split(os.pathsep)
-            else:
-                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                local_appdata = os.environ.get("LOCALAPPDATA", "")
-                win_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
-                user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts") if local_appdata else ""
-                dirs = [
-                    os.path.join(script_dir, "fonts"),
-                    os.path.join(script_dir, "okf", "fonts"),
-                ]
-                if win_fonts and os.path.exists(win_fonts):
-                    dirs.append(win_fonts)
-                if user_fonts and os.path.exists(user_fonts):
-                    dirs.append(user_fonts)
-
-            for d in dirs:
-                if not d or not os.path.exists(d):
-                    continue
-                r_p = os.path.join(d, regular_file)
-                b_p = os.path.join(d, bold_file)
-                i_p = os.path.join(d, italic_file)
-                bi_p = os.path.join(d, bold_italic_file)
-                if os.path.exists(r_p) and os.path.exists(b_p):
-                    regular_path = r_p
-                    bold_path = b_p
-                    if os.path.exists(i_p):
-                        italic_path = i_p
-                    if os.path.exists(bi_p):
-                        bold_italic_path = bi_p
+            dirs = _get_font_dirs()
+            # Try both .ttc and .ttf for the regular face
+            for r_file in regular_files:
+                regular_path = _find_font_recursive(dirs, r_file)
+                if regular_path:
                     break
+            bold_path = _find_font_recursive(dirs, bold_file)
+            if regular_path and bold_path:
+                italic_path = _find_font_recursive(dirs, italic_file)
+                bold_italic_path = _find_font_recursive(dirs, bold_italic_file)
 
             if not regular_path or not bold_path:
                 fallback = ("Times-Roman", "Times-Bold", "Times-Italic", "Times-BoldItalic")
                 _CAMBRIA_REGISTERED[0] = fallback
                 return fallback
 
-            disk_cache[family_name] = {
-                "regular_path": regular_path,
-                "bold_path": bold_path,
-                "italic_path": italic_path,
-                "bold_italic_path": bold_italic_path,
-            }
-            _save_font_cache(disk_cache)
-
-        # ── Register with ReportLab (.ttc regular needs subfontIndex=0) ──
-        pdfmetrics.registerFont(TTFont(family_name, regular_path, subfontIndex=0))
+        # ── Register with ReportLab ──────────────────────────────────────
+        # .ttc regular needs subfontIndex=0; .ttf does not
+        is_ttc = regular_path.lower().endswith('.ttc')
+        reg_kwargs = {"subfontIndex": 0} if is_ttc else {}
+        pdfmetrics.registerFont(TTFont(family_name, regular_path, **reg_kwargs))
         pdfmetrics.registerFont(TTFont(f"{family_name}-Bold", bold_path))
-        pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", italic_path if italic_path else regular_path, subfontIndex=0 if not italic_path else None))
+        if italic_path:
+            pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", italic_path))
+        else:
+            pdfmetrics.registerFont(TTFont(f"{family_name}-Italic", regular_path, **reg_kwargs))
         pdfmetrics.registerFont(TTFont(f"{family_name}-BoldItalic", bold_italic_path if bold_italic_path else bold_path))
+
+        # Save resolved paths to disk cache
+        disk_cache[family_name] = {
+            "regular_path": regular_path,
+            "bold_path": bold_path,
+            "italic_path": italic_path,
+            "bold_italic_path": bold_italic_path,
+        }
+        _save_font_cache(disk_cache)
 
         pdfmetrics.registerFontFamily(
             family_name,

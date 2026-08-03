@@ -1,6 +1,7 @@
 __pycache__/
 */__pycache__/
 *.pyc
+.venv/
 *.pdf
 *.tex
 *.log
@@ -15,7 +16,6 @@ okf/zvec_db/
 okf/hash_index.json
 okf/learning_log.json
 okf/.lint_cache.json
-okf/.dep_check.json
 okf/.location_cache.json
 okf/.font_cache.json
 okf/.embedding_server.json

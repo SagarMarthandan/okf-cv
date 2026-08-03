@@ -49,12 +49,12 @@ Compute `hash = sha1(url)` and check `okf/.jd_cache/<hash>.txt`:
 #### Strategy A — Jina Reader (JS-SPA vendors, or fallback from a failed `webfetch`)
 Fetch `https://r.jina.ai/<url>` (prepend the user-supplied URL after the path prefix). If `JINA_API_KEY` is set in the environment, send it as `Authorization: Bearer $JINA_API_KEY` for higher rate limits; otherwise use the keyless public endpoint.
 
-```powershell
+```bash
 # Keyless (rate-limited)
-python -c "import urllib.request; req=urllib.request.Request('https://r.jina.ai/<URL>'); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP\jd_scrape.txt"
+.venv/bin/python -c "import urllib.request; req=urllib.request.Request('https://r.jina.ai/<URL>'); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
 
 # With API key (higher limits)
-python -c "import urllib.request; req=urllib.request.Request('https://r.jina.ai/<URL>', headers={'Authorization':'Bearer %JINA_API_KEY%'}); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP\jd_scrape.txt"
+.venv/bin/python -c "import urllib.request, os; req=urllib.request.Request('https://r.jina.ai/<URL>', headers={'Authorization':'Bearer ' + os.environ.get('JINA_API_KEY', '')}); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
 ```
 
 Jina returns clean markdown of the fully rendered page (handles JS SPAs, cookie/consent walls, and most login walls for public postings).

@@ -15,7 +15,7 @@
 >      The data engineer will build and maintain pipelines...
 >    ```
 > 3. **Never paste raw JD text directly into a YAML value without quoting or block-scaling it.** JDs almost always contain colons (e.g., "Requirements:") that will break parsing.
-> 4. **After writing each YAML file**, validate it by running `python -c "import yaml; yaml.safe_load(open('FILENAME'))"` before proceeding to compilation. If it fails, fix the quoting and re-validate.
+> 4. **After writing each YAML file**, validate it by running `.venv/bin/python -c "import yaml; yaml.safe_load(open('FILENAME'))"` before proceeding to compilation. If it fails, fix the quoting and re-validate.
 
 ## Objective
 Analyze the target job description (JD) against the candidate's base resume and project portfolio to detect gaps, classify the role archetype, calculate an ATS score, and structure the clean JD for archival.
@@ -31,30 +31,15 @@ Per SKILL.md §"Name the Session" — extract Company Name and Job Role from the
 
 ### 0b. Pre-Scoring: Verify Dependencies & Load Base Files
 Before any scoring or analysis, perform the following verification and loading steps:
-1. **Dependency Check (24hr cache):** The agent verifies that all required packages are importable, but only once per 24 hours. A cache file at `okf/.dep_check.json` records the last successful check timestamp. On each run:
-   - Read `okf/.dep_check.json`. If it exists and the timestamp is less than 24 hours old, skip the import probe entirely — dependencies are already verified.
-   - If the file is missing, older than 24 hours, or the import probe has never run, execute the import probe and (on success) write the current timestamp to the cache file:
-   ```powershell
-    python -c "import json,os,time; cache='C:/Users/sagar/Documents/YAML-CV/skills/okf-cv/okf/.dep_check.json'; skip=False; 
-if os.path.exists(cache):
-    try:
-        data=json.load(open(cache)); skip=(time.time()-data.get('ts',0))<86400
-    except: pass
-if not skip:
-    import subprocess,sys; r=subprocess.run([sys.executable,'-c','import yaml, reportlab, pypdf, zvec, sentence_transformers'],capture_output=True)
-    if r.returncode!=0: subprocess.run([sys.executable,'-m','pip','install','-q','-r','C:/Users/sagar/Documents/YAML-CV/skills/okf-cv/requirements.txt'])
-    json.dump({'ts':time.time()},open(cache,'w')); print('Dependency check completed and cached for 24hrs.')
-else: print('Dependency check skipped (cached within 24hrs).')
-   ```
-   This avoids running the import probe on every application. The cache is automatically invalidated after 24 hours.
+1. **Python Environment (no action needed):** All pipeline dependencies are pre-installed in the project-local virtual environment at `.venv/` (relative to the skill directory). **All `python` commands in this pipeline MUST use `.venv/bin/python`** (resolved relative to the skill directory `/home/sagar/Documents/YAML-CV/skills/okf-cv/`). Do NOT run `pip install` — the venv is already provisioned and gitignored. The previous 24hr dependency-check cache (`okf/.dep_check.json`) has been removed; the venv is the single source of truth for dependencies.
 2. **Frontmatter Lint:** Run the OKF linter to verify portfolio metadata is clean before scoring:
-   ```powershell
-   python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\okf_lint.py"
+   ```bash
+   .venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_lint.py"
    ```
    If the linter fails, fix the offending frontmatter before proceeding.
-3. **Pre-Warm Embedding Server (eliminate ~70s cold start):** Before the hybrid search runs, pre-warm the embedding daemon so the SentenceTransformer model is already in memory when `zvec_hybrid_search.py` needs it. This calls `_ensure_daemon()` from `zvec_hybrid_search.py` — the same function the hybrid search uses internally — which pings an existing daemon, starts one in the background with Windows-safe creationflags if none is running, and waits up to 30s for it to become responsive. Run this immediately after the dependency check, in parallel with the frontmatter lint:
-   ```powershell
-   python -c "import sys; sys.path.insert(0, r'C:\Users\sagar\Documents\YAML-CV\skills\okf-cv'); from zvec_hybrid_search import _ensure_daemon; print('Embedding daemon ready' if _ensure_daemon() else 'Daemon unavailable — will fall back to direct model load')"
+3. **Pre-Warm Embedding Server (eliminate ~70s cold start):** Before the hybrid search runs, pre-warm the embedding daemon so the SentenceTransformer model is already in memory when `zvec_hybrid_search.py` needs it. This calls `_ensure_daemon()` from `zvec_hybrid_search.py` — the same function the hybrid search uses internally — which pings an existing daemon, starts one in the background if none is running, and waits up to 30s for it to become responsive. Run this immediately after the dependency check, in parallel with the frontmatter lint:
+   ```bash
+   .venv/bin/python -c "import sys; sys.path.insert(0, r'/home/sagar/Documents/YAML-CV/skills/okf-cv'); from zvec_hybrid_search import _ensure_daemon; print('Embedding daemon ready' if _ensure_daemon() else 'Daemon unavailable — will fall back to direct model load')"
    ```
    If this prints "Daemon unavailable", the pipeline still works — `zvec_hybrid_search.py` falls back to direct model loading (~21s per invocation). Pre-warming just eliminates that delay for the common case.
 4. **Load base resume:** Load the candidate's base resume from the detected language folder. The pipeline uses **archetype-specific base resumes** to maximize pre-rewrite ATS scores:
@@ -132,9 +117,9 @@ After the 4-category ATS score is computed, perform a contextual placement check
 
 ### 5. Pre-Rewrite Semantic Similarity (P1)
 After writing `ATS_Report.yaml` and `Job_Description.yaml`, compute the pre-rewrite cosine similarity between the base resume and the JD:
-```powershell
+```bash
 cd "Applications/[Company Name] — [Job Role]/"
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" --similarity "[base_resume_path]" "Job_Description.yaml"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" --similarity "[base_resume_path]" "Job_Description.yaml"
 ```
 The base resume path is the archetype-specific file loaded in Step 0b (e.g., `okf/base_files/english/resume_data_engineer.md`). Write the returned float value to `resume_jd_semantic_similarity.pre_rewrite_similarity` in `ATS_Report.yaml`. (The `--similarity` flag uses the same model as the hybrid search, avoiding a second model load.)
 
@@ -154,13 +139,13 @@ Populate each field of `improvement_blueprint` as follows:
 ### 8. Candidate Location Selection
 - The candidate has 4 candidate cities: **Kiel** (home), **Frankfurt**, **Berlin**, and **Köln**.
 - **Static lookup + cache first:** Check the job location against the static geocode table and the persistent location cache in `config.py`. Run this Python one-liner to resolve:
-  ```powershell
-  python -c "from config import nearest_candidate_city; print(nearest_candidate_city('[job_location]') or 'NOT_FOUND')"
+  ```bash
+  .venv/bin/python -c "from config import nearest_candidate_city; print(nearest_candidate_city('[job_location]') or 'NOT_FOUND')"
   ```
   This checks the static `JOB_LOCATION_TO_CANDIDATE_CITY` table first, then falls back to `okf/.location_cache.json` (which stores locations previously resolved via web search). If either hits, no web search is needed.
 - **Web search fallback:** If the lookup returns `NOT_FOUND`, use **web search** to determine which of the 4 cities is geographically nearest to the job location. Then cache the result so future applications with the same location skip the web search:
-  ```powershell
-  python -c "from config import cache_location_result; cache_location_result('[job_location]', '[resolved_city, Germany]')"
+  ```bash
+  .venv/bin/python -c "from config import cache_location_result; cache_location_result('[job_location]', '[resolved_city, Germany]')"
   ```
 - For remote, country-wide, or unspecified locations, default to **Kiel, Germany**.
 - Save the result (e.g. `Frankfurt, Germany`) under `closest_candidate_location` in the root of `ATS_Report.yaml`.
@@ -259,19 +244,19 @@ sections:
 
 ## Compilation & Portfolio Search Commands
 Run the hybrid search and the compiler immediately after writing the files to generate the assets:
-```powershell
+```bash
 cd "Applications\[Company Name] — [Job Role]\"
 
 # 1. Search and generate the tailored project list using hybrid search (OKF + Zvec)
 #    Pass ATS_Report.yaml as 3rd arg for archetype-boosted scoring
 #    Uses score fusion: final = (okf_score * 0.6) + (zvec_sim * 0.4)
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 
 # 2. Compile ATS Report
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
 
 # 3. Compile Job Description
-python "C:\Users\sagar\Documents\YAML-CV\skills\okf-cv\yaml_to_pdf.py" "Job_Description.yaml" "Job_Description.pdf"
+.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Job_Description.yaml" "Job_Description.pdf"
 ```
 
 ---
