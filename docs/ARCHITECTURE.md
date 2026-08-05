@@ -107,69 +107,67 @@ Runs only when you paste a job posting URL (or say "scrape this posting" / "fetc
 ## Project Directory Structure
 
 ```
-YAML-CV/
-├── skills\
-│   └── okf-cv\
-│       ├── SKILL.md                      # Agent-facing skill metadata
-│       ├── README.md                     # Main README (this file's parent)
-│       ├── 00_jd_fetch.md                # Step 0 detailed agent rules (URL → JD text)
-│       ├── 01_ats_and_jd_archival.md     # Step 1 detailed agent rules
-│       ├── 02_resume_and_visual_audit.md # Step 2 detailed agent rules
-│       ├── 03_cover_letter.md            # Step 3 detailed agent rules
-│       ├── requirements.txt              # Pipeline dependencies (pyyaml, reportlab, pypdf, zvec, sentence-transformers)
-│       ├── config.py                     # Centralized paths and constants
-│       ├── yaml_to_pdf.py                # Main YAML compilation router (supports resume, cover_letter, job_description, ats_report, parseability_report)
-│       ├── resume_parseability.py        # ATS parse-integrity audit script (checks PDF text layer: unicode, keywords, sections, contact info)
-│       ├── resume_jd_similarity.py       # Cosine similarity between resume and JD (pre/post-rewrite alignment metric)
-│       ├── zvec_hybrid_search.py       # Hybrid search (OKF phrase matching + Zvec semantic embeddings, score fusion)
-│       ├── embedding_server.py         # Local TCP daemon holding SentenceTransformer model in memory (auto-started, 30-min idle shutdown)
-│       ├── okf_portfolio_search.py       # OKF search engine (4-layer matching, archetype boost, Jaccard normalization) — fallback if Zvec unavailable
-│       ├── okf_lint.py                   # Frontmatter linter for portfolio files
-│       ├── okf_learn.py                  # Self-learning keyword enrichment (post-application)
-│       ├── okf_diversity_audit.py        # Clustering audit utility (vendor clustering + referral rate warnings)
-│       ├── sync_to_obsidian.py           # Syncs applications to Obsidian vault as linked notes
-│       ├── obsidian_folder_sort.py       # Folder-sort logic with Windows file-lock recovery (_resilient_move)
-│       ├── organize_applications.py      # Sorts application folders into YYYY/MM/DD tree (thin shim over obsidian_folder_sort.py)
-│       ├── obsidian_sync_core.py         # Core Obsidian sync logic (note generation, entity/index notes)
-│       ├── okf_utils.py                  # Shared OKF utilities (synonyms, stemming, fuzzy matching)
-│       ├── okf/                          # Self-contained OKF Knowledge Base
-│       │   ├── portfolio/                # 15 individual OKF project markdown files
-│       │   ├── zvec_db/                  # Zvec vector database (auto-generated, hash-indexed for incremental re-embedding)
-│       │   ├── base_files/
-│       │   │   ├── english/              # Archetype-specific base resumes
-│       │   │   │   ├── resume_data_engineer.md
-│       │   │   │   ├── resume_data_analyst.md
-│       │   │   │   ├── resume_analytics_engineer.md
-│       │   │   │   ├── resume_ai_data_engineer.md
-│       │   │   │   └── resume.md          # Generic fallback
-│       │   │   └── german/               # Same with _de suffix
-│       │   ├── learning_log.json         # Self-learning enrichment audit trail
-│       │   ├── .dep_check.json           # 24hr dependency check cache
-│       │   ├── .lint_cache.json          # Linter hash cache (skip unchanged files)
-│       │   ├── .location_cache.json      # Web-search-resolved location cache
-│       │   ├── .font_cache.json          # Font path resolution cache
-│       ├── renderers\                    # LaTeX/ReportLab rendering handlers
-│       │   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex, register_lm_roman_10)
-│       │   ├── resume_common.py          # Shared resume helpers (HEADERS, get_resume_language)
-│       │   ├── resume.py                 # Resume renderer dispatcher (reads render_mode + resume_style, routes to 4 renderers)
-│       │   ├── resume_latex_us.py        # Resume LaTeX renderer (US style) + parse-integrity audit
-│       │   ├── resume_reportfallback_us.py # Resume ReportLab renderer (US style, LM Roman 10)
-│       │   ├── resume_latex_german.py    # Resume LaTeX renderer (German style: Lebenslauf section order)
-│       │   ├── resume_reportfallback_german.py  # Resume ReportLab renderer (German style, LM Roman 10)
-│       │   ├── cover_letter.py           # Cover Letter renderer dispatcher (reads render_mode)
-│       │   ├── cover_letter_latex.py     # Cover Letter LaTeX renderer
-│       │   ├── cover_letter_reportfallback.py  # Cover Letter ReportLab renderer (LM Roman 10)
-│       │   ├── job_description.py        # Job Description renderer (ReportLab only)
-│       │   ├── ats_report.py             # ATS Report renderer (ReportLab only)
-│       │   └── parseability_report.py    # Parseability Report renderer (ReportLab only, LM Roman 10)
-│       └── tests/
-│           ├── test_utils.py             # Unit tests for LaTeX escaping and formatting
-│           └── test_okf_search.py        # Automated test suite for OKF search
-└── Applications\
-    └── YYYY\
-        └── MM\
-            └── DD\
-                └── [Company Name] — [Job Role]\      # Application folder (sorted by creation date)
+okf-cv/
+├── SKILL.md                      # Agent-facing skill metadata
+├── README.md                     # Main README (this file's parent)
+├── 00_jd_fetch.md                # Step 0 detailed agent rules (URL → JD text)
+├── 01_ats_and_jd_archival.md     # Step 1 detailed agent rules
+├── 02_resume_and_visual_audit.md # Step 2 detailed agent rules
+├── 03_cover_letter.md            # Step 3 detailed agent rules
+├── requirements.txt              # Pipeline dependencies (pyyaml, reportlab, pypdf, zvec, sentence-transformers)
+├── config.py                     # Centralized paths and constants
+├── yaml_to_pdf.py                # Main YAML compilation router (supports resume, cover_letter, job_description, ats_report, parseability_report)
+├── resume_parseability.py        # ATS parse-integrity audit script (checks PDF text layer: unicode, keywords, sections, contact info)
+├── resume_jd_similarity.py       # Cosine similarity between resume and JD (pre/post-rewrite alignment metric)
+├── zvec_hybrid_search.py         # Hybrid search (OKF phrase matching + Zvec semantic embeddings, score fusion)
+├── embedding_server.py           # Local TCP daemon holding SentenceTransformer model in memory (auto-started, 30-min idle shutdown)
+├── okf_portfolio_search.py       # OKF search engine (4-layer matching, archetype boost, Jaccard normalization) — fallback if Zvec unavailable
+├── okf_lint.py                   # Frontmatter linter for portfolio files
+├── okf_learn.py                  # Self-learning keyword enrichment (post-application)
+├── okf_diversity_audit.py        # Clustering audit utility (vendor clustering + referral rate warnings)
+├── sync_to_obsidian.py           # Syncs applications to Obsidian vault as linked notes
+├── obsidian_folder_sort.py       # Folder-sort logic with Windows file-lock recovery (_resilient_move)
+├── organize_applications.py      # Sorts application folders into YYYY/MM/DD tree (thin shim over obsidian_folder_sort.py)
+├── obsidian_sync_core.py         # Core Obsidian sync logic (note generation, entity/index notes)
+├── okf_utils.py                  # Shared OKF utilities (synonyms, stemming, fuzzy matching)
+├── okf/                          # Self-contained OKF Knowledge Base
+│   ├── portfolio/                # 15 individual OKF project markdown files
+│   ├── zvec_db/                  # Zvec vector database (auto-generated, hash-indexed for incremental re-embedding)
+│   ├── base_files/
+│   │   ├── english/              # Archetype-specific base resumes
+│   │   │   ├── resume_data_engineer.md
+│   │   │   ├── resume_data_analyst.md
+│   │   │   ├── resume_analytics_engineer.md
+│   │   │   ├── resume_ai_data_engineer.md
+│   │   │   └── resume.md          # Generic fallback
+│   │   └── german/               # Same with _de suffix
+│   ├── learning_log.json         # Self-learning enrichment audit trail
+│   ├── .dep_check.json           # 24hr dependency check cache
+│   ├── .lint_cache.json          # Linter hash cache (skip unchanged files)
+│   ├── .location_cache.json      # Web-search-resolved location cache
+│   └── .font_cache.json          # Font path resolution cache
+├── renderers/                    # LaTeX/ReportLab rendering handlers
+│   ├── utils.py                  # Shared utilities (escape_latex, fonts, run_pdflatex, register_lm_roman_10)
+│   ├── resume_common.py          # Shared resume helpers (HEADERS, get_resume_language)
+│   ├── resume.py                 # Resume renderer dispatcher (reads render_mode + resume_style, routes to 4 renderers)
+│   ├── resume_latex_us.py        # Resume LaTeX renderer (US style) + parse-integrity audit
+│   ├── resume_reportfallback_us.py # Resume ReportLab renderer (US style, LM Roman 10)
+│   ├── resume_latex_german.py    # Resume LaTeX renderer (German style: Lebenslauf section order)
+│   ├── resume_reportfallback_german.py  # Resume ReportLab renderer (German style, LM Roman 10)
+│   ├── cover_letter.py           # Cover Letter renderer dispatcher (reads render_mode)
+│   ├── cover_letter_latex.py     # Cover Letter LaTeX renderer
+│   ├── cover_letter_reportfallback.py  # Cover Letter ReportLab renderer (LM Roman 10)
+│   ├── job_description.py        # Job Description renderer (ReportLab only)
+│   ├── ats_report.py             # ATS Report renderer (ReportLab only)
+│   └── parseability_report.py    # Parseability Report renderer (ReportLab only, LM Roman 10)
+├── tests/
+│   ├── test_utils.py             # Unit tests for LaTeX escaping and formatting
+│   └── test_okf_search.py        # Automated test suite for OKF search
+└── Applications/
+    └── YYYY/
+        └── MM/
+            └── DD/
+                └── [Company Name] — [Job Role]/      # Application folder (sorted by creation date)
                     ├── Job_Description.yaml / .pdf
                     ├── ATS_Report.yaml / .pdf
                     ├── project_info.md               # Tailored & distilled project list
@@ -186,7 +184,7 @@ YAML-CV/
 Run the automated test suite to verify search relevance:
 ```bash
 cd "[skill directory]"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/tests/test_okf_search.py"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/tests/test_okf_search.py"
 ```
 
 The suite includes 3 test cases:
@@ -196,41 +194,41 @@ The suite includes 3 test cases:
 
 Run the hybrid search standalone (OKF + Zvec score fusion):
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 ```
 
 Run the frontmatter linter standalone (use `--force` to ignore the cache and lint all files):
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_lint.py"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_lint.py" --force
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/okf_lint.py"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/okf_lint.py" --force
 ```
 
 ### Weekly Review: Diversity Audit
 
 Run the diversity audit weekly to review your monoculture exposure (vendor clustering and referral rate). This is no longer run automatically per application:
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_diversity_audit.py"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/okf_diversity_audit.py"
 ```
 
 Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 The script reads the compiled PDF (the document submitted to companies) and uses the YAML as the expected-values reference. It checks: unicode integrity (no replacement glyphs), keyword recovery (all tools/skills/summary words recoverable from the PDF text), section header detection (style-aware: US style checks 6 headers, German style checks 5 — no Projects header since projects fold into experience), contact info extraction (5/5), and text structure stats. Outputs `Parseability_Report.yaml` + `Parseability_Report.pdf`. Exit code 0 = pass, 1 = fail, 2 = error.
 
 Run the self-learning loop standalone:
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/okf_learn.py" "Applications/[Company Name] — [Job Role]"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/okf_learn.py" "Applications/[Company Name] — [Job Role]"
 ```
 
 Run the resume-JD similarity computation standalone (P1):
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_jd_similarity.py" "Resume.yaml" "Job_Description.yaml"
 ```
 
 Sync applications to Obsidian vault:
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/sync_to_obsidian.py"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/sync_to_obsidian.py"
 ```

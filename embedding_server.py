@@ -36,6 +36,7 @@ IDLE_TIMEOUT = 30 * 60  # 30 minutes — shut down after this many seconds of no
 PORT_RANGE = list(range(54321, 54326))  # try 54321 first, fall back to 54322-54325
 STATE_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.json")
 LOG_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.log")
+LOCK_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.lock")  # startup lock — prevents concurrent daemon spawns
 
 # ─── Model holder ─────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ def _load_model():
         import traceback
         traceback.print_exc()
         _model_ready.set()  # Unblock any waiting request handlers so they error cleanly
+        _clear_lock()  # Release startup lock so future callers can retry
         sys.exit(1)
 
 
@@ -179,6 +181,13 @@ def _clear_state():
     except OSError:
         pass
 
+def _clear_lock():
+    """Remove the startup lock file (on shutdown or model-load failure)."""
+    try:
+        os.remove(LOCK_FILE)
+    except OSError:
+        pass
+
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -209,21 +218,29 @@ def _start_server():
 
     if server is None:
         _log(f"FATAL: No available port in range {PORT_RANGE[0]}-{PORT_RANGE[-1]}")
+        _clear_lock()
         sys.exit(1)
 
     global _server
     _server = server
 
     _log(f"Listening on 127.0.0.1:{chosen_port}")
-    _write_state(chosen_port)
 
     # Start idle watchdog (daemon thread — OK, it only calls os._exit)
     threading.Thread(target=_idle_watchdog, daemon=True).start()
 
-    # Load model in the MAIN thread (blocking, ~21s). The socket is already
-    # open so clients can connect, but requests won't be handled until
-    # serve_forever() starts. The client's retry loop handles this delay.
+    # Load model in the MAIN thread (blocking, ~21s). The state file is NOT
+    # written until the model is ready — this prevents concurrent callers from
+    # seeing a state file that points to a daemon that can't serve yet, which
+    # would cause them to spawn redundant daemons (each ~900MB RAM).
     _load_model()
+
+    # State file is written ONLY after the model is loaded and the daemon can
+    # actually serve requests. This is the critical fix for the multi-daemon
+    # race: concurrent callers see no state file during model load, so only one
+    # of them spawns a daemon (gated by the startup lock in _start_daemon()).
+    _write_state(chosen_port)
+    _clear_lock()  # Startup complete — release lock so future callers see the state file directly
 
     _log("Server ready. Waiting for requests...")
     try:
@@ -237,6 +254,7 @@ def _start_server():
         sys.stdout.flush()
     finally:
         _clear_state()
+        _clear_lock()
         _log("Daemon exiting.")
 
 

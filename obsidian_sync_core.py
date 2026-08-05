@@ -39,7 +39,7 @@ from obsidian_folder_sort import _move_into_tree
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-APPLICATIONS_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/Applications")
+APPLICATIONS_DIR = Path(os.path.dirname(os.path.abspath(__file__)) + "/Applications")
 VAULT_DIR = Path(os.path.expanduser("~/Documents/Obsidian Vault"))
 OUTPUT_ROOT = VAULT_DIR / "Job Search"
 

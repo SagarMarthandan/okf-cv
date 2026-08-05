@@ -276,13 +276,13 @@ def _get_font_dirs() -> list:
     """Build a cross-platform list of font directories to search.
 
     Searches (in order):
-      1. YAML_CV_FONT_DIRS env var (colon-separated on Unix, semicolon on Windows)
+      1. OKF_CV_FONT_DIRS env var (colon-separated on Unix, semicolon on Windows)
       2. Local project font dirs: <skill>/fonts, <skill>/okf/fonts
       3. Linux user fonts: ~/.local/share/fonts, ~/.fonts
       4. Linux system fonts: /usr/share/fonts, /usr/local/share/fonts
       5. Windows system fonts: %WINDIR%\\Fonts, %LOCALAPPDATA%\\Microsoft\\Windows\\Fonts
     """
-    font_dirs_env = os.environ.get("YAML_CV_FONT_DIRS", "")
+    font_dirs_env = os.environ.get("OKF_CV_FONT_DIRS", "")
     if font_dirs_env:
         return font_dirs_env.split(os.pathsep)
 
@@ -490,7 +490,7 @@ _GOOGLE_SANS_CODE_REGISTERED = [None]
 def register_google_sans_code() -> Tuple[str, str, str, str]:
     """
     Registers Google Sans Code TTF fonts with ReportLab.
-    Looks in local font directories (project/fonts, okf/fonts) or YAML_CV_FONT_DIRS env var.
+    Looks in local font directories (project/fonts, okf/fonts) or OKF_CV_FONT_DIRS env var.
     Returns (F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC) representing the registered font names,
     or falls back to ('Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique') if not found.
     """
@@ -507,7 +507,7 @@ _LM_ROMAN_10_REGISTERED = [None]
 def register_lm_roman_10() -> Tuple[str, str, str, str]:
     """
     Registers LM Roman 10 TTF fonts with ReportLab.
-    Looks in local font directories (project/fonts, okf/fonts) or YAML_CV_FONT_DIRS env var.
+    Looks in local font directories (project/fonts, okf/fonts) or OKF_CV_FONT_DIRS env var.
     Returns (F_REG, F_BOLD, F_ITALIC, F_BOLDITALIC) representing the registered font names,
     or falls back to ('Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic') if not found.
     """

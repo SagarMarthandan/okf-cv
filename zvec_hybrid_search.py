@@ -149,6 +149,8 @@ def _get_model():
 
 _DAEMON_STATE_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.json")
 _DAEMON_LOG_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.log")
+_DAEMON_LOCK_FILE = os.path.join(SKILL_DIR, "okf", ".embedding_server.lock")
+_DAEMON_LOCK_STALE_SEC = 90  # lock older than this is considered stale (model load ~21s + margin)
 _daemon_status = "unknown"  # "unknown" | "available" | "unavailable"
 
 
@@ -184,11 +186,24 @@ def _daemon_request(req: dict, timeout: float = 120) -> Optional[dict]:
 
 
 def _start_daemon() -> bool:
-    """Start the embedding daemon in a detached background process."""
+    """Start the embedding daemon in a detached background process.
+
+    Uses a file-based startup lock to prevent concurrent callers from each
+    spawning their own daemon (each ~900MB RAM). The lock is an atomic
+    O_CREAT|O_EXCL create; the daemon clears it once it writes its state file
+    (i.e., once it's ready to serve). Stale locks (>90s old) are reclaimed.
+    """
     server_path = os.path.join(SKILL_DIR, "embedding_server.py")
     if not os.path.exists(server_path):
         return False
     os.makedirs(os.path.dirname(_DAEMON_LOG_FILE), exist_ok=True)
+
+    # Acquire startup lock — only one caller should spawn a daemon.
+    if not _acquire_daemon_lock():
+        # Another caller is already starting a daemon. Return True so the
+        # caller's retry loop in _ensure_daemon() waits for it to come up.
+        return True
+
     try:
         log_fd = open(_DAEMON_LOG_FILE, 'a')
         if sys.platform == 'win32':
@@ -217,7 +232,38 @@ def _start_daemon() -> bool:
         return True
     except Exception as e:
         print(f"Warning: Failed to start embedding daemon: {e}")
+        _release_daemon_lock()
         return False
+
+
+def _acquire_daemon_lock() -> bool:
+    """Atomically create the daemon startup lock file. Returns True if acquired."""
+    try:
+        fd = os.open(_DAEMON_LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        # Lock exists — check if it's stale
+        try:
+            age = time.time() - os.path.getmtime(_DAEMON_LOCK_FILE)
+            if age < _DAEMON_LOCK_STALE_SEC:
+                return False  # Another caller is legitimately starting a daemon
+            # Stale lock — reclaim it
+            os.remove(_DAEMON_LOCK_FILE)
+            return _acquire_daemon_lock()
+        except OSError:
+            return False
+    except OSError:
+        return False
+
+
+def _release_daemon_lock():
+    """Remove the daemon startup lock file."""
+    try:
+        os.remove(_DAEMON_LOCK_FILE)
+    except OSError:
+        pass
 
 
 def _ensure_daemon() -> bool:

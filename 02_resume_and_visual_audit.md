@@ -15,7 +15,7 @@
 >      Data engineer with 3 years building ELT pipelines...
 >    ```
 > 3. **Never paste project descriptions or bullet text directly into a YAML value without quoting or block-scaling it.** Project summaries from `project_info.md` often contain colons or dashes.
-> 4. **After writing `Resume.yaml`**, validate it by running `.venv/bin/python -c "import yaml; yaml.safe_load(open('Resume.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
+> 4. **After writing `Resume.yaml`**, validate it by running `/home/sagar/Skills/okf-cv/.venv/bin/python -c "import yaml; yaml.safe_load(open('Resume.yaml'))"` before compilation. If it fails, fix the quoting and re-validate.
 
 ## Objective
 Generate a tailored, high-scannability resume (`Resume.yaml`) directly in structured YAML format based on the Step 1 `ATS_Report.yaml`, audit its layout parameters, self-correct any formatting issues, and re-evaluate the final ATS score.
@@ -164,7 +164,7 @@ When no `repo_url` is present:
 - **Post-Rewrite Semantic Similarity (P1):** Compute cosine similarity between the optimized `Resume.yaml` and `Job_Description.yaml`:
   ```bash
   cd "Applications/[Company Name] — [Job Role]/"
-  .venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
+  /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
   ```
   Store the returned float value as `post_rewrite_similarity` inside the `post_rewrite_ats_score` block in `ATS_Report.yaml`. Also update `resume_jd_semantic_similarity.post_rewrite_similarity` at the top level.
 - Update the `post_rewrite_ats_score` block in the existing `ATS_Report.yaml` file (do not overwrite the pre-rewrite section) with the final optimized score.
@@ -185,7 +185,7 @@ After the final resume PDF is compiled (either via LaTeX or ReportFallback), run
 #### Command
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 For German resumes, substitute `SAGAR_MARTHANDAN_Lebenslauf.pdf` as the first argument.
 
@@ -210,7 +210,7 @@ When the user asks to add an additional project to the resume (e.g., "add a 4th 
 - Pick the next-ranked project that is NOT already in the resume. If `project_info.md` doesn't have a spare, re-run the hybrid search with a higher `top_k`:
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
 ```
 - If the user names a specific project, use that one.
 
@@ -226,11 +226,11 @@ cd "Applications/[Company Name] — [Job Role]/"
 ### 4. Recompile & Re-audit
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 ```
 Then re-run the parse-integrity audit to verify the new project's keywords are recoverable:
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 - If the resume now spills to 2 pages, trim the summary or remove a weaker project to stay on 1 page.
 
@@ -322,23 +322,23 @@ Generate the `.tex` source file from YAML **without running pdflatex** (the PDF 
 cd "Applications/[Company Name] — [Job Role]/"
 
 # For English JDs (LaTeX mode):
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only
 
 # For German JDs (LaTeX mode):
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf" --tex-only
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Lebenslauf.pdf" --tex-only
 ```
 This writes `SAGAR_MARTHANDAN_Resume.tex` (or `SAGAR_MARTHANDAN_Lebenslauf.tex`) into the company folder. No PDF is produced yet.
 
 **ReportFallback mode:** Skip this step and Step B/C entirely — the ReportFallback renderer produces the final PDF in a single compile. Run the normal compile (without `--tex-only`):
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 ```
 Then jump to Step D (parseability audit).
 
 ### Step B: Prose Refinement & Character Count Checks
 The renderer already produces the `name --- [GitHub] --- summary` single-paragraph format in the `.tex` file. Optionally edit the generated LaTeX file (`SAGAR_MARTHANDAN_Resume.tex` or `SAGAR_MARTHANDAN_Lebenslauf.tex`) to tighten prose, ensure quantification, and verify keyword preservation (see Section 4). Then, run the character count checking script to verify the character constraint (<= 300 characters for English, <= 280 characters for German). **The limit applies only to the project summary text — the project name, em-dash separators (`---`), and link markup are excluded from the count.**
 ```bash
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" --check-tex "SAGAR_MARTHANDAN_Resume.tex"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.tex"
 ```
 If any project exceeds the limit, trim the prose in the `.tex` file directly.
@@ -355,10 +355,10 @@ pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 pdflatex -interaction=nonstopmode "SAGAR_MARTHANDAN_Lebenslauf.tex"
 
 # Compile the updated ATS Report with post-rewrite scores
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "ATS_Report.yaml" "ATS_Report.pdf"
 
 # Step D: Run the parseability audit on the final resume PDF
-.venv/bin/python "/home/sagar/Documents/YAML-CV/skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 # For German resumes: substitute "SAGAR_MARTHANDAN_Lebenslauf.pdf" as the first argument
 ```
 

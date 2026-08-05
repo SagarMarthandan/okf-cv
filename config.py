@@ -10,24 +10,24 @@ import os
 # Base paths (override with environment variables if needed)
 # Calculate paths relative to skill directory for portability
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(SKILL_DIR))  # Go up to YAML-CV directory
+PROJECT_ROOT = SKILL_DIR  # Skill is self-contained; Applications/ lives inside it
 
 DEFAULT_PORTFOLIO_DIR = os.getenv(
-    "YAML_CV_PORTFOLIO_DIR",
+    "OKF_CV_PORTFOLIO_DIR",
     os.path.join(SKILL_DIR, "okf", "portfolio")
 )
 DEFAULT_BASE_FILES_DIR = os.getenv(
-    "YAML_CV_BASE_FILES_DIR",
+    "OKF_CV_BASE_FILES_DIR",
     os.path.join(SKILL_DIR, "okf", "base_files")
 )
 
 # Zvec hybrid search configuration
 ZVEC_DB_PATH = os.getenv(
-    "YAML_CV_ZVEC_DB_PATH",
+    "OKF_CV_ZVEC_DB_PATH",
     os.path.join(SKILL_DIR, "okf", "zvec_db")
 )
 EMBEDDING_MODEL_NAME = os.getenv(
-    "YAML_CV_EMBEDDING_MODEL",
+    "OKF_CV_EMBEDDING_MODEL",
     os.path.expanduser("~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/1110a243fdf4706b3f48f1d95db1a4f5529b4d41")
 )
 EMBEDDING_DIMENSION = 384
@@ -36,22 +36,22 @@ HYBRID_ZVEC_WEIGHT = 0.4
 
 # Applications directory (where the pipeline saves application folders)
 APPLICATIONS_DIR = os.getenv(
-    "YAML_CV_APPLICATIONS_DIR",
-    os.path.join(PROJECT_ROOT, "Applications")
+    "OKF_CV_APPLICATIONS_DIR",
+    os.path.join(SKILL_DIR, "Applications")
 )
 
 # ─── Candidate personal info ──────────────────────────────────────────────────
 # Used by renderers as fallback defaults and by step docs as reference values.
 # The YAML `name`/`sender` fields always take precedence over these defaults.
-CANDIDATE_NAME = os.getenv("YAML_CV_CANDIDATE_NAME", "Sagar Marthandan")
-CANDIDATE_PHONE = os.getenv("YAML_CV_CANDIDATE_PHONE", "+49 176 74138359")
-CANDIDATE_EMAIL = os.getenv("YAML_CV_CANDIDATE_EMAIL", "sagar.marthandan@yahoo.com")
-CANDIDATE_GITHUB = os.getenv("YAML_CV_CANDIDATE_GITHUB", "https://github.com/SagarMarthandan")
+CANDIDATE_NAME = os.getenv("OKF_CV_CANDIDATE_NAME", "Sagar Marthandan")
+CANDIDATE_PHONE = os.getenv("OKF_CV_CANDIDATE_PHONE", "+49 176 74138359")
+CANDIDATE_EMAIL = os.getenv("OKF_CV_CANDIDATE_EMAIL", "sagar.marthandan@yahoo.com")
+CANDIDATE_GITHUB = os.getenv("OKF_CV_CANDIDATE_GITHUB", "https://github.com/SagarMarthandan")
 
 # Diversity audit thresholds
-DIVERSITY_VENDOR_CLUSTER_THRESHOLD = int(os.getenv("YAML_CV_DIVERSITY_VENDOR_THRESHOLD", "3"))
-DIVERSITY_REFERRAL_RATE_MIN = float(os.getenv("YAML_CV_DIVERSITY_REFERRAL_MIN", "0.20"))
-DIVERSITY_LOOKBACK_DAYS = int(os.getenv("YAML_CV_DIVERSITY_LOOKBACK_DAYS", "14"))
+DIVERSITY_VENDOR_CLUSTER_THRESHOLD = int(os.getenv("OKF_CV_DIVERSITY_VENDOR_THRESHOLD", "3"))
+DIVERSITY_REFERRAL_RATE_MIN = float(os.getenv("OKF_CV_DIVERSITY_REFERRAL_MIN", "0.20"))
+DIVERSITY_LOOKBACK_DAYS = int(os.getenv("OKF_CV_DIVERSITY_LOOKBACK_DAYS", "14"))
 
 
 # ─── Candidate city geocode table ─────────────────────────────────────────────

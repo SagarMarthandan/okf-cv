@@ -36,9 +36,7 @@ def normalize_phrase(phrase: str) -> str:
 #   - Portfolio keyword "kafka" matches JD text containing "message queue"
 #   - JD text containing "kafka" matches portfolio keyword "event streaming"
 # Loaded from okf/synonyms.yaml at import time. Edit that file to tune matching.
-_SYNONYMS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "okf", "synonyms.yaml") \
-    if not os.path.exists(os.path.join(os.path.dirname(__file__), "okf", "synonyms.yaml")) \
-    else os.path.join(os.path.dirname(__file__), "okf", "synonyms.yaml")
+_SYNONYMS_PATH = os.path.join(os.path.dirname(__file__), "okf", "synonyms.yaml")
 
 def _load_synonym_map() -> Dict[str, List[str]]:
     """Load the synonym map from okf/synonyms.yaml."""

@@ -16,7 +16,7 @@ from pathlib import Path
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-APPLICATIONS_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/Applications")
+APPLICATIONS_DIR = Path(os.path.dirname(os.path.abspath(__file__)) + "/Applications")
 
 # ─── Folder sort (merged from organize_applications.py) ──────────────────────
 

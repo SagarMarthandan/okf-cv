@@ -53,17 +53,17 @@ rules:
   - keywords: ["cloud", "data", "analytics", "nyc"]
     canonical: "NYC Taxi Analytics Pipeline"
 
-  # --- YAML-CV / OKF-CV Resume Tailoring ---
-  - keywords: ["yaml-cv", "resume"]
-    canonical: "YAML-CV Resume Cover Letter Tailoring Pipeline"
-  - keywords: ["yaml", "cv", "tailoring"]
-    canonical: "YAML-CV Resume Cover Letter Tailoring Pipeline"
-  - keywords: ["yaml-cv", "tailoring"]
-    canonical: "YAML-CV Resume Cover Letter Tailoring Pipeline"
+  # --- OKF-CV Resume Tailoring ---
+  - keywords: ["okf-cv", "resume"]
+    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+  - keywords: ["okf", "cv", "tailoring"]
+    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+  - keywords: ["okf-cv", "tailoring"]
+    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
   - keywords: ["resume", "cover", "letter", "tailoring"]
-    canonical: "YAML-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
   - keywords: ["resume", "cover", "letter", "pipeline"]
-    canonical: "YAML-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
 
   # --- ATS Resume Pipeline ---
   - keywords: ["ats", "resume", "pipeline"]

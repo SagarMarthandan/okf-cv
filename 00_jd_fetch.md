@@ -51,10 +51,10 @@ Fetch `https://r.jina.ai/<url>` (prepend the user-supplied URL after the path pr
 
 ```bash
 # Keyless (rate-limited)
-.venv/bin/python -c "import urllib.request; req=urllib.request.Request('https://r.jina.ai/<URL>'); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
+/home/sagar/Skills/okf-cv/.venv/bin/python -c "import urllib.request; req=urllib.request.Request('https://r.jina.ai/<URL>'); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
 
 # With API key (higher limits)
-.venv/bin/python -c "import urllib.request, os; req=urllib.request.Request('https://r.jina.ai/<URL>', headers={'Authorization':'Bearer ' + os.environ.get('JINA_API_KEY', '')}); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
+/home/sagar/Skills/okf-cv/.venv/bin/python -c "import urllib.request, os; req=urllib.request.Request('https://r.jina.ai/<URL>', headers={'Authorization':'Bearer ' + os.environ.get('JINA_API_KEY', '')}); print(urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore'))" > "$TEMP/jd_scrape.txt"
 ```
 
 Jina returns clean markdown of the fully rendered page (handles JS SPAs, cookie/consent walls, and most login walls for public postings).

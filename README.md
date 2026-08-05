@@ -163,7 +163,7 @@ Since all the pipeline steps are natively codified into the agent's custom skill
 
 ### Prerequisites
 
-The pipeline uses a **project-local Python virtual environment** at `.venv/` (relative to the skill directory). All dependencies are pre-installed there:
+The pipeline uses a **project-local Python virtual environment** at `/home/sagar/Skills/okf-cv/.venv/`. All dependencies are pre-installed there:
 
 - **Python 3.10+** (system)
 - **`.venv/`** — virtual environment with `pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` (see `requirements.txt`)
@@ -173,7 +173,7 @@ The pipeline uses a **project-local Python virtual environment** at `.venv/` (re
   ```
 - **Fonts** — Latin Modern Roman 10, CMU Concrete, Google Sans Code, Calibri/Carlito, Segoe UI, Cambria (installed in `~/.local/share/fonts/`)
 
-All pipeline scripts are invoked with `.venv/bin/python` (not the system `python3`). The venv is gitignored — do NOT run `pip install` during a pipeline run.
+All pipeline scripts are invoked with `/home/sagar/Skills/okf-cv/.venv/bin/python` (not the system `python3`). The venv is gitignored — do NOT run `pip install` during a pipeline run.
 
 To execute the pipeline:
 1. Paste the target **Job Description** (JD) into the chat — **or** paste a job posting URL and the pipeline will scrape it for you (see Step 0 above).

@@ -78,12 +78,12 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
   - **German:** `okf/base_files/german/` — same naming with `_de` suffix (e.g. `resume_data_engineer_de.md`), with `resume_de.md` as fallback.
   - The pipeline detects the JD's primary role archetype in Step 1 and loads the matching base resume to maximize pre-rewrite ATS scores.
   - **Repo Info:** `okf/portfolio/` (Directory of individual OKF markdown files representing your projects)
-- **Python Installation:** Python 3.10+ with all dependencies pre-installed in a project-local virtual environment at `.venv/` (relative to the skill directory). **All pipeline scripts MUST be invoked with the venv Python binary** — do NOT use the system `python3`. The venv interpreter path is `.venv/bin/python` (resolved relative to the skill directory). Dependencies: `pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` (see [requirements.txt](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/requirements.txt)). The venv is gitignored and already provisioned on this machine — do NOT run `pip install` during a pipeline run.
+- **Python Installation:** Python 3.10+ with all dependencies pre-installed in a project-local virtual environment at `/home/sagar/Skills/okf-cv/.venv/`. **All pipeline scripts MUST be invoked with the venv Python binary** — do NOT use the system `python3`. The venv interpreter path is the absolute path `/home/sagar/Skills/okf-cv/.venv/bin/python` — use this exact path verbatim in every command, regardless of the current working directory. Dependencies: `pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` (see [requirements.txt](file:///home/sagar/Skills/okf-cv/requirements.txt)). The venv is gitignored and already provisioned on this machine — do NOT run `pip install` during a pipeline run.
 - **Working Directory:** `Applications/` (relative to project root)
 - **Pipeline Script Structure:**
   - `yaml_to_pdf.py` — entry point; routes YAML files to the correct renderer
   - `zvec_hybrid_search.py` — Hybrid search engine (OKF phrase matching + Zvec semantic embeddings, score fusion 0.6/0.4, cross-process file lock for parallel agent safety). Also provides `--similarity <resume> <jd>` mode for resume-JD cosine similarity. Auto-starts `embedding_server.py` daemon if not running (holds the SentenceTransformer model in memory, eliminating ~21s model load per process — saves ~42s per pipeline run across 3 invocations). Falls back to direct model loading if the daemon is unavailable.
-  - `embedding_server.py` — Local TCP daemon (127.0.0.1, ports 54321-54325) that holds the `all-MiniLM-L6-v2` model in memory. Auto-started by `zvec_hybrid_search.py`, auto-shuts down after 30 min of inactivity. JSON-line protocol over TCP. Manual control: `.venv/bin/python embedding_server.py --status` / `--stop`. State file: `okf/.embedding_server.json`, log: `okf/.embedding_server.log`.
+  - `embedding_server.py` — Local TCP daemon (127.0.0.1, ports 54321-54325) that holds the `all-MiniLM-L6-v2` model in memory. Auto-started by `zvec_hybrid_search.py`, auto-shuts down after 30 min of inactivity. JSON-line protocol over TCP. Manual control: `/home/sagar/Skills/okf-cv/.venv/bin/python embedding_server.py --status` / `--stop`. State file: `okf/.embedding_server.json`, log: `okf/.embedding_server.log`.
   - `okf_portfolio_search.py` — OKF search & distillation engine (phrase-level matching, synonym expansion, stemming, fuzzy matching, archetype-boosted scoring, Jaccard normalization) — used as fallback if Zvec unavailable
   - `okf_lint.py` — Frontmatter linter; validates all portfolio files before scoring (run in Step 1)
   - `okf_learn.py` — Self-learning keyword enrichment; extracts JD terms and enriches portfolio keywords post-application (run after Step 3)
@@ -176,7 +176,7 @@ These rules apply to ALL pipeline steps (0, 1, 2, 3) and all post-pipeline actio
 
 Run Step 0 **only** when the user provides a job posting URL (or asks to "scrape this posting" / "fetch this job link") instead of pasting raw JD text. If the user pastes raw JD text directly, **skip Step 0** and go straight to Step 1.
 
-Read and execute the full instructions in [00_jd_fetch.md](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/00_jd_fetch.md).
+Read and execute the full instructions in [00_jd_fetch.md](file:///home/sagar/Skills/okf-cv/00_jd_fetch.md).
 
 Fetches the rendered job posting from the URL, extracts the clean JD text, validates it against a JD-shape heuristic (role title + company + ≥2 JD section markers + >200 chars + not a login/error page), and hands the text to Step 1. Strategy routing: known JS-SPA vendors (LinkedIn, Workday, Greenhouse, Lever, SuccessFactors, Personio) go straight to Jina Reader (`https://r.jina.ai/<url>`) and skip the doomed local `webfetch` attempt; static / Unknown vendors try `webfetch` first then Jina. If both strategies fail (rate limit, login wall, failed validation), the user is prompted to paste the JD manually — manual paste is always available as the final fallback and is never locked out.
 
@@ -186,7 +186,7 @@ Fetches the rendered job posting from the URL, extracts the clean JD text, valid
 
 ### STEP 1: Setup, ATS Analysis & Job Description Archival
 
-Read and execute the full instructions in [01_ats_and_jd_archival.md](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/01_ats_and_jd_archival.md).
+Read and execute the full instructions in [01_ats_and_jd_archival.md](file:///home/sagar/Skills/okf-cv/01_ats_and_jd_archival.md).
 
 Runs dependency check, runs the frontmatter linter (`okf_lint.py`) to validate portfolio metadata, parses and archives the job description, scores the base resume, performs location tailoring via web search to find the closest candidate city, and generates a tailored project list using the hybrid search engine (OKF phrase matching + Zvec semantic embeddings with score fusion).
 
@@ -200,7 +200,7 @@ Runs dependency check, runs the frontmatter linter (`okf_lint.py`) to validate p
 
 ### STEP 2: Resume Rewrite & Visual Layout Audit
 
-Read and execute the full instructions in [02_resume_and_visual_audit.md](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/02_resume_and_visual_audit.md).
+Read and execute the full instructions in [02_resume_and_visual_audit.md](file:///home/sagar/Skills/okf-cv/02_resume_and_visual_audit.md).
 
 Rewrites the resume based on the ATS Improvement Blueprint and the tailored project list. Compiles the resume via LaTeX, performs a visual layout audit and Stop-Slop check, updates the post-rewrite ATS score, and runs the parse-integrity audit (`resume_parseability.py`) to verify the PDF text layer is ATS-parseable.
 
@@ -210,7 +210,7 @@ Rewrites the resume based on the ATS Improvement Blueprint and the tailored proj
 
 ### STEP 3: Cover Letter Generation & Compilation
 
-Read and execute the full instructions in [03_cover_letter.md](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/03_cover_letter.md).
+Read and execute the full instructions in [03_cover_letter.md](file:///home/sagar/Skills/okf-cv/03_cover_letter.md).
 
 Generates a formal, metric-grounded cover letter standard conforming to German Geschäftsbrief layout in the target JD language.
 
@@ -220,7 +220,7 @@ Generates a formal, metric-grounded cover letter standard conforming to German G
 
 ## Post-Pipeline: Add One More Project
 
-After the pipeline completes, the user may ask to add an additional project to the resume (e.g., "add a 4th project", "add one more project"). Follow the procedure in [02_resume_and_visual_audit.md §"Optional: Add One More Project"](file:///home/sagar/Documents/YAML-CV/skills/okf-cv/02_resume_and_visual_audit.md).
+After the pipeline completes, the user may ask to add an additional project to the resume (e.g., "add a 4th project", "add one more project"). Follow the procedure in [02_resume_and_visual_audit.md §"Optional: Add One More Project"](file:///home/sagar/Skills/okf-cv/02_resume_and_visual_audit.md).
 
 Summary: pick the next-ranked project from `project_info.md` (or re-run hybrid search with higher `top_k`), write it in the same `name --- [GitHub] --- summary` format, insert into `Resume.yaml` (`projects` list for US style, `project_bullets` for German style), recompile, and re-run the parse-integrity audit. If the resume spills to 2 pages, trim or swap a weaker project.
 
