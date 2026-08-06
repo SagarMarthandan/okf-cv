@@ -100,7 +100,7 @@ graph TD
     OutCL["✉ Cover_Letter.yaml / SAGAR_MARTHANDAN_Cover_Letter.pdf"]:::output
     OutLog["📋 okf/learning_log.json — Enrichment audit trail"]:::output
     OutVault["🔮 Obsidian Vault — Job Search notes"]:::output
-    OutTree["📁 Applications/YYYY/MM/DD/[Company] — [Role]/"]:::output
+    OutTree["📁 /home/sagar/Applications/YYYY/MM/DD/[Company] — [Role]/"]:::output
 
     URL --> Scrape
     Scrape --> JD
@@ -151,7 +151,7 @@ graph TD
 | **Step 2** | Resume rewrite, LaTeX/ReportLab compilation, visual layout audit, parse-integrity audit, post-rewrite ATS rescoring. | `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf`, `Layout_Audit_Report.yaml`, `Parseability_Report.yaml/.pdf` |
 | **Step 3** | Cover letter generation (DIN 5008 Form B layout for German, business letter for English), gender-tag stripping, application source integration. | `Cover_Letter.yaml`, `SAGAR_MARTHANDAN_Cover_Letter.pdf` |
 | **Post 1** | Self-learning keyword enrichment from JD terms found in matched projects. | `okf/learning_log.json` |
-| **Post 2** | Obsidian vault sync (graph-view navigation) + folder sort into `Applications/YYYY/MM/DD/` tree with resilient move (retry + copy+delete fallback). | Obsidian notes + sorted application folder |
+| **Post 2** | Obsidian vault sync (graph-view navigation) + folder sort into `/home/sagar/Applications/YYYY/MM/DD/` tree with resilient move (retry + copy+delete fallback). | Obsidian notes + sorted application folder |
 
 For the full step-by-step execution guide with deep technical details (hybrid search architecture, OKF 4-layer matching algorithm, Zvec score fusion, cross-process file locking, embedding daemon, parse-integrity audit, DIN 5008 layout, gender-tag stripping, etc.), see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
@@ -178,7 +178,7 @@ All pipeline scripts are invoked with `/home/sagar/Skills/okf-cv/.venv/bin/pytho
 To execute the pipeline:
 1. Paste the target **Job Description** (JD) into the chat — **or** paste a job posting URL and the pipeline will scrape it for you (see Step 0 above).
 2. Type: **`execute okf-cv`** (or keywords like *"tailor resume"* / *"optimize resume"* / *"job link"* / *"scrape this posting"*).
-3. The agent will automatically run the end-to-end flow: (optionally scraping the JD from a URL), pre-warming the embedding daemon, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `Applications/YYYY/MM/DD/` date tree.
+3. The agent will automatically run the end-to-end flow: (optionally scraping the JD from a URL), pre-warming the embedding daemon, linting portfolio frontmatter, searching matching projects using hybrid search (OKF phrase matching + Zvec semantic embeddings with score fusion), compiling the ATS reports, writing the final tailored files to the `/home/sagar/Applications/` directory, enriching portfolio keywords via the self-learning loop (with automatic Zvec re-embedding), syncing to the Obsidian vault, and sorting the application folder into the `/home/sagar/Applications/YYYY/MM/DD/` date tree.
 
 ### Self-Refresh
 
@@ -209,4 +209,4 @@ No other actions are performed. This is a metadata/context reload only — it do
 
 ## Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.23).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.24).

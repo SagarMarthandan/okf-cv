@@ -6,6 +6,33 @@ See [README.md](README.md) for architecture, setup, and usage.
 
 ---
 
+## v28.24 — Project Selection Fixes + Archetype Removal + Summary Strict 2-Line + Orphan Punctuation + Space-Fill + Applications Path Move
+
+**Files:** `okf_portfolio_search.py`, `zvec_hybrid_search.py`, `renderers/resume_common.py`, `resume_parseability.py`, `config.py`, `SKILL.md`, `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `docs/ARCHITECTURE.md`, `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** Six issues reported by the user: (1) Project summaries were too short — the pipeline generated very few words per project. (2) Orphan punctuation (stray periods, spaces before periods, double periods) appeared in rendered project prose. (3) Resumes had empty space in the bottom half instead of filling with skills or an extra project. (4) Only 4 projects were selected as candidates, causing some of the user's best projects to be missing. (5) The Chicago Crime data pipeline (which uses multi-agent orchestration) was never selected for AI engineering JDs despite being relevant. (6) The resume summary frequently exceeded 2 lines, rendering as 2.5–3 lines on the PDF.
+
+**Changes:**
+- **Fix 1 — Project selection 4 → 6:** Increased `top_k` default from 4 to 6 in both `hybrid_search()` (`zvec_hybrid_search.py`) and `search_relevant_projects()` (`okf_portfolio_search.py`), and in the CLI default. The agent now has 6 candidate projects in `project_info.md` instead of 4, providing spares for space-filling and better coverage.
+- **Fix 2 — Archetype boost removed from scoring:** The archetype boost (+10 primary, +5 secondary) contributed ~30–40% of the fused score via brittle exact string matching. A project with archetype `"AI Engineer"` would get zero boost against a JD archetype of `"AI Data Engineer"` or `"AI/LLMOps"` — burying deserving projects. Removed the boost entirely; archetype matching is now diagnostic-only (still appears in `project_info.md` diagnostics, still used for base resume selection in Step 1). Sort tiebreakers updated from `(-score, -arch_count, -tech, title)` to `(-score, -tech, title)` in both OKF and hybrid search.
+- **Fix 3 — Fuller project summaries:** Increased `extract_body_summary()` `max_sentences` from 2 to 4, giving the agent more source material per project in `project_info.md`. Added directive in 02 doc to write 3–5 bullets targeting 250–300 chars (English) / 230–280 (German), using the full character budget instead of terse 2-bullet summaries.
+- **Fix 4 — Orphan punctuation cleanup:** Added `_clean_prose()` utility to `renderers/resume_common.py` that collapses double periods, removes space-before-punctuation, and collapses multiple spaces. Applied to all 4 project rendering paths (LaTeX projects, LaTeX experience project bullets, ReportLab projects, ReportLab experience project bullets). Fixed German renderer space-before-period bug (`summary .` → `summary.`). Added orphan punctuation check to the visual audit in 02 doc.
+- **Fix 5 — Space-Fill Directive:** New §2.5 in `02_resume_and_visual_audit.md` instructing the agent to proactively fill bottom-half whitespace after compilation: add technical skills from `skill_gaps` first (cheapest in space), then add an extra project from the 6 candidates in `project_info.md`. Target ~1.5 pages with no large gaps; do not overflow to 2 full pages.
+- **Fix 6 — Summary strict 2-line limit:** English limit reduced from 250 → 200 chars, German from 230 → 170 chars. At 11pt Latin Modern Roman on A4 with 0.4in margins, 200 chars renders as exactly 2 lines. Added summary length check to `resume_parseability.py` `check_tex()` alongside existing project summary checks. Updated all references across SKILL.md, 02 doc, and ARCHITECTURE.md.
+- **Applications path move:** Updated `APPLICATIONS_DIR` in `config.py` from `os.path.join(SKILL_DIR, "Applications")` to `"/home/sagar/Applications"`. Updated all absolute path references across SKILL.md, 01/02/03 step docs, ARCHITECTURE.md, and README.md. The Applications folder now lives outside the skill directory, persisting independently of skill updates.
+
+**Verification:**
+- `okf_lint.py`: PASSED (16 portfolio files clean, 16 cached).
+- Hybrid search test with AI Engineer JD: returned 6 projects including Chicago Crime pipeline (previously missing due to archetype exact-match failure).
+- `_clean_prose()` unit tested: collapses double periods, removes space-before-punctuation, collapses multiple spaces, passes through clean text unchanged.
+- `check_tex()` on test resume: summary 196 chars → OK (limit 200), project 259 chars → OK (limit 300). All length checks passed.
+- PDF compilation test: 196-char summary renders as exactly 2 lines on A4 (verified via `pdftotext` extraction).
+- German resume compilation test: project bullets render with clean trailing periods, no orphan punctuation.
+- All 4 modified Python files compile without errors.
+- No stale `Skills/okf-cv/Applications` or `250/230` references remain in any doc.
+
+---
+
 ## v28.23 — README Simplification + Tech Stack Icons + Architecture Doc Split
 
 **Files:** `README.md` (rewritten), `docs/ARCHITECTURE.md` (new), `docs/CHANGELOG.md`
