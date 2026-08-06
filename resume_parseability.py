@@ -460,20 +460,16 @@ def run_audit(pdf_path, yaml_path):
 
 
 def check_tex(tex_path):
-    """Check LaTeX project summary lengths against the character limit.
+    """Check LaTeX summary and project summary lengths against character limits.
 
-    The limit applies ONLY to the project summary/description text,
-    excluding the project name, em-dash separators (---), and link markup.
+    Summary section:
+        English resumes: <= 200 chars (strict 2-line limit).
+        German resumes (Lebenslauf): <= 170 chars (strict 2-line limit).
 
-    The new project format is:
-        \\noindent\\textbf{Name} --- \\href{repo_url}{[GitHub]} --- summary.\\par
-    or without a link:
-        \\noindent\\textbf{Name} --- summary.\\par
-
-    The summary is the text after the LAST '---' separator.
-
-    English resumes: <= 300 chars per project summary.
-    German resumes (Lebenslauf): <= 280 chars per project summary.
+    Project summaries (text after the LAST '---' separator, excluding
+    project name, em-dash separators, and link markup):
+        English resumes: <= 300 chars per project summary.
+        German resumes (Lebenslauf): <= 280 chars per project summary.
 
     Returns 0 if all pass, 1 if any fail.
     """
@@ -481,11 +477,37 @@ def check_tex(tex_path):
         print(f"Error: TeX file '{tex_path}' not found.", file=sys.stderr)
         return 2
 
-    limit = 280 if 'Lebenslauf' in os.path.basename(tex_path) else 300
+    is_german = 'Lebenslauf' in os.path.basename(tex_path)
+    proj_limit = 280 if is_german else 300
+    summary_limit = 170 if is_german else 200
 
     with open(tex_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
+    all_ok = True
+
+    # ── Summary length check (strict 2-line limit) ──
+    # The summary appears between \section{SUMMARY} (or ZUSAMMENFASSUNG)
+    # and the next \section{ or \vspace{6pt} or end of content.
+    summary_match = re.search(
+        r'\\section\{(?:SUMMARY|ZUSAMMENFASSUNG)\}\s*\n(.+?)(?=\\section\{|\\vspace\{6pt\}|\Z)',
+        content, re.DOTALL
+    )
+    if summary_match:
+        summary_text = summary_match.group(1).strip()
+        # Remove any remaining LaTeX commands for an accurate char count
+        summary_clean = re.sub(r'\\[a-zA-Z]+\{[^}]*\}', '', summary_text)
+        summary_clean = re.sub(r'\\[a-zA-Z]+', '', summary_clean)
+        summary_clean = summary_clean.strip()
+        summary_status = 'OK' if len(summary_clean) <= summary_limit else 'FAIL'
+        if summary_status == 'FAIL':
+            all_ok = False
+        print(f"TeX summary length check (limit: {summary_limit} chars, strict 2-line):")
+        print(f"  {summary_status} | Summary: {len(summary_clean)} chars (limit: {summary_limit})")
+    else:
+        print("WARNING: No summary section found in TeX file — skipping summary check.")
+
+    # ── Project summary length check ──
     # Capture the project name and everything after it (up to \par or next
     # project / vspace). The summary is extracted by splitting on '---' and
     # taking the last segment — this excludes the name, separators, and any
@@ -495,27 +517,23 @@ def check_tex(tex_path):
         content, re.DOTALL
     )
 
-    if not projects:
-        print(f"No project paragraphs found in {tex_path} (regex: \\noindent\\textbf{{...}} ...)")
-        return 0
-
-    all_ok = True
-    print(f"TeX project summary length check (limit: {limit} chars, summary only):")
-    for name, rest in projects:
-        # Split on '---' and take the last segment as the summary text.
-        # This excludes the project name, em-dash separators, and link markup.
-        parts = rest.split('---')
-        summary = parts[-1].strip()
-        status = 'OK' if len(summary) <= limit else 'FAIL'
-        if status == 'FAIL':
-            all_ok = False
-        print(f"  {status} | {name}: {len(summary)} chars (limit: {limit})")
+    if projects:
+        print(f"TeX project summary length check (limit: {proj_limit} chars, summary only):")
+        for name, rest in projects:
+            # Split on '---' and take the last segment as the summary text.
+            # This excludes the project name, em-dash separators, and link markup.
+            parts = rest.split('---')
+            summary = parts[-1].strip()
+            status = 'OK' if len(summary) <= proj_limit else 'FAIL'
+            if status == 'FAIL':
+                all_ok = False
+            print(f"  {status} | {name}: {len(summary)} chars (limit: {proj_limit})")
 
     if all_ok:
-        print("All project summaries within limit.")
+        print("All length checks passed.")
         return 0
     else:
-        print("FAIL: One or more project summaries exceed the character limit.", file=sys.stderr)
+        print("FAIL: One or more length checks failed.", file=sys.stderr)
         return 1
 
 

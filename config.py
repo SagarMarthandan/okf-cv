@@ -35,9 +35,11 @@ HYBRID_OKF_WEIGHT = 0.6
 HYBRID_ZVEC_WEIGHT = 0.4
 
 # Applications directory (where the pipeline saves application folders)
+# Lives outside the skill directory at /home/sagar/Applications so application
+# data persists independently of skill updates. Override via OKF_CV_APPLICATIONS_DIR env var.
 APPLICATIONS_DIR = os.getenv(
     "OKF_CV_APPLICATIONS_DIR",
-    os.path.join(SKILL_DIR, "Applications")
+    "/home/sagar/Applications"
 )
 
 # ─── Candidate personal info ──────────────────────────────────────────────────

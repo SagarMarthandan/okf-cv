@@ -81,15 +81,15 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - **English JDs:** Resume PDF ➔ `SAGAR_MARTHANDAN_Resume.pdf` (LaTeX source ➔ `SAGAR_MARTHANDAN_Resume.tex`).
   - **German JDs:** Resume PDF ➔ `SAGAR_MARTHANDAN_Lebenslauf.pdf` (LaTeX source ➔ `SAGAR_MARTHANDAN_Lebenslauf.tex`).
 - **Summary:** Must occupy **exactly 2 lines** of text — a tight positioning statement, not a paragraph.
-  - **English Resumes:** Max 250 characters (`<= 250`).
-  - **German Resumes (Zusammenfassung):** Max **`200–230` characters** to account for longer German compound words.
+  - **English Resumes:** Max 200 characters (`<= 200`). STRICT — no compromise. 200 chars renders as exactly 2 lines at 11pt on A4 with 0.4in margins.
+  - **German Resumes (Zusammenfassung):** Max **`170` characters** (`<= 170`) to account for longer German compound words. STRICT — no compromise.
   - **No tool-listing redundancy:** The summary must NOT enumerate tools (Python, Airflow, dbt, Docker, etc.) — those belong in Technical Skills. The summary is a positioning statement: who you are + what you do + what outcome you deliver. Listing tools wastes the most valuable real estate on page 1.
   - **No Fabrication — Truthful Career Framing:** The summary MUST truthfully distinguish the candidate's two experience tracks:
     1. **4 years of professional production environment experience** at IBM India (08/2014–12/2018) maintaining CICS/Db2 transaction infrastructure and IBM MQ messaging pipelines. This is the candidate's only professional production experience.
     2. **Hands-on self-taught knowledge** in data engineering, AI/ML, dbt, Airflow, RAG, LangChain, etc. — acquired through independent projects and self-learning, NOT through professional employment.
     The summary must NEVER claim "production experience" in data engineering, AI, RAG, or ELT pipelines. The "Independent Data Engineering & Professional Development" period (01/2023–04/2025) is self-directed learning and personal projects, not employment. Do not fabricate stories, metrics, or claims of delivering production data systems. Use phrases like "hands-on self-taught expertise", "independent projects", or "self-directed" — never "production experience" or "delivered production systems" for data/AI work.
 - **Project Section:**
-  - Select the best 3 projects first that resonate with the job description.
+  - `project_info.md` now contains **6 best-matched projects** (up from 4). Select the best 3-4 that resonate with the job description. The remaining 2-3 are spares available for space-filling (see §2.5 below).
   - Add a fourth project if it increases the ATS score for the job description.
   - Combined project name and tools must be `<= 120` characters to prevent title line wrapping in YAML.
   - **Single-Paragraph Format:** Each project renders as a single line in the format:
@@ -100,11 +100,19 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - Each project paragraph must occupy **`<= 3` lines max** on the compiled PDF.
     - **English Resumes:** Max 300 characters (`<= 300`) for the summary text only (project name, em-dash separators, and link markup are excluded from the count).
     - **German Resumes (Projekte):** Max **`280` characters** for the summary text only, to keep within the 3-line limit.
+  - **Fuller Summaries (use the character budget):** Write 3-5 bullets per project targeting 250-300 chars (English) / 230-280 chars (German). Do NOT write terse 2-bullet summaries that leave 100+ chars unused. Each bullet must carry a distinct outcome, tool, or quantified metric. The renderer joins bullets into a single prose paragraph and cleans orphan punctuation automatically.
 - **Professional Experience:** Exactly 4 bullets for **IBM India**, exactly 2 bullets for **Staff 4 cruise** (werkstudent).
 - **Strict Single-Line Experience Bullets:**
   - Every single bullet in experience must be strictly `<= 105` characters and occupy exactly one line on the compiled PDF (no wrapping/overflow to a second line). **105 characters is the canonical limit — apply it to all experience bullets.**
 - **Format:** LaTeX templates are primary (saving the `.tex` source file generated), ReportLab fallback. No photo embedding — photos are added manually via a PDF editor if needed.
 - **Render Mode:** Per SKILL.md §"Select Render Mode" — `render_mode: latex` (default) or `render_mode: reportfallback`. When ReportFallback is selected, skip Section 4 (LaTeX Polish) and Steps B/C — the initial `yaml_to_pdf.py` invocation produces the final PDF.
+
+### 2.5. Space-Fill Directive (Fill the Resume)
+After initial compilation, assess the bottom half of the resume. If significant whitespace exists, fill it proactively:
+1. **Add technical skills** from `skill_gaps` in `ATS_Report.yaml` that the candidate genuinely knows but aren't yet listed in the Technical Skills section.
+2. **Add one more project** from `project_info.md` (which now contains 6 candidates — select the next-ranked one not already in the resume). Write it in the same `name --- [GitHub] --- summary` format with 3-5 bullets targeting 250-300 chars.
+3. **Re-compile and re-audit.** Target: the resume should reach approximately 1.5 pages with no large gaps in the bottom half. Do NOT overflow to 2 full pages — if adding content causes overflow, trim back or swap a weaker project.
+4. **Priority order:** Fill with skills first (cheapest in space), then an extra project if more space is needed. A half-empty resume signals thin experience; a well-filled resume signals depth.
 
 ### 3. Visual Layout Audit & Stop-Slop Checks
 - Apply the **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, no throat-clearing openers).
@@ -116,6 +124,7 @@ To pass the visual audit and recruiter "eye test," the resume MUST fit within a 
   - **Reinforcement is allowed:** A bullet may mention a header tool only when it adds an action or outcome beyond the tool name (e.g., "indexed embeddings into FAISS for semantic search" -> keep).
   - **Audit check:** For each project, flag any bullet whose information content reduces to "used [tool]" with no metric, action, or result. Rewrite it to carry an outcome or cut the tool mention and keep only the outcome.
   - **Header discipline:** Keep tools lines to 5-7 JD-aligned entries; move niche libraries into a bullet only if they carry an outcome, otherwise drop them.
+- **Orphan Punctuation Check:** Verify no orphan periods, spaces before punctuation, or double periods in project prose. The renderer's `_clean_prose` utility handles this automatically, but the agent must still verify the compiled PDF visually. Run `--check-tex` and scan the PDF for any stray punctuation artifacts.
 - Write findings to `Layout_Audit_Report.yaml` inside the folder.
 - **Self-Correction Rule:** If the audit detects layout violations (e.g., experience bullet wraps to next line or exceeds 105 chars, summary > 2 lines), **immediately adjust the text parameters** so the primary `Resume.yaml` compiles successfully without any layout warnings.
 - **v2 Trigger:** Generate `SAGAR_MARTHANDAN_Resume_v2.yaml` only if self-correction requires changing more than 3 bullets or restructuring an entire section. For smaller corrections, patch `Resume.yaml` in place. Set `optimized_v2_generated: true` in `Layout_Audit_Report.yaml` if a v2 file is written, otherwise leave it `false`.
@@ -163,7 +172,7 @@ When no `repo_url` is present:
 - Calculate `score_delta` (post_score - pre_score).
 - **Post-Rewrite Semantic Similarity (P1):** Compute cosine similarity between the optimized `Resume.yaml` and `Job_Description.yaml`:
   ```bash
-  cd "Applications/[Company Name] — [Job Role]/"
+  cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
   /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" --similarity "Resume.yaml" "Job_Description.yaml"
   ```
   Store the returned float value as `post_rewrite_similarity` inside the `post_rewrite_ats_score` block in `ATS_Report.yaml`. Also update `resume_jd_semantic_similarity.post_rewrite_similarity` at the top level.
@@ -184,7 +193,7 @@ After the final resume PDF is compiled (either via LaTeX or ReportFallback), run
 
 #### Command
 ```bash
-cd "Applications/[Company Name] — [Job Role]/"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/resume_parseability.py" "SAGAR_MARTHANDAN_Resume.pdf" "Resume.yaml"
 ```
 For German resumes, substitute `SAGAR_MARTHANDAN_Lebenslauf.pdf` as the first argument.
@@ -209,7 +218,7 @@ When the user asks to add an additional project to the resume (e.g., "add a 4th 
 - Read `project_info.md` in the application folder — it contains the top hybrid-scored projects from the initial search.
 - Pick the next-ranked project that is NOT already in the resume. If `project_info.md` doesn't have a spare, re-run the hybrid search with a higher `top_k`:
 ```bash
-cd "Applications/[Company Name] — [Job Role]/"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml" 6
 ```
 - If the user names a specific project, use that one.
@@ -225,7 +234,7 @@ cd "Applications/[Company Name] — [Job Role]/"
 
 ### 4. Recompile & Re-audit
 ```bash
-cd "Applications/[Company Name] — [Job Role]/"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf"
 ```
 Then re-run the parse-integrity audit to verify the new project's keywords are recoverable:
@@ -268,7 +277,7 @@ contact_info:
   github: "github.com/SagarMarthandan"
   visa: "Authorized to work in Germany"
   availability: "Immediately available"
-summary: "[Exactly 2 lines, <= 250 characters, no tool names]"
+summary: "[Exactly 2 lines, <= 200 characters (<= 170 German), no tool names]"
 technical_skills:
   - category: "[Category Name]"
     skills:
@@ -319,7 +328,7 @@ post_rewrite_ats_score:
 ### Step A: Generate LaTeX Source (tex-only)
 Generate the `.tex` source file from YAML **without running pdflatex** (the PDF will be thrown away when you edit the .tex in Step B, so compiling it now is wasted work). Use the `--tex-only` flag:
 ```bash
-cd "Applications/[Company Name] — [Job Role]/"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 
 # For English JDs (LaTeX mode):
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/yaml_to_pdf.py" "Resume.yaml" "SAGAR_MARTHANDAN_Resume.pdf" --tex-only

@@ -22,7 +22,7 @@ dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-
 >
 > **The model MUST NOT edit, modify, patch, rename, delete, or in any way alter any of these files during a pipeline run or when asked to tweak a resume.** These files define the pipeline infrastructure, renderers, and source-of-truth data. Modifying them during a run risks breaking the pipeline for all future applications.
 >
-> **The ONLY files the model is permitted to write during a pipeline run are the generated application outputs** inside the current `Applications/YYYY/MM/DD/[Company] — [Role]/` folder — and these are **freely editable** (content, prose, structure, re-compilation):
+> **The ONLY files the model is permitted to write during a pipeline run are the generated application outputs** inside the current `/home/sagar/Applications/YYYY/MM/DD/[Company] — [Role]/` folder — and these are **freely editable** (content, prose, structure, re-compilation):
 > - `Resume.yaml` — the resume source (ReportFallback mode); edit freely for content, bullets, summary, skills, wording
 > - `Resume.tex` / `SAGAR_MARTHANDAN_Resume.tex` / `SAGAR_MARTHANDAN_Lebenslauf.tex` — the LaTeX source (LaTeX mode); edit freely for prose refinement, tightening, keyword preservation
 > - `Resume.pdf` / `SAGAR_MARTHANDAN_Resume.pdf` / `SAGAR_MARTHANDAN_Lebenslauf.pdf` — re-compiled from the above
@@ -65,7 +65,7 @@ End-to-end pipeline that takes a **Job Description (JD)** and produces a tailore
          ▼
 Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --sort
                                      └───► Targeted sync + moves folder to
-                                          Applications/YYYY/MM/DD/[Company] — [Role]/
+                                         /home/sagar/Applications/YYYY/MM/DD/[Company] — [Role]/
 ```
 
 - **Base Files Directory (Self-Contained OKF):**
@@ -79,12 +79,12 @@ Post-Pipeline Step 2: Obsidian Sync + Sort ──► Runs sync_to_obsidian.py --
   - The pipeline detects the JD's primary role archetype in Step 1 and loads the matching base resume to maximize pre-rewrite ATS scores.
   - **Repo Info:** `okf/portfolio/` (Directory of individual OKF markdown files representing your projects)
 - **Python Installation:** Python 3.10+ with all dependencies pre-installed in a project-local virtual environment at `/home/sagar/Skills/okf-cv/.venv/`. **All pipeline scripts MUST be invoked with the venv Python binary** — do NOT use the system `python3`. The venv interpreter path is the absolute path `/home/sagar/Skills/okf-cv/.venv/bin/python` — use this exact path verbatim in every command, regardless of the current working directory. Dependencies: `pyyaml`, `reportlab`, `pypdf`, `zvec`, `sentence-transformers` (see [requirements.txt](file:///home/sagar/Skills/okf-cv/requirements.txt)). The venv is gitignored and already provisioned on this machine — do NOT run `pip install` during a pipeline run.
-- **Working Directory:** `Applications/` (relative to project root)
+- **Working Directory:** `/home/sagar/Applications/` (absolute path — always create application folders here, never relative to the agent's CWD)
 - **Pipeline Script Structure:**
   - `yaml_to_pdf.py` — entry point; routes YAML files to the correct renderer
   - `zvec_hybrid_search.py` — Hybrid search engine (OKF phrase matching + Zvec semantic embeddings, score fusion 0.6/0.4, cross-process file lock for parallel agent safety). Also provides `--similarity <resume> <jd>` mode for resume-JD cosine similarity. Auto-starts `embedding_server.py` daemon if not running (holds the SentenceTransformer model in memory, eliminating ~21s model load per process — saves ~42s per pipeline run across 3 invocations). Falls back to direct model loading if the daemon is unavailable.
   - `embedding_server.py` — Local TCP daemon (127.0.0.1, ports 54321-54325) that holds the `all-MiniLM-L6-v2` model in memory. Auto-started by `zvec_hybrid_search.py`, auto-shuts down after 30 min of inactivity. JSON-line protocol over TCP. Manual control: `/home/sagar/Skills/okf-cv/.venv/bin/python embedding_server.py --status` / `--stop`. State file: `okf/.embedding_server.json`, log: `okf/.embedding_server.log`.
-  - `okf_portfolio_search.py` — OKF search & distillation engine (phrase-level matching, synonym expansion, stemming, fuzzy matching, archetype-boosted scoring, Jaccard normalization) — used as fallback if Zvec unavailable
+  - `okf_portfolio_search.py` — OKF search & distillation engine (phrase-level matching, synonym expansion, stemming, fuzzy matching, Jaccard normalization) — used as fallback if Zvec unavailable
   - `okf_lint.py` — Frontmatter linter; validates all portfolio files before scoring (run in Step 1)
   - `okf_learn.py` — Self-learning keyword enrichment; extracts JD terms and enriches portfolio keywords post-application (run after Step 3)
   - `sync_to_obsidian.py` — Syncs application data to Obsidian vault as linked notes for graph-view navigation (run after learning loop)
@@ -248,12 +248,12 @@ After all 3 steps complete, verify:
 - [ ] `Cover_Letter.yaml` & `SAGAR_MARTHANDAN_Cover_Letter.pdf` / `SAGAR_MARTHANDAN_Anschreiben.pdf` are generated with the tailored closest location in the sender address and date fields
 - [ ] Professional Experience bullets are single-line, <= 105 chars (per 02 §Layout Constraints)
 - [ ] Projects in `name --- [GitHub] --- summary` format, summary <= 300 chars (<= 280 German), <= 3 lines (per 02 §Layout Constraints)
-- [ ] Summary is exactly 2 lines, <= 250 chars (<= 230 German) (per 02 §Layout Constraints)
+- [ ] Summary is exactly 2 lines, <= 200 chars (<= 170 German) (per 02 §Layout Constraints) — STRICT, no compromise
 - [ ] Cover letter fits one page, 250–320 words (180–240 German) (per 03 §Structure)
 - [ ] All files match the target JD language and comply with the Stop-Slop guidelines
 - [ ] `okf_learn.py` has enriched portfolio keywords from this JD (check `okf/learning_log.json` for changes)
 - [ ] `sync_to_obsidian.py` has synced the application to the Obsidian vault (check `<vault>/Job Search/` for notes)
-- [ ] `sync_to_obsidian.py --sort` has moved the folder into `Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`
+- [ ] `sync_to_obsidian.py --sort` has moved the folder into `/home/sagar/Applications/YYYY/MM/DD/[Company Name] — [Job Role]/`
 
 ## Self-Refresh
 

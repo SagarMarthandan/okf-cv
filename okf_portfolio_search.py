@@ -229,7 +229,7 @@ def load_jd_archetype(ats_report_path: str) -> Tuple[Optional[str], Optional[str
 def search_relevant_projects(
     jd_text: str,
     portfolio_dir: str,
-    top_k: int = 4,
+    top_k: int = 6,
     jd_primary_archetype: Optional[str] = None,
     jd_secondary_archetype: Optional[str] = None,
 ) -> List[Dict[str, any]]:
@@ -238,9 +238,10 @@ def search_relevant_projects(
     Scoring components:
       - Phrase-level matching for keywords (x4), technologies (x3), description (x1)
       - Title token overlap (x5)
-      - Archetype boost: +10 for primary match, +5 for secondary match (binary, unnormalized)
       - Jaccard-style normalization on the token-overlap component
-      - Tiebreaker: archetype match count desc, tech match count desc, then alphabetical
+      - Tiebreaker: tech match count desc, then alphabetical
+      - Archetype matching is diagnostic-only (no score impact); used for
+        base resume selection in Step 1, not project ranking
     """
     if not os.path.exists(portfolio_dir):
         raise ValueError(f"Portfolio directory not found at: {portfolio_dir}")
@@ -312,29 +313,26 @@ def search_relevant_projects(
 
         normalization_divisor = max(len(total_metadata_tokens), 1)
         normalized_overlap = raw_overlap / normalization_divisor
-
-        # --- Archetype boost (binary, unnormalized) ---
-        archetype_boost = 0.0
+        # --- Archetype diagnostics (no score impact) ---
+        # Archetype matching is informational only — it appears in
+        # project_info.md diagnostics but does NOT affect ranking.
+        # The brittle exact-string match was causing deserving projects
+        # to be buried (e.g. "AI Engineer" project vs "AI Data Engineer" JD).
+        # Semantic similarity (Zvec) and phrase matching (OKF) handle
+        # relevance far more robustly.
         archetype_match_count = 0
         proj_archetypes = [a.lower() for a in proj.get("archetypes", [])]
 
-        if jd_primary_archetype:
-            if jd_primary_archetype.lower() in proj_archetypes:
-                archetype_boost += 10.0
-                archetype_match_count += 1
-        if jd_secondary_archetype:
-            if jd_secondary_archetype.lower() in proj_archetypes:
-                archetype_boost += 5.0
-                archetype_match_count += 1
-
-        # Also check raw JD text for archetype phrases (fallback when no ATS report)
+        if jd_primary_archetype and jd_primary_archetype.lower() in proj_archetypes:
+            archetype_match_count += 1
+        if jd_secondary_archetype and jd_secondary_archetype.lower() in proj_archetypes:
+            archetype_match_count += 1
         if not jd_primary_archetype:
             for arch in proj.get("archetypes", []):
                 if phrase_in_jd(str(arch), jd_text_lower, jd_tokens, jd_stemmed):
-                    archetype_boost += 3.0
                     archetype_match_count += 1
 
-        total_score = normalized_overlap + archetype_boost
+        total_score = normalized_overlap
 
         # Store match diagnostics for distill output
         proj["_match_diagnostics"] = {
@@ -342,7 +340,7 @@ def search_relevant_projects(
             "keyword_matches": keyword_matches,
             "tech_matches": tech_matches,
             "archetype_match_count": archetype_match_count,
-            "archetype_boost": archetype_boost,
+            "archetype_boost": 0.0,
             "normalized_overlap": normalized_overlap,
             "matched_archetypes": [
                 a for a in proj.get("archetypes", [])
@@ -352,16 +350,16 @@ def search_relevant_projects(
             ],
         }
 
-        scored_projects.append((total_score, archetype_match_count, tech_matches, proj))
+        scored_projects.append((total_score, tech_matches, proj))
 
-    # Sort: score desc, then archetype match count desc, then tech match count desc, then alphabetical
-    scored_projects.sort(key=lambda x: (-x[0], -x[1], -x[2], x[3]["title"]))
+    # Sort: score desc, then tech match count desc, then alphabetical
+    scored_projects.sort(key=lambda x: (-x[0], -x[1], x[2]["title"]))
 
-    return [item[3] for item in scored_projects[:top_k]]
+    return [item[2] for item in scored_projects[:top_k]]
 
 
-def extract_body_summary(body: str, max_sentences: int = 2) -> str:
-    """Extracts the first 1-2 sentences from the body's opening paragraph.
+def extract_body_summary(body: str, max_sentences: int = 4) -> str:
+    """Extracts the first 1-4 sentences from the body's opening paragraph.
 
     Skips markdown headers, images, and badges to find the first prose paragraph.
     """

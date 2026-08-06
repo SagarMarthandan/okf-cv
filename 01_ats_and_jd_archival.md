@@ -118,7 +118,7 @@ After the 4-category ATS score is computed, perform a contextual placement check
 ### 5. Pre-Rewrite Semantic Similarity (P1)
 After writing `ATS_Report.yaml` and `Job_Description.yaml`, compute the pre-rewrite cosine similarity between the base resume and the JD:
 ```bash
-cd "Applications/[Company Name] — [Job Role]/"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" --similarity "[base_resume_path]" "Job_Description.yaml"
 ```
 The base resume path is the archetype-specific file loaded in Step 0b (e.g., `okf/base_files/english/resume_data_engineer.md`). Write the returned float value to `resume_jd_semantic_similarity.pre_rewrite_similarity` in `ATS_Report.yaml`. (The `--similarity` flag uses the same model as the hybrid search, avoiding a second model load.)
@@ -151,12 +151,12 @@ Populate each field of `improvement_blueprint` as follows:
 - Save the result (e.g. `Frankfurt, Germany`) under `closest_candidate_location` in the root of `ATS_Report.yaml`.
 
 ## Output Target & Directory Structure
-Create folder `Applications/[Company Name] — [Job Role]/` and save three files:
+Create folder `/home/sagar/Applications/[Company Name] — [Job Role]/` and save three files:
 - `ATS_Report.yaml`
 - `Job_Description.yaml`
 - `project_info.md` (tailored project portfolio generated via OKF search)
 
-**Naming Convention:** Per SKILL.md — folder MUST be `Applications/[Company Name] — [Job Role]/`. No arbitrary names or timestamps.
+**Naming Convention:** Per SKILL.md — folder MUST be `/home/sagar/Applications/[Company Name] — [Job Role]/`. No arbitrary names or timestamps. Always use this absolute path — never create application folders relative to the agent's current working directory.
 
 ### A. `ATS_Report.yaml` Schema
 ```yaml
@@ -245,11 +245,12 @@ sections:
 ## Compilation & Portfolio Search Commands
 Run the hybrid search and the compiler immediately after writing the files to generate the assets:
 ```bash
-cd "Applications\[Company Name] — [Job Role]\"
+cd "/home/sagar/Applications/[Company Name] — [Job Role]/"
 
 # 1. Search and generate the tailored project list using hybrid search (OKF + Zvec)
-#    Pass ATS_Report.yaml as 3rd arg for archetype-boosted scoring
+#    Pass ATS_Report.yaml as 3rd arg for archetype diagnostics (no score impact)
 #    Uses score fusion: final = (okf_score * 0.6) + (zvec_sim * 0.4)
+#    Returns 6 best-matched projects by default (top_k=6)
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/zvec_hybrid_search.py" "Job_Description.yaml" "project_info.md" "ATS_Report.yaml"
 
 # 2. Compile ATS Report

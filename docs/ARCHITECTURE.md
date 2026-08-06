@@ -70,7 +70,7 @@ Runs only when you paste a job posting URL (or say "scrape this posting" / "fetc
 - **Constraints & Eye-Test Audit:** Runs character-length audits:
   - Experience bullets: Must be strictly single-line and `<= 105` characters.
   - Project summaries: Must be `<= 300` characters (`<= 280` characters for German projects), counting only the summary text (project name, em-dash separators, and link markup are excluded). Must fit within `<= 3` lines.
-  - Summary: Exactly 2 lines of text, maximum 250 characters (maximum 230 characters for German Zusammenfassung). No tool-listing redundancy — tools belong in Technical Skills, not the summary.
+  - Summary: Exactly 2 lines of text, maximum 200 characters (maximum 170 characters for German Zusammenfassung). No tool-listing redundancy — tools belong in Technical Skills, not the summary.
   - Stop-Slop writing rules: Strict active voice, no `-ly` adverbs, zero em-dashes, no filler text.
 - **Self-Correction:** Resolves any line-wraps or overflows dynamically.
 - **Parse-Integrity Audit (LaTeX mode):** After LaTeX compilation, the PDF is automatically audited using `pypdf` — extracts the text layer, checks for Unicode replacement glyphs (U+FFFD), and cross-references critical keywords/tools from `Resume.yaml` against the extracted text. If the audit fails (recovery < 100% or corruptions found), the ReportLab compiler is triggered as a fallback to overwrite the PDF with a highly parsable version. The fallback PDF is re-audited; if it also fails, the pipeline halts. Results written to `Layout_Audit_Report.yaml` under `parse_integrity_verification`.

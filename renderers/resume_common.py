@@ -334,6 +334,27 @@ def generate_latex_skills_tex(data, h):
     return skills_tex
 
 
+def _clean_prose(text: str) -> str:
+    """Clean joined bullet prose: fix orphan punctuation, double periods,
+    and extra spaces introduced by joining bullets with spaces.
+
+    - Collapses multiple spaces to one
+    - Removes space before punctuation (. , ; : ! ?)
+    - Collapses double/triple periods to one
+    - Strips leading/trailing whitespace
+    """
+    # Collapse multiple spaces
+    text = re.sub(r' {2,}', ' ', text)
+    # Remove space before punctuation
+    text = re.sub(r'\s+([.,;:!?])', r'\1', text)
+    # Collapse repeated periods (e.g. ".." or "..." from bullet ends)
+    text = re.sub(r'\.{2,}', '.', text)
+    # Fix period followed by space then period (e.g. ". ." -> ".")
+    text = re.sub(r'\.\s+\.', '.', text)
+    # Re-collapse any multiple spaces introduced by substitutions
+    text = re.sub(r' {2,}', ' ', text)
+    return text.strip()
+
 def generate_latex_projects_tex(data, h, strip_trailing_dot=True, vspace='6pt'):
     """Generate LaTeX projects section.
 
@@ -353,7 +374,7 @@ def generate_latex_projects_tex(data, h, strip_trailing_dot=True, vspace='6pt'):
         proj_name  = escape_latex(proj.get('name', ''))
         repo_url   = proj.get('repo_url', proj.get('url', ''))
         bullets    = [escape_latex(b) for b in proj.get('bullets', [])]
-        summary    = " ".join(bullets).strip()
+        summary    = _clean_prose(" ".join(bullets))
 
         # \noindent\textbf{Name} --- \href{repo_url}{[GitHub]} --- summary.\par
         # When no repo_url: \noindent\textbf{Name} --- summary.\par
@@ -401,9 +422,9 @@ def generate_latex_experience_tex(data, h, include_project_bullets=False):
                     pb_name    = escape_latex(pb.get('name', ''))
                     pb_url     = pb.get('repo_url', pb.get('url', ''))
                     pb_bullets = [escape_latex(b) for b in pb.get('bullets', [])]
-                    pb_summary = " ".join(pb_bullets).strip()
+                    pb_summary = _clean_prose(" ".join(pb_bullets))
                     pb_link = f" --- \\href{{{pb_url}}}{{\\color{{darkblue}}\\small[GitHub]}}" if pb_url else ""
-                    proj_lines.append(f"  \\resumeItem{{\\textbf{{{pb_name}}}{pb_link} --- {pb_summary.rstrip('.')} .}}")
+                    proj_lines.append(f"  \\resumeItem{{\\textbf{{{pb_name}}}{pb_link} --- {pb_summary.rstrip('.')}.}}")
                 proj_bullets_tex = "\n".join(proj_lines) + "\n"
 
         bullets_tex = "\n".join([f"  \\resumeItem{{{b}}}" for b in bullets])
@@ -762,7 +783,7 @@ def render_projects_rl(ctx):
         name       = proj.get('name', '')
         repo_url   = proj.get('repo_url', proj.get('url', ''))
         bullets    = proj.get('bullets', [])
-        prose      = " ".join(bullets).strip()
+        prose      = _clean_prose(" ".join(bullets))
 
         # Build: <b>Name</b> --- <a href='repo_url'>[GitHub]</a> --- summary
         # When no repo_url: <b>Name</b> --- summary
@@ -814,7 +835,7 @@ def render_professional_experience_rl(ctx):
                 pb_name    = pb.get('name', '')
                 pb_url     = pb.get('repo_url', pb.get('url', ''))
                 pb_bullets = pb.get('bullets', [])
-                pb_prose   = " ".join(pb_bullets).strip()
+                pb_prose   = _clean_prose(" ".join(pb_bullets))
                 pb_github  = f" --- <a href='{pb_url}' color='{DARKBLUE_HEX}'><font size=8>[GitHub]</font></a>" if pb_url else ""
                 pb_line    = f"<b>{pb_name}</b>{pb_github} --- {pb_prose.rstrip('.')}."
                 block.append(Paragraph(f"<bullet>&bull;&nbsp;&nbsp;</bullet>{pb_line}", ctx.styles['bullet']))

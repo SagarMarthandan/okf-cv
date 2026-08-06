@@ -605,7 +605,7 @@ def semantic_search(
 def hybrid_search(
     jd_text: str,
     portfolio_dir: str = DEFAULT_PORTFOLIO_DIR,
-    top_k: int = 4,
+    top_k: int = 6,
     jd_primary_archetype: Optional[str] = None,
     jd_secondary_archetype: Optional[str] = None,
     okf_weight: float = HYBRID_OKF_WEIGHT,
@@ -699,14 +699,13 @@ def hybrid_search(
         diag["zvec_cosine"] = zvec_match["zvec_score"] if zvec_match else 0.0
         proj_data["_match_diagnostics"] = diag
 
-        arch_count = diag.get("archetype_match_count", 0)
         tech_count = diag.get("tech_matches", 0)
-        fused_projects.append((fused_score, arch_count, tech_count, proj_data))
+        fused_projects.append((fused_score, tech_count, proj_data))
 
-    # Sort: fused score desc, then archetype match count desc, then tech match count desc, then alphabetical
-    fused_projects.sort(key=lambda x: (-x[0], -x[1], -x[2], x[3]["title"]))
+    # Sort: fused score desc, then tech match count desc, then alphabetical
+    fused_projects.sort(key=lambda x: (-x[0], -x[1], x[2]["title"]))
 
-    return [item[3] for item in fused_projects[:top_k]]
+    return [item[2] for item in fused_projects[:top_k]]
 
 
 # ─── Distill with hybrid diagnostics ──────────────────────────────────────────
@@ -895,7 +894,7 @@ if __name__ == '__main__':
     jd_path = args[0]
     out_path = args[1]
     ats_report_path = args[2] if len(args) > 2 else None
-    top_k = int(args[3]) if len(args) > 3 else 4
+    top_k = int(args[3]) if len(args) > 3 else 6
 
     if not os.path.exists(jd_path):
         print(f"Error: Job description file not found at {jd_path}")
