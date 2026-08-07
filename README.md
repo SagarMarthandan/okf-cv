@@ -210,4 +210,4 @@ No other actions are performed. This is a metadata/context reload only — it do
 
 ## Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.25).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.26).

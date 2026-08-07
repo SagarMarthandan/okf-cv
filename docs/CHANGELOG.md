@@ -4,11 +4,28 @@
 All notable changes to the okf-cv pipeline are documented here.
 See [README.md](README.md) for architecture, setup, and usage.
 
+
+## v28.26 — LaTeX Margin Overflow Fix (microtype + tolerance + emergencystretch)
+
+**Files:** `renderers/resume_common.py`, `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** LaTeX resume compilation produced overfull hbox warnings (text bleeding past the 0.4in margin) in 42 of 205 previously compiled resumes. Root cause: `\usepackage[none]{hyphenat}` disables hyphenation to protect ATS keyword extraction (deliberate, correct tradeoff), but without hyphenation LaTeX cannot break long technical compound words (English or German) at line ends, so justified text occasionally overflows the line box. The overflow was small (5–25pt) but visible on close inspection and unprofessional.
+
+**Changes:**
+- **Added `microtype` package** (`renderers/resume_common.py` `generate_latex_document()`): `\usepackage[protrusion=true,expansion=true,stretch=40,shrink=40]{microtype}` — enables font-level margin kerning (protrusion) and glyph scaling (expansion) to micro-adjust line widths without breaking words. Zero effect on extractable text; fully ATS-keyword-safe.
+- **Added `\tolerance=2000` and `\hbadness=10000`**: raises the acceptable badness threshold before LaTeX gives up and produces an overfull hbox, allowing more interword stretch before overflowing.
+- **Added `\setlength{\emergencystretch}{3em}`**: last-resort safety net that permits additional interword space stretching when normal tolerance is exhausted.
+- **Rejected alternatives** (regressed page count in testing): `\sloppy` on `\resumeItem` (caused 1→2 page regression), `ragged2e`/`\RaggedRight` (ragged right margin lost text density, also caused page growth).
+- Left `\usepackage[none]{hyphenat}` untouched — that's the deliberate ATS-parseability guard, not the bug.
+
+**Verification:**
+- Regenerated 6 real applications (Wayzim, arborsys, comrce, ARRISE, Statista, Getsafe) through the actual `yaml_to_pdf.py` entry point.
+- Overfull hbox count: 0 in every case (previously 1–3 each, including a 25pt German compound-word overflow).
+- Page count: unchanged from originals in all 6 cases (no regression).
+
 ---
 
 ## v28.25 — Outcome Tracking + Score-Gate Removal + Fabrication-Risk Summary Fix + German-Market Coverage + Keyword Pollution Cleanup + Config/Renderer Bug Fixes
-
-**Files:** `track_outcomes.py` (new), `01_ats_and_jd_archival.md`, `02_resume_and_visual_audit.md`, `03_cover_letter.md`, `okf/base_files/english/*.md` (5 files), `okf/base_files/german/resume_de.md`, `okf/noise_words.yaml`, `okf/synonyms.yaml`, `okf/phrase_patterns.yaml`, `okf/project_mappings.yaml`, `okf_diversity_audit.py`, `config.py`, `renderers/resume_common.py`, `README.md`, `docs/CHANGELOG.md`
 
 **Motivation:** A retrospective audit of 302 applications sent since May 2026 found only 6 interviews (1.7% conversion). Investigation revealed the pipeline had zero outcome/channel tracking despite generating a self-graded ATS score used as a hard submission gate — and the two lowest-scoring resumes in the entire dataset (62/100, 71/100) were among the ones that actually converted to interviews, while the dataset average (75.6/100) mostly did not convert. This proved the self-graded score has no measured correlation with real outcomes. A deeper pipeline review then surfaced eight further concrete issues: a misleading "4 years at IBM" headline stat in every resume summary that invited an instant domain-mismatch read, a cover letter rule that force-injected LLM/RAG/LangGraph language into non-technical (Business Analyst, Data Analyst) applications as a non-sequitur, no rule forcing the cover letter to differ from the resume, active keyword pollution in portfolio frontmatter from the self-learning loop's incomplete noise-word filter, zero German-market term coverage in the synonym/phrase-pattern/noise-word config layer despite roughly half the JD volume being German, a broken referral-counting bug and dead doc cross-reference in the diversity audit tool, stale/wrong canonical project-name mappings in the Obsidian sync layer, a static German-city lookup table missing most major cities (forcing repeated web searches), and a ReportLab/LaTeX rendering inconsistency that emitted a stray bullet line when visa/availability fields were empty.
 

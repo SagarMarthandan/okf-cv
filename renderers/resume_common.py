@@ -480,6 +480,9 @@ def generate_latex_document(header_tex, body_tex):
 \\usepackage{{graphicx}}
 \\usepackage{{textcomp}}
 \\usepackage{{xcolor}}
+\\usepackage[protrusion=true,expansion=true,stretch=40,shrink=40]{{microtype}}
+\\tolerance=2000
+\\hbadness=10000
 
 \\input{{glyphtounicode}}
 \\pdfgentounicode=1
@@ -490,6 +493,7 @@ def generate_latex_document(header_tex, body_tex):
 
 \\pagestyle{{empty}}
 \\setlength{{\\parindent}}{{0pt}}
+\\setlength{{\\emergencystretch}}{{3em}}
 
 \\titleformat{{\\section}}{{\\large\\bfseries\\color{{darkblue}}}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule]
 \\titlespacing{{\\section}}{{0pt}}{{6pt}}{{4pt}}
