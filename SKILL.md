@@ -1,7 +1,7 @@
 ---
 name: okf-cv
 description: >-
-  Use when the user wants to generate an ATS-optimized resume and cover letter from a job description using the hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger on keywords like "job description", "resume", "cover letter", "ATS", "apply", "job application", "tailor resume", "optimize resume", "OKF", "Open Knowledge Format", "hybrid search", "Zvec", "refresh", "job link", "job URL", "scrape this posting", "apply via link". When the user provides a URL instead of pasted JD text, an optional Step 0 (JD Fetch) scrapes the posting and hands the clean JD text to Step 1.
+  Use when the user explicitly says "okf-cv" or "okf-cv refresh". This is the algorithmic search variant (OKF phrase matching + Zvec semantic embeddings). Runs a 3-step pipeline: ATS analysis & JD archival, resume rewrite & layout audit, and cover letter generation. Trigger ONLY on the exact keywords "okf-cv" (to run the pipeline) and "okf-cv refresh" (to reload the skill from ground truth). Do NOT trigger on generic keywords like "resume", "cover letter", "ATS", "apply", "job description" — those are reserved for the llm-cv skill. When the user provides a URL instead of pasted JD text, an optional Step 0 (JD Fetch) scrapes the posting and hands the clean JD text to Step 1.
 dependencies: python>=3.10, pyyaml, reportlab, pypdf, stop-slop, zvec, sentence-transformers
 ---
 
