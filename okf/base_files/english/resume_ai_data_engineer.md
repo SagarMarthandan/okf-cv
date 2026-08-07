@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), now applying hands-on self-taught expertise in RAG pipelines, agentic LLM workflows, and data engineering with Python, LangChain, dbt, and Airflow. Built independent projects on GCP and AWS. M.Sc. Computer Science, CAU Kiel.
+AI data engineer with an M.Sc. in Computer Science and enterprise-grade production systems background, delivering self-taught RAG and agentic pipeline engineering through independent projects.
 
 ## TECHNICAL SKILLS
 

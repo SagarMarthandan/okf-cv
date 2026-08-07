@@ -17,7 +17,6 @@ keywords:
 - data engineering
 - orchestration
 - containerization
-- data
 archetypes:
 - Data Engineering
 - Analytics Engineering

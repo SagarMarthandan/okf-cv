@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), augmented by hands-on self-taught skills in data analysis, SQL, Power BI, dbt, and dimensional modeling. Built independent analytics projects with KPI dashboards and SCD Type 2 pipelines. M.Sc. Computer Science and Quantitative Economics, CAU Kiel.
+Data analyst with an M.Sc. in Computer Science and Quantitative Economics, and enterprise-grade production systems background, delivering self-taught BI dashboarding through independent projects.
 
 ## TECHNICAL SKILLS
 

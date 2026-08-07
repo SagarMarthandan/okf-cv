@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), with hands-on self-taught analytics engineering skills in dbt, Snowflake, and BigQuery. Built independent projects with dimensional models, SCD Type 2 snapshots, and incremental fact tables. M.Sc. Computer Science, CAU Kiel.
+Analytics engineer with an M.Sc. in Computer Science and enterprise-grade production systems background, delivering self-taught dimensional modeling through independent analytics projects.
 
 ## TECHNICAL SKILLS
 

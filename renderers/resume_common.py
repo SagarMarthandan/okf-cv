@@ -647,27 +647,36 @@ def generate_reportlab_contact_header(data, name_style, contact_style):
     loc    = contact.get('location', '')
     phone  = contact.get('phone', '')
     github = contact.get('github', '')
-    line1  = f"{loc} &nbsp;&bull;&nbsp; {phone}"
+    line1_parts = []
+    if loc:   line1_parts.append(loc)
+    if phone: line1_parts.append(phone)
     if github:
-        line1 += f" &nbsp;&bull;&nbsp; <a href='https://{github}' color='#0000EE'>{github}</a>"
+        line1_parts.append(f"<a href='https://{github}' color='#0000EE'>{github}</a>")
+    line1 = " &nbsp;&bull;&nbsp; ".join(line1_parts)
 
     email    = contact.get('email', '')
     linkedin = contact.get('linkedin', '')
-    line2    = ""
+    line2_parts = []
     if email:
-        line2 += f"<a href='mailto:{email}' color='#0000EE'>{email}</a>"
+        line2_parts.append(f"<a href='mailto:{email}' color='#0000EE'>{email}</a>")
     if linkedin:
-        if line2: line2 += " &nbsp;&bull;&nbsp; "
-        line2 += f"<a href='https://{linkedin}' color='#0000EE'>{linkedin}</a>"
+        line2_parts.append(f"<a href='https://{linkedin}' color='#0000EE'>{linkedin}</a>")
+    line2 = " &nbsp;&bull;&nbsp; ".join(line2_parts)
 
     visa  = contact.get('visa', '')
     avail = contact.get('availability', '')
-    line3 = f"{visa} &nbsp;&bull;&nbsp; {avail}"
+    line3_parts = []
+    if visa:  line3_parts.append(visa)
+    if avail: line3_parts.append(avail)
+    line3 = " &nbsp;&bull;&nbsp; ".join(line3_parts)
+
+    contact_lines = [l for l in [line1, line2, line3] if l]
+    contact_html = "<br/>".join(contact_lines)
 
     return [
         Paragraph(name_str, name_style),
         Spacer(1, 2),
-        Paragraph(f"<font size=9.5 color='#333333'>{line1}<br/>{line2}<br/>{line3}</font>", contact_style),
+        Paragraph(f"<font size=9.5 color='#333333'>{contact_html}</font>", contact_style),
         Spacer(1, 5),
     ]
 

@@ -69,7 +69,7 @@ Before scoring, gather monoculture-counter metadata:
    - If the source is `Cold Apply` and the vendor is known (not `Unknown`), output a warning advising the user to check their network for weak ties before submitting.
    - If the source is `Referral` or `LinkedIn Connection`, prompt for the optional `weak_tie_contact` (name or role of the contact).
 
-> **Note:** The diversity audit (`okf_diversity_audit.py`) is no longer run automatically per application. It is a standalone tool for weekly review — see the README "Weekly Review" section.
+> **Note:** The diversity audit (`okf_diversity_audit.py`) is no longer run automatically per application. It is a standalone tool for weekly review — see `docs/ARCHITECTURE.md` §"Weekly Review: Diversity Audit". For per-application outcome and channel tracking, use `track_outcomes.py report` (see README).
 
 ### 1. Requirements & Archetype Detection
 - Scan candidate-facing profile requirements.
@@ -85,7 +85,7 @@ Before scoring, gather monoculture-counter metadata:
   - `soft_skills_and_language` (max 25)
 - **Formatting is NOT scored.** Instead, emit a separate non-scored `formatting_quality` verdict (see below) that classifies the resume's formatting/parsability as one of `Excellent`, `Good`, `Average`, or `Bad`. If the verdict is `Average` or `Bad`, populate `suggestions` with concrete fixes. This keeps formatting feedback visible without diluting the 100-point score.
 - Save category details and total score in `ats_score_matrix`, and the formatting verdict in `formatting_quality`, in the YAML output.
-- **Score Gate:** If `total_score < 85`, set `score_gate_verdict: HOLD` and stop the pipeline. Populate `remedy_suggestions` as a structured list (see schema). Warn the user to review remedies before proceeding to Step 2. If `>= 85`, set `score_gate_verdict: PROCEED`.
+- **Score Flag (informational only, not a gate):** This 0-100 score is a self-assessment by the same model performing the rewrite, run against no external ATS system — it has no established correlation with real recruiter/interview outcomes and MUST NOT block or delay submission. If `total_score < 85`, set `score_gate_verdict: REVIEW` and populate `remedy_suggestions` as a structured list (see schema) so the user can see the specific weak points, but proceed to Step 2 regardless. If `>= 85`, set `score_gate_verdict: PROCEED`. Never halt the pipeline on this score alone.
 
 ### 3. Skill Gap Analysis (P2)
 After scoring and project selection, extract a `skill_gaps` list:

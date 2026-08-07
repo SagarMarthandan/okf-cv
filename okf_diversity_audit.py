@@ -192,7 +192,7 @@ def audit_diversity(applications_dir: str = APPLICATIONS_DIR) -> None:
     if missing_source > 0:
         print(f"    [unknown/missing source]: {missing_source} application(s)")
 
-    referral_count = source_counts.get("Referral", 0)
+    referral_count = source_counts.get("Referral", 0) + source_counts.get("LinkedIn Connection", 0)
     if total_recent > 0:
         referral_rate = referral_count / total_recent
         print(f"\n  Referral rate: {referral_count}/{total_recent} = {referral_rate:.0%}")

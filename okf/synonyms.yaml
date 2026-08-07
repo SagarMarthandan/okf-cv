@@ -207,3 +207,56 @@ azure key vault:
   - secrets management
   - credential store
   - secret manager
+
+# --- German-market terms (JD text is frequently in German) ---
+data warehouse:
+  - datawarehouse
+  - datenlager
+  - dwh
+data modeling:
+  - datenmodellierung
+  - datenmodell
+  - datenmodelle
+etl/elt:
+  - etl-pipeline
+  - elt-pipeline
+  - datenintegration
+experience:
+  - erfahrung
+  - berufserfahrung
+  - praxiserfahrung
+knowledge:
+  - kenntnisse
+  - fachkenntnisse
+database:
+  - datenbank
+  - datenbanken
+working student:
+  - werkstudent
+  - werkstudentin
+internship:
+  - praktikum
+  - praktikant
+  - praktikantin
+data quality:
+  - datenqualität
+  - datenqualitaet
+data governance:
+  - datenverwaltung
+  - data-governance
+reporting:
+  - berichtswesen
+  - reporting-tools
+business intelligence:
+  - geschäftsanalyse
+  - geschaeftsanalyse
+  - bi-tools
+data pipeline:
+  - datenpipeline
+  - datenfluss
+data analysis:
+  - datenanalyse
+  - datenauswertung
+programming:
+  - programmierung
+  - programmierkenntnisse

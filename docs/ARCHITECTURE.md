@@ -210,6 +210,21 @@ Run the diversity audit weekly to review your monoculture exposure (vendor clust
 /home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/okf_diversity_audit.py"
 ```
 
+### Weekly Review: Outcome & Channel Tracking
+
+Record application outcomes as they arrive (interview invites, rejections, ghosted applications) — the pipeline generates no outcome data on its own:
+```bash
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/track_outcomes.py" set "[Company Name] — [Job Role]" interview --source referral --notes "..."
+```
+Valid `status` values: `sent`, `viewed`, `interview`, `second_round`, `offer`, `rejected`, `ghosted`. Valid `--source` values: `cold_apply`, `referral`, `linkedin_connection`, `direct`. Writes `Application_Status.yaml` inside the application folder — does not touch any pipeline-owned file. List every application still missing a recorded status:
+```bash
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/track_outcomes.py" pending
+```
+Print a response-rate digest by role archetype and by application source (optionally scoped with `--since YYYY-MM-DD`):
+```bash
+/home/sagar/Skills/okf-cv/.venv/bin/python "/home/sagar/Skills/okf-cv/track_outcomes.py" report
+```
+
 Run the resume parseability audit standalone (checks PDF text layer for ATS parseability):
 ```bash
 cd "Applications/[Company Name] — [Job Role]/"

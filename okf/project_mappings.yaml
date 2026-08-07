@@ -55,15 +55,15 @@ rules:
 
   # --- OKF-CV Resume Tailoring ---
   - keywords: ["okf-cv", "resume"]
-    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume & Cover Letter Tailoring Pipeline"
   - keywords: ["okf", "cv", "tailoring"]
-    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume & Cover Letter Tailoring Pipeline"
   - keywords: ["okf-cv", "tailoring"]
-    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume & Cover Letter Tailoring Pipeline"
   - keywords: ["resume", "cover", "letter", "tailoring"]
-    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume & Cover Letter Tailoring Pipeline"
   - keywords: ["resume", "cover", "letter", "pipeline"]
-    canonical: "OKF-CV Resume Cover Letter Tailoring Pipeline"
+    canonical: "OKF-CV Resume & Cover Letter Tailoring Pipeline"
 
   # --- ATS Resume Pipeline ---
   - keywords: ["ats", "resume", "pipeline"]
@@ -75,15 +75,15 @@ rules:
   - keywords: ["resume", "pipeline", "streamlit"]
     canonical: "ATS Resume Pipeline Streamlit App"
 
-  # --- Star Schema / Enterprise Sales ---
+  # --- Star Schema / Enterprise Sales (same project as Adventure Works dashboard) ---
   - keywords: ["star schema", "sales"]
-    canonical: "Star Schema for Enterprise Sales Analytics"
+    canonical: "Adventure Works Global Sales Returns Dashboard"
   - keywords: ["star schema", "enterprise"]
-    canonical: "Star Schema for Enterprise Sales Analytics"
+    canonical: "Adventure Works Global Sales Returns Dashboard"
   - keywords: ["power bi", "enterprise", "sales"]
-    canonical: "Star Schema for Enterprise Sales Analytics"
+    canonical: "Adventure Works Global Sales Returns Dashboard"
   - keywords: ["power bi", "sales", "analytics"]
-    canonical: "Star Schema for Enterprise Sales Analytics"
+    canonical: "Adventure Works Global Sales Returns Dashboard"
 
   # --- RAG PDF Query ---
   - keywords: ["rag", "pdf"]
@@ -97,13 +97,15 @@ rules:
   - keywords: ["pdf", "query", "assistant"]
     canonical: "RAG-Based PDF Query Assistant"
 
-  # --- Master Thesis ---
+  # --- COMAD PCA (formerly mismapped as "Master Thesis") ---
   - keywords: ["subspace", "poisoning"]
-    canonical: "Master Thesis Subspace Poisoning"
+    canonical: "COMAD PCA - Robust Principal Component Analysis"
   - keywords: ["master", "thesis"]
-    canonical: "Master Thesis Subspace Poisoning"
+    canonical: "COMAD PCA - Robust Principal Component Analysis"
   - keywords: ["masterarbeit"]
-    canonical: "Master Thesis Subspace Poisoning"
+    canonical: "COMAD PCA - Robust Principal Component Analysis"
+  - keywords: ["comad", "pca"]
+    canonical: "COMAD PCA - Robust Principal Component Analysis"
 
   # --- Bitcoin ---
   - keywords: ["bitcoin", "analytics"]
@@ -117,13 +119,13 @@ rules:
 
   # --- Airbnb ---
   - keywords: ["airbnb", "analytics"]
-    canonical: "Airbnb Analytics Engineering Pipeline"
+    canonical: "Airbnb Data Engineering Project (dbt + Snowflake + Dagster)"
   - keywords: ["airbnb", "modern", "data"]
-    canonical: "Airbnb Analytics Engineering Pipeline"
+    canonical: "Airbnb Data Engineering Project (dbt + Snowflake + Dagster)"
   - keywords: ["airbnb", "data", "engineering"]
-    canonical: "Airbnb Analytics Engineering Pipeline"
+    canonical: "Airbnb Data Engineering Project (dbt + Snowflake + Dagster)"
   - keywords: ["airbnb", "modern", "data", "stack"]
-    canonical: "Airbnb Analytics Engineering Pipeline"
+    canonical: "Airbnb Data Engineering Project (dbt + Snowflake + Dagster)"
 
   # --- Adventure Works ---
   - keywords: ["adventure", "works"]
@@ -157,11 +159,15 @@ rules:
   - keywords: ["sql", "revision"]
     canonical: "SQL Practice and Revision"
 
-  # --- Bike Rentals ---
+  # --- Chicago Crime & Divvy Bike-Share (formerly mismapped as "Bike Rentals") ---
   - keywords: ["bike", "rentals"]
-    canonical: "Bike Rentals Data Transformation Pipeline"
+    canonical: "Chicago Crime & Divvy Bike-Share Data Engineering Pipeline"
   - keywords: ["bike", "rental"]
-    canonical: "Bike Rentals Data Transformation Pipeline"
+    canonical: "Chicago Crime & Divvy Bike-Share Data Engineering Pipeline"
+  - keywords: ["chicago", "crime"]
+    canonical: "Chicago Crime & Divvy Bike-Share Data Engineering Pipeline"
+  - keywords: ["divvy", "bike"]
+    canonical: "Chicago Crime & Divvy Bike-Share Data Engineering Pipeline"
 
   # --- Kafka FX ---
   - keywords: ["kafka", "fx"]

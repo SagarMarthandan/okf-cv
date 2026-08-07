@@ -152,6 +152,7 @@ graph TD
 | **Step 3** | Cover letter generation (DIN 5008 Form B layout for German, business letter for English), gender-tag stripping, application source integration. | `Cover_Letter.yaml`, `SAGAR_MARTHANDAN_Cover_Letter.pdf` |
 | **Post 1** | Self-learning keyword enrichment from JD terms found in matched projects. | `okf/learning_log.json` |
 | **Post 2** | Obsidian vault sync (graph-view navigation) + folder sort into `/home/sagar/Applications/YYYY/MM/DD/` tree with resilient move (retry + copy+delete fallback). | Obsidian notes + sorted application folder |
+| **Weekly review** (manual) | Record interview/rejection/ghosted outcomes and application source per application via `track_outcomes.py`; review response rate by archetype and channel; check ATS-vendor clustering and referral rate via `okf_diversity_audit.py`. | `Application_Status.yaml`, response-rate digest |
 
 For the full step-by-step execution guide with deep technical details (hybrid search architecture, OKF 4-layer matching algorithm, Zvec score fusion, cross-process file locking, embedding daemon, parse-integrity audit, DIN 5008 layout, gender-tag stripping, etc.), see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
@@ -209,4 +210,4 @@ No other actions are performed. This is a metadata/context reload only — it do
 
 ## Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.24).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.25).

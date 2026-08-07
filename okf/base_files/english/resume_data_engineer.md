@@ -5,7 +5,7 @@ Authorized to work in Germany | Immediately available
 
 ## SUMMARY
 
-Professional with 4 years of production environment experience in enterprise transaction infrastructure (IBM CICS/Db2/MQ), complemented by hands-on self-taught data engineering skills in dbt, Apache Airflow, and ELT pipelines on GCP, AWS, and Azure. Built independent projects ingesting 37M+ records. M.Sc. Computer Science, CAU Kiel.
+Data engineer with an M.Sc. in Computer Science and enterprise-grade production systems background, delivering self-taught ELT pipelines on GCP, AWS, and Azure at 37M+ record scale.
 
 ## TECHNICAL SKILLS
 

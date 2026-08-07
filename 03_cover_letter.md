@@ -43,10 +43,11 @@ Generate a formal, high-impact cover letter in YAML (`Cover_Letter.yaml`) ground
 ### 2. Narrative Rules & Stop-Slop Checks
 - Ground every tech skill in metrics from the portfolio or Step 1 report. Do not use AI fluff words or clichés ("passionate", "thrilled").
 - Apply **Stop-Slop** rules as defined in SKILL.md (strict active voice, absolute adverb ban, zero em-dashes, cut throat-clearing openers).
-- Integrate:
+- **No Resume Rehash:** The cover letter must carry information the resume does not — a "why this company" reason grounded in the JD's stated mission/product/team context, and a concrete first-90-days framing of how the candidate would apply their strongest matched skill to this role's stated responsibilities. Do NOT use the cover letter to re-list project bullets the resume already states; reference at most one project's headline metric per paragraph as supporting evidence, not as the paragraph's main content.
+- Integrate (always):
   - Finished B1 German studies (private, planning for B2).
-  - Active work with local LLMs, RAG, and LangGraph architectures.
   - Link to full GitHub project portfolio.
+- **Archetype-Conditional Content:** Only mention active work with local LLMs, RAG, and LangGraph architectures when `role_archetype.primary` (or `secondary`) in `ATS_Report.yaml` is one of: AI Engineer, AI Data Engineer, AI/LLMOps, ML Engineering, Agentic/Automation, or Data Engineering with an explicit AI/ML JD requirement. For Data Analyst, Business Analyst, Analytics Engineer, or other non-AI archetypes, omit this entirely — it reads as an irrelevant non-sequitur bolted onto a business-facing pitch and dilutes the letter's focus on what the role actually needs.
 - **Project Verification References:** Do NOT insert raw `repo_url` links (URLs) into the cover letter prose. Instead, refer to GitHub in plain language — e.g., "the code for this project is on my GitHub" or "see my GitHub for the full implementation." A single generic reference to your GitHub portfolio is sufficient; do not link individual repositories.
 - **Application Source Integration:** If `application_source` in `ATS_Report.yaml` is `Referral` or `LinkedIn Connection`, mention the `weak_tie_contact` name/role in paragraph 1 as the connection that brought the opportunity to your attention.
 

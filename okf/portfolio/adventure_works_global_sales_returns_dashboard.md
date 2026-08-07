@@ -15,9 +15,6 @@ keywords:
 - sales analytics
 - power query
 - m language
-- context
-- data
-- overview
 archetypes:
 - Data Analyst
 - Analytics Engineering
