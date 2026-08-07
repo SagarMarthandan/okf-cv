@@ -395,9 +395,9 @@ def _create_ats_report_pdf_reportlab(data, output_path):
 
         if post_verdict:
             vok = str(post_verdict).upper() == 'PROCEED'
-            vcolor = '#1a7a1a' if vok else '#a00000'
+            vcolor = '#1a7a1a' if vok else '#b8860b'
             vlabel = ('\u2713 PROCEED \u2014 Target met' if vok
-                      else '\u26a0 HOLD \u2014 Still below 85')
+                      else '\u26a0 REVIEW \u2014 Still below 85 (informational, not blocking)')
             story.append(Paragraph(
                 f'<b>Post-Rewrite Verdict:</b> <font color="{vcolor}"><b>{vlabel}</b></font>', body
             ))

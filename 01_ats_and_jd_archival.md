@@ -212,7 +212,7 @@ improvement_blueprint:
       suggested: "[Revised bullet with quantified outcome]"
   ats_threshold_calibration:
     meets_target: false
-    score_gate_verdict: "HOLD/PROCEED"
+    score_gate_verdict: "REVIEW/PROCEED"
     remedy_suggestions:
       - "[Specific action: e.g., swap Project X for Project Y from portfolio]"
       - "[Specific action: e.g., add missing keyword 'dbt' to Technical Skills]"

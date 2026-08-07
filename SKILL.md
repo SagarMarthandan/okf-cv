@@ -190,7 +190,7 @@ Read and execute the full instructions in [01_ats_and_jd_archival.md](file:///ho
 
 Runs dependency check, runs the frontmatter linter (`okf_lint.py`) to validate portfolio metadata, parses and archives the job description, scores the base resume, performs location tailoring via web search to find the closest candidate city, and generates a tailored project list using the hybrid search engine (OKF phrase matching + Zvec semantic embeddings with score fusion).
 
-**ATS Scoring Model:** 4 equally-weighted categories of 25 points each (total = 100) — Keywords & Terminology, Experience Relevance, Technical Skills, Soft Skills & Language. Formatting is **not scored**; instead a non-scored `formatting_quality` verdict (`Excellent` / `Good` / `Average` / `Bad`) is emitted with suggested changes when `Average` or `Bad`. Score gate: `PROCEED` if total >= 85, else `HOLD`.
+**ATS Scoring Model:** 4 equally-weighted categories of 25 points each (total = 100) — Keywords & Terminology, Experience Relevance, Technical Skills, Soft Skills & Language. Formatting is **not scored**; instead a non-scored `formatting_quality` verdict (`Excellent` / `Good` / `Average` / `Bad`) is emitted with suggested changes when `Average` or `Bad`. This score is informational only (self-graded, no measured correlation with real interview outcomes) — it never blocks the pipeline: `PROCEED` if total >= 85, else `REVIEW` (with `remedy_suggestions` populated for visibility, but Step 2 always proceeds).
 
 **Output:** `ATS_Report.yaml`, `ATS_Report.pdf`, `Job_Description.yaml`, `Job_Description.pdf`, and `project_info.md` in `[Company Name] — [Job Role]/` folder.
 

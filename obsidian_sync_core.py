@@ -309,13 +309,13 @@ def parse_ats_md(path: Path) -> dict:
                 result["post_total"] = val
 
     # Score gate verdict
-    gate_match = re.search(r"(PROCEED|HOLD)", text, re.IGNORECASE)
+    gate_match = re.search(r"(PROCEED|REVIEW|HOLD)", text, re.IGNORECASE)
     if gate_match:
         result["score_gate"] = gate_match.group(1).upper()
     elif re.search(r"meets_target:\s*true", text, re.IGNORECASE):
         result["score_gate"] = "PROCEED"
     elif re.search(r"meets_target:\s*false", text, re.IGNORECASE):
-        result["score_gate"] = "HOLD"
+        result["score_gate"] = "REVIEW"
 
     # Core detractors — bullet list under "## 3. Core Score Detractors" or similar
     detractor_section = re.search(
