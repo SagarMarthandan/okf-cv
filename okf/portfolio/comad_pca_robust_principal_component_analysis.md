@@ -21,6 +21,14 @@ keywords:
 archetypes:
 - ML Engineering
 - Data Analyst
+transferable_skills:
+  - machine learning
+  - python
+  - data analysis
+  - statistical analysis
+  - feature engineering
+  - data science
+  - data visualization
 repo_url: https://github.com/SagarMarthandan/PCA-using-Co-Median
 ---
 

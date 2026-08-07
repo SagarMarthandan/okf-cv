@@ -21,6 +21,20 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
+transferable_skills:
+  - etl
+  - elt
+  - data pipeline
+  - data warehousing
+  - data modeling
+  - orchestration
+  - data quality
+  - data engineering
+  - python
+  - sql
+  - analytics
+  - containerization
+  - ci/cd
 repo_url: https://github.com/SagarMarthandan/Youtube_E2E_DE
 ---
 

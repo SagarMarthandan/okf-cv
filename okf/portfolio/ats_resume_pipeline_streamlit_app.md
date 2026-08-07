@@ -22,6 +22,12 @@ archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering
 - Data Engineering
+transferable_skills:
+  - python
+  - automation
+  - data pipeline
+  - llm integration
+  - application development
 repo_url: https://github.com/SagarMarthandan/ATS-Resume-Streamlit
 ---
 

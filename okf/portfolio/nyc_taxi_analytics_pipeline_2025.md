@@ -1,7 +1,9 @@
 ---
 title: NYC Taxi Analytics Pipeline (2025)
-description: End-to-end GCP data pipeline ingesting NYC Taxi records with Terraform, Airbyte, Airflow, BigQuery, and dbt with CI/CD and data quality checks.
-technologies: Airbyte, Airflow, BigQuery, Docker, Terraform, Python, GitHub Actions, dbt
+description: End-to-end GCP data pipeline ingesting NYC Taxi records with Terraform,
+  Airbyte, Airflow, BigQuery, and dbt with CI/CD and data quality checks.
+technologies: Airbyte, Airflow, BigQuery, Docker, Terraform, Python, GitHub Actions,
+  dbt
 keywords:
 - elt pipeline
 - infrastructure as code
@@ -17,13 +19,28 @@ keywords:
 - data engineering
 - orchestration
 - containerization
+- analytics
 archetypes:
 - Data Engineering
 - Analytics Engineering
 - Backend/Platform Engineering
+transferable_skills:
+  - etl
+  - elt
+  - data pipeline
+  - data warehousing
+  - data modeling
+  - orchestration
+  - data quality
+  - cloud data warehouse
+  - data engineering
+  - python
+  - sql
+  - analytics
+  - infrastructure as code
+  - ci/cd
 repo_url: https://github.com/SagarMarthandan/NYC-Bigquery
 ---
-
 # NYC Taxi Analytics Pipeline (2025)
 
 An end-to-end modern data engineering pipeline designed to ingest, orchestrate, store, transform, and analyze the monthly **NYC Taxi Trip Records (2025)** dataset. Built to scale, this pipeline provisions cloud infrastructure as code, automates ingestion and orchestration, establishes modular data warehouse layers, and enforces high-standard data quality checks.

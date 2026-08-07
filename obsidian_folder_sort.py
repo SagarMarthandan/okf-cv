@@ -14,10 +14,7 @@ import time
 from datetime import datetime as _dt
 from pathlib import Path
 
-# ─── Config ───────────────────────────────────────────────────────────────────
-
-APPLICATIONS_DIR = Path(os.path.dirname(os.path.abspath(__file__)) + "/Applications")
-
+from config import APPLICATIONS_DIR
 # ─── Folder sort (merged from organize_applications.py) ──────────────────────
 
 

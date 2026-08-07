@@ -37,9 +37,7 @@ except ImportError:
 # Folder-sort logic lives in its own module
 from obsidian_folder_sort import _move_into_tree
 
-# ─── Config ───────────────────────────────────────────────────────────────────
-
-APPLICATIONS_DIR = Path(os.path.dirname(os.path.abspath(__file__)) + "/Applications")
+from config import APPLICATIONS_DIR
 VAULT_DIR = Path(os.path.expanduser("~/Documents/Obsidian Vault"))
 OUTPUT_ROOT = VAULT_DIR / "Job Search"
 

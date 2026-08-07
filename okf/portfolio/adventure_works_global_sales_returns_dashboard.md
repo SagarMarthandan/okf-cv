@@ -1,6 +1,7 @@
 ---
 title: 'Adventure Works: Global Sales & Returns Dashboard'
-description: Power BI dashboard analyzing global cycling equipment sales and returns using star schema modeling and advanced DAX time intelligence.
+description: Power BI dashboard analyzing global cycling equipment sales and returns
+  using star schema modeling and advanced DAX time intelligence.
 technologies: Power BI, DAX, M Language, CSV
 keywords:
 - power bi
@@ -15,12 +16,30 @@ keywords:
 - sales analytics
 - power query
 - m language
+- environment
+- functional
+- master
 archetypes:
 - Data Analyst
 - Analytics Engineering
+transferable_skills:
+  - data visualization
+  - dashboard
+  - business intelligence
+  - data analyst
+  - bi
+  - reporting
+  - kpi tracking
+  - business analytics
+  - data storytelling
+  - self-service bi
+  - trend analysis
+  - etl
+  - sql
+  - data modeling
+  - star schema
 repo_url: https://github.com/SagarMarthandan/powerBI---Project
 ---
-
 # Adventure Works: Global Sales  Returns Dashboard
 
 ![Power Bi](https://img.shields.io/badge/power_bi-F2C811?style=for-the-badge&logo=powerbi&logoColor=black)

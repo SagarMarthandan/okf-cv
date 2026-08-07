@@ -5,6 +5,46 @@ All notable changes to the okf-cv pipeline are documented here.
 See [README.md](README.md) for architecture, setup, and usage.
 
 
+## v28.27 — Hybrid Search Scoring Overhaul + Transferable Skills + SQL Portfolio Rewrite + LLM Ranking Prototype
+
+**Files:** `okf_portfolio_search.py`, `okf/synonyms.yaml`, `okf/portfolio/` (16 files renamed/modified), `okf/zvec_db/hash_index.json`, `obsidian_folder_sort.py`, `obsidian_sync_core.py`, `organize_applications.py`, `.gitignore`, `README.md`, `docs/CHANGELOG.md`
+
+**Motivation:** The Chicago Crime & Divvy Bike-Share Data Engineering Pipeline — the most complex project in the portfolio (Spark, Kafka, Airflow, BigQuery, dbt, Terraform, 14 technologies) — was never selected during resume creation. It ranked #7 for junior DE JDs and #6 for AI Engineer JDs, both below the top-6 cutoff. Root cause investigation revealed three algorithmic bugs in the OKF scoring engine, plus a fundamental architectural gap: the scorer was blind to project body text and had no mechanism for abstracted competencies.
+
+**Changes:**
+
+**1. Multi-word phrase matching fix (`okf_portfolio_search.py:phrase_in_jd`):**
+Multi-word phrases like "apache airflow" could not match JDs that use the short form "Airflow". Layers 3-4 (stemming + fuzzy) were skipped for multi-word phrases, and the synonym key was "airflow" not "apache airflow". Fix: for multi-word phrases, now tries both first and last tokens via stem/fuzzy when the full phrase and synonyms don't match. Handles "apache airflow"→"airflow" (last token), "dbt core"→"dbt" (first token). All 8 test cases pass.
+
+**2. AI/agentic synonyms (`okf/synonyms.yaml`):**
+Added 3 synonym groups: `ai agents` (16 synonyms), `ai data engineering` (6 synonyms), `agentic engineering` (5 synonyms). "ai agents" now matches "agentic workflows", "multi-agent", "ai agent" (singular), etc.
+
+**3. Body-skill extraction (`okf_portfolio_search.py`):**
+Added `_BODY_SKILLS_ALLOWLIST` (~80 DE/analytics/AI skills) and `extract_body_skills()` function. Scans project body text for allowlisted skills and checks which appear in the JD. Body matches scored at x2 weight. Body skills do NOT inflate the Jaccard normalization divisor. Benefits all 16 projects (3-32 body skills each). Allowlist approach prevents false positives from generic prose words.
+
+**4. Normalization divisor cap (`okf_portfolio_search.py:search_relevant_projects`):**
+Capped the Jaccard normalization divisor at 35 (median across portfolio). Without a cap, a project with 14 technologies + 15 keywords needed 1.5x more matches than a project with 8+8 to achieve the same normalized score. Helps 9 of 16 projects with >35 metadata tokens.
+
+**5. Transferable skills field (`okf_portfolio_search.py` + all 16 portfolio files):**
+New frontmatter field `transferable_skills` — manually curated abstracted competencies (not tool names) that bridge the gap between what a project uses and what a JD asks for. Scored at x2 weight (same as body skills). Deduplicated against body skills to avoid double-counting. Excluded from normalization divisor. Chicago got 15 DE-specific skills (etl, data warehousing, orchestration, streaming, etc.); Adventure Works got 15 BI-specific skills (reporting, kpi tracking, business analytics, data storytelling, self-service bi, etc.). All 16 projects received 5-17 transferable skills.
+
+**6. SQL Practice portfolio rewrite:**
+Renamed `sql_practice_and_revision.md` → `advanced_database_techniques.md`. Changed title from "SQL Practice and Revision" to "Advanced Database Techniques". Rewrote description and body from Udemy exercise list to professional SQL reference library covering window functions, CTEs, complex joins, query optimization, and schema design. Cleaned keywords from 15 (with filler) to 12 (all substantive). Re-ingested Zvec DB, removed stale hash entry. Now ranks #1 for SQL-heavy Data Analyst JDs.
+
+**7. APPLICATIONS_DIR centralization (`obsidian_folder_sort.py`, `obsidian_sync_core.py`, `organize_applications.py`):**
+Three files previously hardcoded `APPLICATIONS_DIR` independently. Centralized to import from `config.py` for consistency.
+
+**8. LLM ranking prototype (`okf/project_catalog.yaml`):**
+Created a condensed project catalog YAML with all 16 projects, each with 6-8 bullet points and keywords. Prototyped LLM-based ranking by sending the catalog + JD to the cloud model and comparing its selections against the algorithm's. Tested against 10 real JDs from the Applications folder: LLM won or tied on 10/10 JDs, was never beaten by the algorithm. LLM correctly distinguished AI roles from DE roles, prioritized Power BI projects for BI roles, and understood domain relevance — all without maintaining synonyms, allowlists, or transferable skills. This catalog is the foundation for a planned fork (`llm-cv`) that will replace the algorithmic search with LLM-based ranking. Overhaul plan documented in `/home/sagar/Skills/llm_cv_overhaul_plan.md`.
+
+**Verification:**
+- All 30+ tests pass: `test_okf_search.py`, `test_hybrid_search.py`, `test_utils.py`
+- Tested against 22 real JDs from `/home/sagar/Applications/` across DE, AE, AI, DA, and BI role types
+- Chicago before/after: AI Engineer JD #6 (1.27) → #1 (2.66); Junior DE JD #7 (0.93) → #1 (2.09); BI/Data Analyst JD #8 (0.72) → correctly excluded
+- Adventure Works (Power BI) now #1-2 for all Power BI JDs (was losing to Chicago, a DE pipeline)
+- Advanced Database Techniques (renamed SQL Practice) now #1 for SQL-heavy DA JDs
+- LLM ranker prototype: 10/10 JDs won or tied vs algorithm, 0 losses
+
 ## v28.26 — LaTeX Margin Overflow Fix (microtype + tolerance + emergencystretch)
 
 **Files:** `renderers/resume_common.py`, `README.md`, `docs/CHANGELOG.md`

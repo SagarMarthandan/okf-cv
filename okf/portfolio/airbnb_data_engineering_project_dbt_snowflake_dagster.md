@@ -21,6 +21,17 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
+transferable_skills:
+  - elt
+  - data modeling
+  - data warehouse
+  - data transformation
+  - data quality
+  - data engineering
+  - python
+  - sql
+  - orchestration
+  - incremental loading
 repo_url: https://github.com/SagarMarthandan/DBT-Airbnb-Practice-Project
 ---
 

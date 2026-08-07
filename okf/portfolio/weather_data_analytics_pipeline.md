@@ -21,6 +21,17 @@ keywords:
 archetypes:
 - Data Engineering
 - Analytics Engineering
+transferable_skills:
+  - etl
+  - elt
+  - data pipeline
+  - data engineering
+  - python
+  - sql
+  - orchestration
+  - data visualization
+  - analytics
+  - containerization
 repo_url: https://github.com/SagarMarthandan/E2E-weather-data-report
 ---
 

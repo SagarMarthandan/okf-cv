@@ -20,6 +20,13 @@ keywords:
 - driven
 archetypes:
 - Data Engineering
+transferable_skills:
+  - streaming
+  - real-time
+  - data pipeline
+  - data engineering
+  - python
+  - batch processing
 repo_url: https://github.com/SagarMarthandan/mini-kafka-stream
 ---
 

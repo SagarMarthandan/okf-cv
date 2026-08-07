@@ -21,6 +21,16 @@ keywords:
 archetypes:
 - AI Engineer
 - AI/LLMOps
+transferable_skills:
+  - rag
+  - llm
+  - ai
+  - python
+  - retrieval
+  - nlp
+  - machine learning
+  - semantic search
+  - vector database
 repo_url: https://github.com/SagarMarthandan/RAG-LLM-pdf-query
 ---
 

@@ -30,9 +30,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = SKILL_DIR  # Skill is self-contained; Applications/ lives inside it
-APPLICATIONS_DIR = os.path.join(SKILL_DIR, "Applications")
-
+from config import APPLICATIONS_DIR
 # Import the merged functions from sync_to_obsidian.py
 from sync_to_obsidian import _move_into_tree, sort_all_folders
 

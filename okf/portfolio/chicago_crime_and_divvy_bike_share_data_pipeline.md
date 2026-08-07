@@ -23,6 +23,22 @@ archetypes:
   - Analytics Engineering
   - Backend/Platform Engineering
   - AI Engineer
+transferable_skills:
+  - etl
+  - elt
+  - data warehousing
+  - data pipeline
+  - data modeling
+  - orchestration
+  - data quality
+  - streaming
+  - batch processing
+  - cloud data warehouse
+  - data architecture
+  - data ingestion
+  - data transformation
+  - analytics
+  - machine learning
 repo_url: https://github.com/SagarMarthandan/chicago-data-pipeline
 ---
 

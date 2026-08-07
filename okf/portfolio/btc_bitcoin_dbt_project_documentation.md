@@ -21,6 +21,16 @@ keywords:
 archetypes:
 - Analytics Engineering
 - Data Engineering
+transferable_skills:
+  - elt
+  - data modeling
+  - data warehouse
+  - data transformation
+  - data engineering
+  - python
+  - sql
+  - data quality
+  - data visualization
 repo_url: https://github.com/SagarMarthandan/BTC
 ---
 

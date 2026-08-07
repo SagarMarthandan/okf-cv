@@ -22,6 +22,14 @@ archetypes:
 - Agentic/Automation
 - ML Engineering
 - Data Engineering
+transferable_skills:
+  - python
+  - automation
+  - experiment tracking
+  - hyperparameter tuning
+  - qa automation
+  - mlops
+  - data visualization
 ---
 
 # RACEYARD (formerly ROSYARD): Pipeline Optimization & QA Automation

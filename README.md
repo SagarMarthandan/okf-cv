@@ -147,7 +147,7 @@ graph TD
 | Step | What it does | Key outputs |
 |---|---|---|
 | **Step 0** (optional) | Scrape a job posting URL into clean JD text. Jina Reader for JS-SPA sites (LinkedIn, Workday, Greenhouse), local webfetch for static sites, manual paste as final fallback. | Clean JD text + `source_url` |
-| **Step 1** | ATS analysis, archetype detection, hybrid portfolio search (OKF + Zvec), JD archival. Embedding daemon pre-warmed to eliminate ~70s cold start. | `ATS_Report.yaml/.pdf`, `Job_Description.yaml/.pdf`, `project_info.md` |
+| **Step 1** | ATS analysis, archetype detection, hybrid portfolio search (OKF phrase matching + Zvec semantic embeddings with score fusion), JD archival. Scoring engine now includes body-skill extraction (allowlist-based), transferable skills (frontmatter-declared competencies), multi-word phrase matching, AI/agentic synonyms, and normalization divisor cap. Embedding daemon pre-warmed to eliminate ~70s cold start. | `ATS_Report.yaml/.pdf`, `Job_Description.yaml/.pdf`, `project_info.md` |
 | **Step 2** | Resume rewrite, LaTeX/ReportLab compilation, visual layout audit, parse-integrity audit, post-rewrite ATS rescoring. | `Resume.yaml`, `SAGAR_MARTHANDAN_Resume.pdf`, `Layout_Audit_Report.yaml`, `Parseability_Report.yaml/.pdf` |
 | **Step 3** | Cover letter generation (DIN 5008 Form B layout for German, business letter for English), gender-tag stripping, application source integration. | `Cover_Letter.yaml`, `SAGAR_MARTHANDAN_Cover_Letter.pdf` |
 | **Post 1** | Self-learning keyword enrichment from JD terms found in matched projects. | `okf/learning_log.json` |
@@ -210,4 +210,4 @@ No other actions are performed. This is a metadata/context reload only — it do
 
 ## Changelog
 
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.26).
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history (v1–v28.27).

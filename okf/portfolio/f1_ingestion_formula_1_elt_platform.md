@@ -20,6 +20,18 @@ keywords:
 - orchestration
 archetypes:
 - Data Engineering
+transferable_skills:
+  - etl
+  - elt
+  - data pipeline
+  - data ingestion
+  - data transformation
+  - data engineering
+  - python
+  - sql
+  - orchestration
+  - cloud data warehouse
+  - medallion architecture
 repo_url: https://github.com/SagarMarthandan/F1-AzureDatabricks
 ---
 

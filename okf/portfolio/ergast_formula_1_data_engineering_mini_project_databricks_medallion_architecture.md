@@ -20,6 +20,15 @@ keywords:
 - analytics
 archetypes:
 - Data Engineering
+transferable_skills:
+  - etl
+  - data pipeline
+  - data engineering
+  - python
+  - sql
+  - data transformation
+  - medallion architecture
+  - data governance
 repo_url: https://github.com/SagarMarthandan/Databricks-Mini-Project
 ---
 

@@ -21,6 +21,15 @@ keywords:
 archetypes:
 - Agentic/Automation
 - Backend/Platform Engineering
+transferable_skills:
+  - python
+  - automation
+  - ai agents
+  - llm
+  - rag
+  - data pipeline
+  - semantic search
+  - nlp
 repo_url: https://github.com/SagarMarthandan/okf-cv
 ---
 

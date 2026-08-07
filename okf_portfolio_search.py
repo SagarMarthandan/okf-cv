@@ -166,19 +166,34 @@ def phrase_in_jd(
             if re.search(r'\b' + re.escape(syn_norm) + r'\b', jd_text_lower):
                 return True
 
-    # Layers 3 & 4: Stemming + fuzzy (single words only)
-    if ' ' not in norm and jd_tokens is not None:
-        # Layer 3: Stemmed match
+    # Layers 3 & 4: Stemming + fuzzy
+    # For multi-word phrases, also try the tail token (e.g. "apache airflow" -> "airflow")
+    # when the full phrase and synonyms didn't match. This handles vendor-prefixed
+    # technology names where the JD uses the short form.
+    if jd_tokens is not None:
         if jd_stemmed is None:
             jd_stemmed = {light_stem(t) for t in jd_tokens}
-        stemmed_phrase = light_stem(norm)
-        for token in jd_tokens:
-            if light_stem(token) == stemmed_phrase:
-                return True
 
-        # Layer 4: Fuzzy match
-        if fuzzy_word_in_set(norm, jd_tokens):
-            return True
+        # Determine which tokens to try for stem/fuzzy matching
+        tokens_to_try = [norm] if ' ' not in norm else []
+        if ' ' in norm:
+            # Try both first and last tokens of multi-word phrases.
+            # "apache airflow" -> try "airflow" (tail); "dbt core" -> try "dbt" (head).
+            # Skip generic qualifiers (apache, google, etc.) by trying both ends.
+            parts = norm.split()
+            if len(parts) >= 2:
+                tokens_to_try.append(parts[0])
+                tokens_to_try.append(parts[-1])
+
+        for candidate in tokens_to_try:
+            stemmed_candidate = light_stem(candidate)
+            for token in jd_tokens:
+                if light_stem(token) == stemmed_candidate:
+                    return True
+
+            # Layer 4: Fuzzy match
+            if fuzzy_word_in_set(candidate, jd_tokens):
+                return True
 
     return False
 
@@ -201,7 +216,7 @@ def parse_okf_file(filepath: str) -> Dict[str, any]:
     metadata.setdefault("description", "")
     metadata.setdefault("technologies", "")
     metadata.setdefault("keywords", [])
-    metadata.setdefault("archetypes", [])
+    metadata.setdefault("transferable_skills", [])
     metadata.setdefault("repo_url", "")
     metadata["body"] = body
     metadata["filepath"] = filepath
@@ -224,6 +239,75 @@ def load_jd_archetype(ats_report_path: str) -> Tuple[Optional[str], Optional[str
         return primary, secondary
     except Exception:
         return None, None
+# ─── Body-skill extraction ────────────────────────────────────────────────────
+# Curated allowlist of DE/analytics/AI skills commonly found in JDs.
+# Used to scan project bodies for skill mentions that frontmatter keywords
+# may miss. This bridges the gap between what a project actually uses
+# (documented in the body) and what the JD asks for.
+# Only allowlisted terms are matched — prevents false positives from
+# generic words like "build", "first", "tool" appearing in the body.
+
+_BODY_SKILLS_ALLOWLIST = [
+    # Languages
+    "python", "sql", "r", "scala", "java", "bash", "shell",
+    # Databases / Warehouses
+    "postgresql", "postgres", "mysql", "snowflake", "bigquery", "redshift",
+    "databricks", "clickhouse", "duckdb", "sqlite",
+    # Orchestration
+    "airflow", "dagster", "prefect", "airbyte",
+    # Transformation
+    "dbt", "spark", "pyspark", "flink", "elt", "etl",
+    # Streaming
+    "kafka", "redis", "pubsub", "kinesis",
+    # Cloud / IaC
+    "docker", "kubernetes", "terraform", "aws", "gcp", "azure",
+    # CI/CD
+    "github actions", "ci/cd", "jenkins", "gitlab ci",
+    # Data concepts
+    "data pipeline", "data warehouse", "data lake", "data quality",
+    "data modeling", "dimensional modeling", "data mart", "data ingestion",
+    "data transformation", "orchestration", "streaming", "batch processing",
+    "real-time", "data architecture", "warehousing", "analytics",
+    # Testing / Quality
+    "data testing", "data validation", "testing", "unit test",
+    # Observability
+    "grafana", "prometheus", "monitoring", "observability",
+    # BI / Visualization
+    "tableau", "power bi", "looker", "superset", "streamlit", "dashboard",
+    # AI / ML
+    "machine learning", "ml", "ai agents", "agentic", "llm",
+    "rag", "retrieval augmented generation", "feature engineering",
+    # Version control
+    "git", "version control",
+    # Medallion / Architecture
+    "medallion architecture", "star schema", "slowly changing dimension",
+    "incremental loading", "window functions",
+]
+
+
+def extract_body_skills(body: str) -> List[str]:
+    """Extract allowlisted skill terms found in the project body.
+
+    Uses phrase_in_jd-style matching (substring for multi-word, word-boundary
+    for single words) against the body text. Returns a deduplicated list of
+    matched skill terms. Only terms in _BODY_SKILLS_ALLOWLIST are checked —
+    this prevents false positives from generic prose words.
+    """
+    if not body:
+        return []
+    body_lower = body.lower()
+    matched = []
+    for skill in _BODY_SKILLS_ALLOWLIST:
+        skill_norm = normalize_phrase(skill)
+        if not skill_norm:
+            continue
+        if ' ' in skill_norm:
+            if skill_norm in body_lower:
+                matched.append(skill)
+        else:
+            if re.search(r'\b' + re.escape(skill_norm) + r'\b', body_lower):
+                matched.append(skill)
+    return matched
 
 
 def search_relevant_projects(
@@ -238,7 +322,13 @@ def search_relevant_projects(
     Scoring components:
       - Phrase-level matching for keywords (x4), technologies (x3), description (x1)
       - Title token overlap (x5)
-      - Jaccard-style normalization on the token-overlap component
+      - Body-skill extraction (x2): allowlisted DE/analytics skills found in
+        the project body that also appear in the JD
+      - Transferable skills (x2): frontmatter-declared abstracted competencies
+        (e.g. "data warehousing" not "BigQuery") that bridge tool-name gaps
+        between project and JD; deduplicated against body skills
+      - Jaccard-style normalization on the token-overlap component (divisor
+        capped at 35 to prevent broad tech stacks from being penalized)
       - Tiebreaker: tech match count desc, then alphabetical
       - Archetype matching is diagnostic-only (no score impact); used for
         base resume selection in Step 1, not project ranking
@@ -292,11 +382,44 @@ def search_relevant_projects(
             elif fuzzy_word_in_set(word, jd_tokens):
                 title_matches += 1
 
+        # --- Body-skill extraction (allowlist-based) ---
+        # Scan the body for allowlisted DE/analytics skills and check which
+        # appear in the JD. This bridges the gap between what a project
+        # actually uses (documented in the body) and what the JD asks for.
+        # Body skills are NOT added to the normalization divisor — they're
+        # derived from prose, not declared metadata, so they shouldn't
+        # inflate the Jaccard denominator.
+        body_skills = extract_body_skills(proj.get("body", ""))
+        body_skill_matches = 0
+        for skill in body_skills:
+            if phrase_in_jd(skill, jd_text_lower, jd_tokens, jd_stemmed):
+                body_skill_matches += 1
+
+        # --- Transferable skills (frontmatter-declared competencies) ---
+        # These are abstracted competencies (e.g. "data warehousing" not
+        # "BigQuery", "orchestration" not "Airflow") that bridge the gap
+        # between what a project uses and what a JD asks for. They let a
+        # project match junior JDs that use simpler terminology, and senior
+        # JDs that use different tool names for the same concept.
+        # Scored at x2 weight (same as body skills). Excluded from the
+        # normalization divisor. Deduplicated against body_skills to avoid
+        # double-counting skills caught by both mechanisms.
+        transferable = [normalize_phrase(str(s)) for s in proj.get("transferable_skills", []) if s]
+        body_skills_norm = set(normalize_phrase(s) for s in body_skills)
+        transferable_skill_matches = 0
+        for skill_norm in transferable:
+            if not skill_norm or skill_norm in body_skills_norm:
+                continue
+            if phrase_in_jd(skill_norm, jd_text_lower, jd_tokens, jd_stemmed):
+                transferable_skill_matches += 1
+
         # --- Raw weighted token-overlap score ---
         raw_overlap = (
             title_matches * 5.0
             + keyword_matches * 4.0
             + tech_matches * 3.0
+            + body_skill_matches * 2.0
+            + transferable_skill_matches * 2.0
             + desc_matches * 1.0
         )
 
@@ -311,7 +434,13 @@ def search_relevant_projects(
         for tech in tech_list:
             total_metadata_tokens.update(tokenize(tech))
 
-        normalization_divisor = max(len(total_metadata_tokens), 1)
+        # Cap normalization divisor to prevent broad tech stacks from being
+        # structurally penalized. Without a cap, a project with 14 technologies
+        # + 15 keywords needs 1.5x more matches than a project with 8+8 to
+        # achieve the same normalized score. The cap at 35 aligns with the
+        # median metadata token count across the portfolio.
+        _NORMALIZATION_DIVISOR_CAP = 35
+        normalization_divisor = min(max(len(total_metadata_tokens), 1), _NORMALIZATION_DIVISOR_CAP)
         normalized_overlap = raw_overlap / normalization_divisor
         # --- Archetype diagnostics (no score impact) ---
         # Archetype matching is informational only — it appears in
@@ -339,6 +468,8 @@ def search_relevant_projects(
             "score": total_score,
             "keyword_matches": keyword_matches,
             "tech_matches": tech_matches,
+            "body_skill_matches": body_skill_matches,
+            "transferable_skill_matches": transferable_skill_matches,
             "archetype_match_count": archetype_match_count,
             "archetype_boost": 0.0,
             "normalized_overlap": normalized_overlap,
@@ -428,6 +559,8 @@ def distill_project(proj: Dict[str, any]) -> str:
             f"<!-- Match: archetype={arch_comment}, "
             f"{diag.get('keyword_matches', 0)} keyword overlaps, "
             f"{diag.get('tech_matches', 0)} tech overlaps, "
+            f"{diag.get('body_skill_matches', 0)} body skills, "
+            f"{diag.get('transferable_skill_matches', 0)} transferable skills, "
             f"score={diag.get('score', 0):.2f} -->"
         )
 
